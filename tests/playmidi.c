@@ -188,6 +188,7 @@ main (int argc, char *argv[])
   if (!quiet)
     printf ("\n");
 
+  ao_close (device);
   ao_shutdown ();
   mid_song_free (song);
   mid_exit ();
