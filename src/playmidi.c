@@ -640,7 +640,7 @@ void mid_song_start(MidSong *song)
 
 void mid_song_seek(MidSong *song, uint32 ms)
 {
-    skip_to(song, (ms * song->rate) / 1000);
+    skip_to(song, (ms * (song->rate / 100)) / 10);
 }
 
 uint32 mid_song_get_total_time(MidSong *song)
