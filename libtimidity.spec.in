@@ -6,10 +6,16 @@ License:   LGPL
 Group:     System Environment/Libraries
 Source:    %{name}-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
-Requires:  /etc/timidity.cfg
 
 %description
-MIDI to WAVE converter library.
+libTiMidity is MIDI to WAVE converter library. It based on the 
+TiMidity decoder from SDL_sound library. Purpose to create this
+library is to avoid unnecessary dependences. SDL_sound requires
+SDL and some other libraries, that not needed to process MIDI
+files. In addition libTiMidity provides more suitable API to work
+with MIDI songs, it enables to specify full path to the timidity
+configuration file, and have function to retrieve meta data from
+MIDI song.
 
 %package devel
 Summary:   The development libraries and header files for %{name}
