@@ -1,0 +1,3 @@
+LibTiMidity -- MIDI to WAVE converter library.
+
+This library based on the TiMidity decoder from SDL_sound library.

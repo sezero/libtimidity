@@ -1,0 +1,45 @@
+Summary:   MIDI to WAVE converter library
+Name:      libtimidity
+Version:   @VERSION@
+Release:   1
+License:   LGPL
+Group:     System Environment/Libraries
+Source:    %{name}-%{version}.tar.bz2
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Requires:  /etc/timidity.cfg
+
+%description
+MIDI to WAVE converter library.
+
+%package devel
+Summary:   The development libraries and header files for %{name}
+Group:     Development/C
+Requires:  %{name} = %{version}-%{release}
+
+%description devel
+These are the development libraries and header files for %{name}
+
+%prep
+%setup -q
+
+%build
+%configure
+make
+
+%install
+rm -rf "$RPM_BUILD_ROOT"
+mkdir -p "$RPM_BUILD_ROOT"
+make DESTDIR="$RPM_BUILD_ROOT" install
+
+%clean
+rm -rf "$RPM_BUILD_ROOT"
+
+%files
+%defattr(-, root, root)
+%doc AUTHORS CHANGES COPYING ChangeLog NEWS README README.timidity TODO
+%{_libdir}/libtimidity*.so.*
+
+%files devel
+%{_includedir}/timidity.h
+%{_libdir}/libtimidity*.so
+%{_libdir}/libtimidity*.*a
