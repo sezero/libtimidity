@@ -47,3 +47,4 @@ rm -rf "$RPM_BUILD_ROOT"
 %{_includedir}/timidity.h
 %{_libdir}/libtimidity*.so
 %{_libdir}/libtimidity*.*a
+%{_libdir}/pkgconfig

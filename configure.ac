@@ -66,6 +66,7 @@ AC_SUBST(LIBTIMIDITY_SO_VERSION)
 AC_SUBST(LIBTIMIDITY_LIBS)
 
 AC_CONFIG_FILES([Makefile
+		 libtimidity.pc
 		 libtimidity.spec
 		 src/Makefile
 		 src/timidity.h
