@@ -1,6 +1,6 @@
 /*
 
-    LibTiMidity -- MIDI to WAVE converter library
+    libTiMidity -- MIDI to WAVE converter library
     Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
     Copyright (C) 2004 Konstantin Korikov <lostclus@ua.fm>
 
@@ -79,7 +79,7 @@ extern "C"
 
   typedef enum
   {
-    MID_SONG_TITLE = 0,
+    MID_SONG_TEXT = 0,
     MID_SONG_COPYRIGHT = 1
   } MidSongMetaId;
 

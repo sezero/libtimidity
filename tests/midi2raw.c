@@ -97,7 +97,7 @@ main (int argc, char *argv[])
 
   if (mid_init (NULL) < 0)
     {
-      fprintf (stderr, "Could not initialise LibTiMidity\n");
+      fprintf (stderr, "Could not initialise libTiMidity\n");
       return 1;
     }
 

@@ -88,7 +88,7 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
 
   switch (type)
   {
-    case 1: id = MID_SONG_TITLE; break;
+    case 1: id = MID_SONG_TEXT; break;
     case 2: id = MID_SONG_COPYRIGHT; break;
     default: free(s); s = NULL;
   }

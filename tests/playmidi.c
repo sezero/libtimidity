@@ -97,7 +97,7 @@ main (int argc, char *argv[])
 
   if (mid_init (NULL) < 0)
     {
-      fprintf (stderr, "Could not initialise LibTiMidity\n");
+      fprintf (stderr, "Could not initialise libTiMidity\n");
       return 1;
     }
 
@@ -156,7 +156,7 @@ main (int argc, char *argv[])
 
   if (!quiet)
     {
-      char *title = mid_song_get_meta (song, MID_SONG_TITLE);
+      char *title = mid_song_get_meta (song, MID_SONG_TEXT);
       if (title == NULL)
         {
 	  if (arg < argc) title = argv[arg];
