@@ -256,7 +256,7 @@ static sint32 update_vibrato(MidSong *song, MidVoice *vp, int sign)
 		  (double)(song->rate)),
 		 FRACTION_BITS);
 
-  pb=(int)((sine(vp->vibrato_phase * 
+  pb=(int)((timi_sine(vp->vibrato_phase * 
 		 (SINE_CYCLE_LENGTH/(2*MID_VIBRATO_SAMPLE_INCREMENTS)))
 	    * (double)(depth) * VIBRATO_AMPLITUDE_TUNING));
 
