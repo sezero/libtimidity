@@ -20,6 +20,9 @@
  * playmidi.h
  */
 
+#ifndef TIMIDITY_PLAYMIDI_H
+#define TIMIDITY_PLAYMIDI_H
+
 /* Midi events */
 #define ME_NONE 	0
 #define ME_NOTEON	1
@@ -61,3 +64,5 @@
 /* Anything but PANNED_MYSTERY only uses the left volume */
 
 #define ISDRUMCHANNEL(s, c) (((s)->drumchannels & (1<<(c))))
+
+#endif /* TIMIDITY_PLAYMIDI_H */

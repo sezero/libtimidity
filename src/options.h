@@ -18,6 +18,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef TIMIDITY_OPTIONS_H
+#define TIMIDITY_OPTIONS_H
+
 /* When a patch file can't be opened, one of these extensions is
    appended to the filename and the open is tried again.
  */
@@ -113,3 +116,5 @@
 #else
 #  define PATH_SEP '/'
 #endif
+
+#endif /* TIMIDITY_OPTIONS_H */
