@@ -77,7 +77,6 @@ typedef struct MemContext
   sint8 *base;
   sint8 *current;
   sint8 *end;
-  int autofree;
 } MemContext;
 
 static size_t
@@ -133,14 +132,12 @@ static long
 mem_istream_tell(void *ctx)
 {
   MemContext *c = (MemContext *) ctx;
-  return  (c->current - c->base);
+  return (c->current - c->base);
 }
 
 static int
 mem_istream_close (void *ctx)
 {
-  if (((MemContext *) ctx)->autofree)
-    free (((MemContext *) ctx)->base);
   timi_free (ctx);
   return 0;
 }
@@ -186,7 +183,7 @@ mid_istream_open_file (const char *file)
 }
 
 MidIStream *
-mid_istream_open_mem (void *mem, size_t size, int autofree)
+mid_istream_open_mem (void *mem, size_t size)
 {
   MemContext *ctx;
   MidIStream *stream;
@@ -204,7 +201,6 @@ mid_istream_open_mem (void *mem, size_t size, int autofree)
   ctx->base = (sint8 *) mem;
   ctx->current = (sint8 *) mem;
   ctx->end = ((sint8 *) mem) + size;
-  ctx->autofree = autofree;
 
   stream->ctx = ctx;
   stream->read = mem_istream_read;

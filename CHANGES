@@ -6,6 +6,9 @@ Changes by libtimidity-0.2.0:
   structure. mid_istream_open_callbacks() is changed now accepts these
   callbacks.
 
+* stream.c, api change: mid_istream_open_mem() no longer accepts an
+  autoclose parameter, which was error-prone.
+
 * MidSongOptions, api change: added an uint8 width member just after
   channels (not used yet, but serves as a padding at least.) added an
   uint16 reserved padding member just after buffer_size.

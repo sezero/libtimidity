@@ -20,8 +20,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef TIMIDITY_H
-#define TIMIDITY_H
+#ifndef LIBTIMIDITY_H
+#define LIBTIMIDITY_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +156,7 @@ extern "C" {
 
 /* Create input stream from memory
  */
-  TIMI_EXPORT extern MidIStream *mid_istream_open_mem (void *mem, size_t size, int autofree);
+  TIMI_EXPORT extern MidIStream *mid_istream_open_mem (void *mem, size_t size);
 
 /* Create custom input stream
  */
@@ -252,4 +252,4 @@ extern "C" {
 }
 #endif
 
-#endif /* TIMIDITY_H */
+#endif /* LIBTIMIDITY_H */
