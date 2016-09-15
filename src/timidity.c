@@ -252,9 +252,9 @@ static int read_config_file(const char *name, int rcf_count)
       }
       if (!master_drumset[i])
       {
-	master_drumset[i] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+	master_drumset[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
 	if (!master_drumset[i]) goto fail;
-	master_drumset[i]->tone = (MidToneBankElement *) safe_malloc(128 * sizeof(MidToneBankElement));
+	master_drumset[i]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
 	if (!master_drumset[i]->tone) goto fail;
       }
       bank=master_drumset[i];
@@ -275,9 +275,9 @@ static int read_config_file(const char *name, int rcf_count)
       }
       if (!master_tonebank[i])
       {
-	master_tonebank[i] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+	master_tonebank[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
 	if (!master_tonebank[i]) goto fail;
-	master_tonebank[i]->tone = (MidToneBankElement *) safe_malloc(128 * sizeof(MidToneBankElement));
+	master_tonebank[i]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
 	if (!master_tonebank[i]->tone) goto fail;
       }
       bank=master_tonebank[i];
@@ -302,8 +302,8 @@ static int read_config_file(const char *name, int rcf_count)
 		name, line);
 	goto fail;
       }
-      safe_free(bank->tone[i].name);
-      bank->tone[i].name=(char *) safe_malloc(strlen(w[1])+1);
+      timi_free(bank->tone[i].name);
+      bank->tone[i].name=(char *) timi_calloc(strlen(w[1])+1);
       if (!bank->tone[i].name) goto fail;
       strcpy(bank->tone[i].name,w[1]);
       bank->tone[i].note=bank->tone[i].amp=bank->tone[i].pan=
@@ -404,14 +404,14 @@ fail:
 static int init_alloc_banks (void)
 {
   /* Allocate memory for the standard tonebank and drumset */
-  master_tonebank[0] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+  master_tonebank[0] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
   if (!master_tonebank[0]) goto _nomem;
-  master_tonebank[0]->tone = (MidToneBankElement *) safe_malloc(128 * sizeof(MidToneBankElement));
+  master_tonebank[0]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
   if (!master_tonebank[0]->tone) goto _nomem;
 
-  master_drumset[0] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+  master_drumset[0] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
   if (!master_drumset[0]) goto _nomem;
-  master_drumset[0]->tone = (MidToneBankElement *) safe_malloc(128 * sizeof(MidToneBankElement));
+  master_drumset[0]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
   if (!master_drumset[0]->tone) goto _nomem;
 
   return 0;
@@ -425,7 +425,7 @@ static int init_begin_config(const char *cf)
 {
   const char *p;
 
-  rcf_fp = (FILE **) safe_malloc(MAX_RCFCOUNT * sizeof(FILE*));
+  rcf_fp = (FILE **) timi_calloc(MAX_RCFCOUNT * sizeof(FILE*));
   if (!rcf_fp)
       return -2;
   p = FIND_LAST_DIRSEP(cf);
@@ -449,7 +449,7 @@ static int init_with_config(const char *cf)
       mid_exit ();
   else
   {
-      free(rcf_fp);
+      timi_free(rcf_fp);
       rcf_fp = NULL;
   }
   return rc;
@@ -489,7 +489,7 @@ static void do_song_load(MidIStream *stream, MidDLSPatches *dlspatches, MidSongO
   }
 
   /* Allocate memory for the song */
-  *out = (MidSong *)safe_malloc(sizeof(MidSong));
+  *out = (MidSong *)timi_calloc(sizeof(MidSong));
   if (! *out) return;
   song = *out;
   song->dlspatches = dlspatches;
@@ -498,13 +498,13 @@ static void do_song_load(MidIStream *stream, MidDLSPatches *dlspatches, MidSongO
   {
     if (master_tonebank[i])
     {
-      song->tonebank[i] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+      song->tonebank[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
       if (!song->tonebank[i]) goto fail;
       song->tonebank[i]->tone = master_tonebank[i]->tone;
     }
     if (master_drumset[i])
     {
-      song->drumset[i] = (MidToneBank *) safe_malloc(sizeof(MidToneBank));
+      song->drumset[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
       if (!song->drumset[i]) goto fail;
       song->drumset[i]->tone = master_drumset[i]->tone;
     }
@@ -545,9 +545,9 @@ static void do_song_load(MidIStream *stream, MidDLSPatches *dlspatches, MidSongO
   }
 
   song->buffer_size = options->buffer_size;
-  song->resample_buffer = (sample_t *) safe_malloc(options->buffer_size * sizeof(sample_t));
+  song->resample_buffer = (sample_t *) timi_calloc(options->buffer_size * sizeof(sample_t));
   if (!song->resample_buffer) goto fail;
-  song->common_buffer = (sint32 *) safe_malloc(options->buffer_size * 2 * sizeof(sint32));
+  song->common_buffer = (sint32 *) timi_calloc(options->buffer_size * 2 * sizeof(sint32));
   if (!song->common_buffer) goto fail;
 
   song->bytes_per_sample =
@@ -610,19 +610,19 @@ void mid_song_free(MidSong *song)
     fclose(song->ifp);
 
   for (i = 0; i < 128; i++) {
-    safe_free(song->tonebank[i]);
-    safe_free(song->drumset[i]);
+    timi_free(song->tonebank[i]);
+    timi_free(song->drumset[i]);
   }
 
-  safe_free(song->common_buffer);
-  safe_free(song->resample_buffer);
-  safe_free(song->events);
+  timi_free(song->common_buffer);
+  timi_free(song->resample_buffer);
+  timi_free(song->events);
 
   for (i = 0; i < MID_META_MAX; i++) {
-    safe_free(song->meta_data[i]);
+    timi_free(song->meta_data[i]);
   }
 
-  free(song);
+  timi_free(song);
 }
 
 void mid_exit(void)
@@ -636,7 +636,7 @@ void mid_exit(void)
       if (rcf_fp[i])
 	fclose(rcf_fp[i]);
     }
-    free(rcf_fp);
+    timi_free(rcf_fp);
     rcf_fp = NULL;
   }
 
@@ -649,11 +649,11 @@ void mid_exit(void)
       {
 	for (j = 0; j < 128; j++)
 	{
-	  safe_free(e[j].name);
+	  timi_free(e[j].name);
 	}
-	free(e);
+	timi_free(e);
       }
-      free(master_tonebank[i]);
+      timi_free(master_tonebank[i]);
       master_tonebank[i] = NULL;
     }
     if (master_drumset[i])
@@ -663,11 +663,11 @@ void mid_exit(void)
       {
 	for (j = 0; j < 128; j++)
 	{
-	  safe_free(e[j].name);
+	  timi_free(e[j].name);
 	}
-	free(e);
+	timi_free(e);
       }
-      free(master_drumset[i]);
+      timi_free(master_drumset[i]);
       master_drumset[i] = NULL;
     }
   }

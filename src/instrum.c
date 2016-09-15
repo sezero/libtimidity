@@ -52,11 +52,11 @@ static void free_instrument(MidInstrument *ip)
     {
       sp=&(ip->sample[i]);
       if (!sp) break;
-      free(sp->data);
+      timi_free(sp->data);
     }
-    free(ip->sample);
+    timi_free(ip->sample);
   }
-  free(ip);
+  timi_free(ip);
 }
 
 static void free_bank(MidSong *song, int dr, int b)
@@ -231,12 +231,12 @@ static void load_instrument(MidSong *song, const char *name,
       goto badpat;
     }
 
-  *out = (MidInstrument *) safe_malloc(sizeof(MidInstrument));
+  *out = (MidInstrument *) timi_calloc(sizeof(MidInstrument));
   ip = *out;
   if (!ip) goto nomem;
 
   ip->samples = tmp[198];
-  ip->sample = (MidSample *) safe_malloc(sizeof(MidSample) * ip->samples);
+  ip->sample = (MidSample *) timi_calloc(sizeof(MidSample) * ip->samples);
   if (!ip->sample) goto nomem;
 
   for (i=0; i<ip->samples; i++)
@@ -392,7 +392,7 @@ static void load_instrument(MidSong *song, const char *name,
 	}
 
       /* Then read the sample data */
-      sp->data = (sample_t *) safe_malloc(sp->data_length+4);
+      sp->data = (sample_t *) timi_calloc(sp->data_length+4);
       if (!sp->data) goto nomem;
 
       if (1 != fread(sp->data, sp->data_length, 1, fp))
@@ -406,11 +406,11 @@ static void load_instrument(MidSong *song, const char *name,
 	  sp->data_length *= 2;
 	  sp->loop_start *= 2;
 	  sp->loop_end *= 2;
-	  tmp16 = new16 = (uint16 *) safe_malloc(sp->data_length+4);
+	  tmp16 = new16 = (uint16 *) timi_calloc(sp->data_length+4);
 	  if (!new16) goto nomem;
 	  while (k--)
 	    *tmp16++ = (uint16)(*cp++) << 8;
-	  free(sp->data);
+	  timi_free(sp->data);
 	  sp->data = (sample_t *)new16;
 	}
 #if defined(WORDS_BIGENDIAN)

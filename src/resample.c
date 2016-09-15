@@ -565,7 +565,7 @@ void pre_resample(MidSong *song, MidSample *sp)
     return;
   }
 
-  dest = newdata = (sint16 *) safe_malloc((newlen >> (FRACTION_BITS - 1)) + 2);
+  dest = newdata = (sint16 *) timi_calloc((newlen >> (FRACTION_BITS - 1)) + 2);
   if(!dest) {
     song->oom=1;
     return;
@@ -608,7 +608,7 @@ void pre_resample(MidSong *song, MidSample *sp)
   sp->data_length = newlen;
   sp->loop_start = (sint32)(sp->loop_start * a);
   sp->loop_end = (sint32)(sp->loop_end * a);
-  free(sp->data);
+  timi_free(sp->data);
   sp->data = (sample_t *) newdata;
   sp->sample_rate = 0;
 }

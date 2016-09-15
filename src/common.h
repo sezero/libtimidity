@@ -30,8 +30,11 @@ typedef struct _PathList PathList;
 extern int add_to_pathlist(const char *s, size_t len);
 extern void free_pathlist(void);
 
-/* safe_malloc() returns zero'ed mem. */
-extern void *safe_malloc(size_t count);
-#define safe_free(_Memp) free((_Memp))
+/* in case someone wants to compile with a different malloc() than stdlib */
+#define timi_malloc malloc
+#define timi_free   free
+
+/* timi_calloc() returns zero'ed memory using timi_malloc() */
+extern void *timi_calloc(size_t count);
 
 #endif /* TIMIDITY_COMMON_H */

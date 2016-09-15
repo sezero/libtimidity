@@ -14,8 +14,11 @@ Changes by libtimidity-0.2.0:
   a mid_exit() to free all the allocated memory during init time, or a
   mid_song_free() to free the allocated memory during a song load time.
 
+* the library can be compiled using a different memory allocator than
+  malloc. (edit common.h for timi_malloc and timi_free)
+
 * mid_init(), mid_init_no_config(): a mid_exit() is guaranteed upon
-  config file parse failures or malloc() failures. 
+  config file parse failures or malloc() failures.
 
 * mid_init(): the library doesn't care about common timidity.cfg system
   locations any more, callers of mid_init() are responsible for it. if
