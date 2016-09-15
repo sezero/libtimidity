@@ -1,8 +1,8 @@
 
 if HAVE_AO
-PLAYMIDI = playmidi
+  PLAYMIDI = playmidi
 else
-PLAYMIDI =
+  PLAYMIDI =
 endif
 
 noinst_PROGRAMS = midi2raw $(PLAYMIDI)
