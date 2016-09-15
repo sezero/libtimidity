@@ -33,5 +33,6 @@ extern void add_to_pathlist(const char *s, size_t len);
 extern void free_pathlist(void);
 
 extern void *safe_malloc(size_t count);
+#define safe_free free
 
 #endif /* TIMIDITY_COMMON_H */
