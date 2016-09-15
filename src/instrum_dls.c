@@ -889,6 +889,21 @@ static void load_region_dls(MidSong *song, MidSample *sample, DLS_Instrument *in
   sample->loop_end <<= FRACTION_BITS;
 }
 
+static void free_mid_instrument(MidInstrument *ip)
+{
+  MidSample *sp;
+  int i;
+  if (!ip) return;
+  if (ip->sample) {
+    for (i=0; i<ip->samples; i++) {
+      sp=&(ip->sample[i]);
+      timi_free(sp->data);
+    }
+    timi_free(ip->sample);
+  }
+  timi_free(ip);
+}
+
 void load_instrument_dls(MidSong *song, MidInstrument **out,
 			 int drum, int bank, int instrument)
 {
@@ -896,10 +911,8 @@ void load_instrument_dls(MidSong *song, MidInstrument **out,
   uint32 i;
   DLS_Instrument *dls_ins = NULL;
 
-  if (!song->dlspatches) {
-    *out = NULL;
-    return;
-  }
+  *out = NULL;
+  if (!song->dlspatches) return;
 
 #if 0
   drum = drum ? 0x80000000 : 0;
@@ -923,34 +936,21 @@ void load_instrument_dls(MidSong *song, MidInstrument **out,
     return;
   }
 
-  *out = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
-  if (!(inst = *out)) {
-    song->oom = 1;
-    return;
-  }
+  inst = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
+  if (!inst) goto oom1;
   inst->samples = dls_ins->header->cRegions;
   inst->sample = (MidSample *)timi_calloc(sizeof(MidSample) * inst->samples);
-  if (! inst->sample) {
-    song->oom = 1;
-    timi_free(inst);
-    *out = NULL;
-    return;
-  }
+  if (! inst->sample) goto oom1;
   /*
   printf("Found %s instrument %d in bank %d named %s with %d regions\n",
 	 drum ? "drum" : "melodic", instrument, bank, dls_ins->name, inst->samples);
   */
   for (i = 0; i < dls_ins->header->cRegions; ++i) {
     load_region_dls(song, &inst->sample[i], dls_ins, i);
-    if (song->oom) {
-      uint32 j = 0;
-      for (; j < i; ++j)
-	timi_free (&inst->sample[j]);
-      timi_free(inst);
-      *out = NULL;
-      return;
-    }
+    if (song->oom) goto oom1;
   }
+  *out = inst;
+  return;
 
 #else /* fixed drum loading code from Vavoom svn repository rev. 4175 */
   if (drum) goto _dodrum;
@@ -975,30 +975,16 @@ void load_instrument_dls(MidSong *song, MidInstrument **out,
     return;
   }
 
-  *out = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
-  if (!(inst = *out)) {
-    song->oom = 1;
-    return;
-  }
+  inst = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
+  if (!inst) goto oom1;
   inst->samples = dls_ins->header->cRegions;
   inst->sample = (MidSample *)timi_calloc(sizeof(MidSample) * inst->samples);
-  if (! inst->sample) {
-    song->oom = 1;
-    timi_free(inst);
-    *out = NULL;
-    return;
-  }
+  if (! inst->sample) goto oom1;
   for (i = 0; i < dls_ins->header->cRegions; ++i) {
     load_region_dls(song, &inst->sample[i], dls_ins, i);
-    if (song->oom) {
-      uint32 j = 0;
-      for (; j < i; ++j)
-	timi_free (&inst->sample[j]);
-      timi_free(inst);
-      *out = NULL;
-      return;
-    }
+    if (song->oom) goto oom1;
   }
+  *out = inst;
   return;
 
 _dodrum:
@@ -1032,26 +1018,19 @@ _dodrum:
     return;
   }
 
-  *out = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
-  if (!(inst = *out)) {
-    song->oom = 1;
-    return;
-  }
+  inst = (MidInstrument *)timi_calloc(sizeof(MidInstrument));
+  if (!inst) goto oom1;
   inst->samples = 1;
   inst->sample = (MidSample *)timi_calloc(sizeof(MidSample));
-  if (! inst->sample) {
-    song->oom = 1;
-    timi_free(inst);
-    *out = NULL;
-    return;
-  }
-  load_region_dls(song, &inst->sample[0], dls_ins, drum);
-  if (song->oom) {
-    timi_free(inst);
-    *out = NULL;
-    return;
-  }
+  if (! inst->sample) goto oom1;
+  load_region_dls(song, inst->sample, dls_ins, drum);
+  if (song->oom) goto oom1;
+  *out = inst;
+  return;
 #endif /* fix from Vavoom */
+oom1:
+  song->oom = 1;
+  free_mid_instrument(inst);
 }
 
 #endif /* TIMIDITY_USE_DLS */
