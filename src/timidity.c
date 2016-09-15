@@ -524,23 +524,23 @@ static void do_song_load(MidIStream *stream, MidDLSPatches *dlspatches, MidSongO
       song->encoding |= PE_MONO;
   switch (options->format) {
       case MID_AUDIO_S8:
-	  song->write = s32tos8;
+	  song->write = timi_s32tos8;
 	  break;
       case MID_AUDIO_U8:
-	  song->write = s32tou8;
+	  song->write = timi_s32tou8;
 	  break;
       case MID_AUDIO_S16LSB:
-	  song->write = s32tos16l;
+	  song->write = timi_s32tos16l;
 	  break;
       case MID_AUDIO_S16MSB:
-	  song->write = s32tos16b;
+	  song->write = timi_s32tos16b;
 	  break;
       case MID_AUDIO_U16LSB:
-	  song->write = s32tou16l;
+	  song->write = timi_s32tou16l;
 	  break;
       default:
 	  DEBUG_MSG("Unsupported audio format\n");
-	  song->write = s32tou16l;
+	  song->write = timi_s32tou16l;
 	  break;
   }
 
