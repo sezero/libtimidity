@@ -3,11 +3,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ao/ao.h>
 #include "timidity.h"
 
 void
-print_usage()
+print_usage(void)
 {
   printf("Usage: playmidi [-r rate] [-s sample_width] [-c channels]\n"
          "                [-v volume] [-q] [midifile]\n");
@@ -53,7 +54,7 @@ main (int argc, char *argv[])
 	    case 'b': bits = 8; break;
 	    case 'w': bits = 16; break;
 	    default:
-              fprintf (stderr, "Invalid sample width\n");
+	      fprintf (stderr, "Invalid sample width\n");
 	      return 1;
 	  }
 	}
@@ -114,7 +115,6 @@ main (int argc, char *argv[])
 	  mid_exit ();
 	  return 1;
 	}
-
     }
 
   options.rate = rate;
@@ -166,7 +166,7 @@ main (int argc, char *argv[])
     }
 
   buffer_size = bits * channels / 8 * rate;
-  buffer = malloc (buffer_size);
+  buffer = (sint8 *) malloc (buffer_size);
 
   do
     {

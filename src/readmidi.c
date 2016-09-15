@@ -63,7 +63,7 @@ static sint32 getvl(MidIStream *stream)
 
 /* Print a string from the file, followed by a newline. Any non-ASCII
    or unprintable characters will be converted to periods. */
-static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *song)
+static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 type)
 {
 #ifdef TIMIDITY_DEBUG
   static const char *label[] = {
@@ -81,7 +81,7 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
     }
   if (len != (sint32) mid_istream_read(stream, s, 1, len))
     {
-      free(s);
+      safe_free(s);
       return -1;
     }
 
@@ -149,7 +149,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	  len=getvl(stream);
 	  if (type>0 && type<16)
 	    {
-	      read_meta_data(stream, len, type, song);
+	      read_meta_data(stream, song, len, type);
 	    }
 	  else
 	    switch(type)

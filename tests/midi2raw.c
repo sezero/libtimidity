@@ -3,10 +3,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "timidity.h"
 
 void
-print_usage()
+print_usage(void)
 {
   printf("Usage: midi2raw [-r rate] [-s sample_width] [-c channels]\n"
          "                [-v volume] [-o output_file] [midifile]\n");
@@ -20,7 +21,7 @@ main (int argc, char *argv[])
   int channels = 2;
   int volume = 100;
   FILE * output = stdout;
-  int arg;  
+  int arg;
   MidIStream *stream;
   MidSongOptions options;
   MidSong *song;
@@ -47,7 +48,7 @@ main (int argc, char *argv[])
 	    case 'b': bits = 8; break;
 	    case 'w': bits = 16; break;
 	    default:
-              fprintf (stderr, "Invalid sample width\n");
+	      fprintf (stderr, "Invalid sample width\n");
 	      return 1;
 	  }
 	}
@@ -114,7 +115,6 @@ main (int argc, char *argv[])
 	  mid_exit ();
 	  return 1;
 	}
-
     }
 
   options.rate = rate;
