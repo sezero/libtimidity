@@ -293,7 +293,7 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
 {
   MidEventList *meep;
   MidEventList *next, *newlist;
-  sint32 len;
+  sint32 len, next_pos, pos;
   char tmp[4];
 
   meep = song->evlist;
@@ -314,6 +314,7 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
       return -1;
     }
   len=SWAPBE32(len);
+  next_pos = mid_istream_tell(stream) + len;
   if (memcmp(tmp, "MTrk", 4))
     {
       DEBUG_MSG("Corrupt MIDI file.\n");
@@ -327,6 +328,11 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
 
       if (newlist==MAGIC_EOT) /* End-of-track Hack. */
 	{
+	/* If the track ends before the size of the
+	 * track data, skip any junk at the end.  */
+	  pos = mid_istream_tell(stream);
+	  if (pos < next_pos)
+	    mid_istream_seek(stream, next_pos - pos, SEEK_CUR);
 	  return 0;
 	}
 
