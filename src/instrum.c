@@ -64,7 +64,7 @@ static void free_bank(MidSong *song, int dr, int b)
 	/* Not that this could ever happen, of course */
 	if (bank->instrument[i] != MAGIC_LOAD_INSTRUMENT)
 	  free_instrument(bank->instrument[i]);
-	bank->instrument[i]=0;
+	bank->instrument[i] = NULL;
       }
 }
 
@@ -173,7 +173,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
   int i,j,noluck=0;
   static const char *patch_ext[] = PATCH_EXT_LIST;
 
-  if (!name) return 0;
+  if (!name) return NULL;
   
   /* Open patch file */
   if ((fp=open_file(name)) == NULL)
@@ -198,7 +198,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
   if (noluck)
     {
       DEBUG_MSG("Instrument `%s' can't be found.\n", name);
-      return 0;
+      return NULL;
     }
       
   DEBUG_MSG("Loading instrument %s\n", tmp);
@@ -212,25 +212,25 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 						      differences are */
     {
       DEBUG_MSG("%s: not an instrument\n", name);
-      return 0;
+      return NULL;
     }
   
   if (tmp[82] != 1 && tmp[82] != 0) /* instruments. To some patch makers, 
 				       0 means 1 */
     {
       DEBUG_MSG("Can't handle patches with %d instruments\n", tmp[82]);
-      return 0;
+      return NULL;
     }
 
   if (tmp[151] != 1 && tmp[151] != 0) /* layers. What's a layer? */
     {
       DEBUG_MSG("Can't handle instruments with %d layers\n", tmp[151]);
-      return 0;
+      return NULL;
     }
   
-  ip=safe_malloc(sizeof(MidInstrument));
+  ip = (MidInstrument *) safe_malloc(sizeof(MidInstrument));
   ip->samples = tmp[198];
-  ip->sample = safe_malloc(sizeof(MidSample) * ip->samples);
+  ip->sample = (MidSample *) safe_malloc(sizeof(MidSample) * ip->samples);
   for (i=0; i<ip->samples; i++)
     {
 
@@ -259,7 +259,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 	    free(ip->sample[j].data);
 	  free(ip->sample);
 	  free(ip);
-	  return 0;
+	  return NULL;
 	}
 
       sp=&(ip->sample[i]);
@@ -393,7 +393,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 	}
 
       /* Then read the sample data */
-      sp->data = safe_malloc(sp->data_length);
+      sp->data = (sample_t *) safe_malloc(sp->data_length);
       if (1 != fread(sp->data, sp->data_length, 1, fp))
 	goto fail;
       
@@ -401,12 +401,12 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 	{
 	  sint32 i=sp->data_length;
 	  uint8 *cp=(uint8 *)(sp->data);
-	  uint16 *tmp,*new;
-	  tmp=new=safe_malloc(sp->data_length*2);
+	  uint16 *tmp,*new16;
+	  tmp = new16 = (uint16 *) safe_malloc(sp->data_length*2);
 	  while (i--)
 	    *tmp++ = (uint16)(*cp++) << 8;
 	  cp=(uint8 *)(sp->data);
-	  sp->data = (sample_t *)new;
+	  sp->data = (sample_t *)new16;
 	  free(cp);
 	  sp->data_length *= 2;
 	  sp->loop_start *= 2;
@@ -554,7 +554,7 @@ static int fill_bank(MidSong *song, int dr, int b)
 			  MAGIC_LOAD_INSTRUMENT;
 		    }
 		}
-	      bank->instrument[i] = 0;
+	      bank->instrument[i] = NULL;
 	      errors++;
 	    }
 	  else if (!(bank->instrument[i] =

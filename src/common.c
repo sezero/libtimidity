@@ -48,7 +48,7 @@ FILE *open_file(const char *name)
   if (!name || !(*name))
     {
       DEBUG_MSG("Attempted to open nameless file.\n");
-      return 0;
+      return NULL;
     }
 
   /* First try the given name */
@@ -86,7 +86,7 @@ FILE *open_file(const char *name)
   
   /* Nothing could be opened. */
   DEBUG_MSG("Could not open %s\n", name);
-  return 0;
+  return NULL;
 }
 
 /* This'll allocate memory or die. */
@@ -104,12 +104,12 @@ void *safe_malloc(size_t count)
 /* This adds a directory to the path list */
 void add_to_pathlist(const char *s)
 {
-  PathList *plp = safe_malloc(sizeof(PathList));
+  PathList *plp = (PathList *) safe_malloc(sizeof(PathList));
 
   if (plp == NULL)
       return;
 
-  plp->path = safe_malloc(strlen(s) + 1);
+  plp->path = (char *) safe_malloc(strlen(s) + 1);
   if (plp->path == NULL)
   {
       free(plp);

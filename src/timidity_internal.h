@@ -146,7 +146,7 @@ typedef struct _MidEventList MidEventList;
 struct _MidEventList
 {
   MidEvent event;
-  void *next;
+  struct _MidEventList *next;
 };
 
 struct _MidSong

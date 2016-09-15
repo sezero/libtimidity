@@ -67,7 +67,7 @@ static sint32 getvl(MidIStream *stream)
    or unprintable characters will be converted to periods. */
 static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *song)
 {
-  char *s=safe_malloc(len+1);
+  char *s = (char *)safe_malloc(len+1);
   MidSongMetaId id;
 #ifdef TIMIDITY_DEBUG
   static const char *label[] = {
@@ -104,11 +104,15 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
   return 0;
 }
 
-#define MIDIEVENT(at,t,ch,pa,pb) \
-  new=safe_malloc(sizeof(MidEventList)); \
-  new->event.time=at; new->event.type=t; new->event.channel=ch; \
-  new->event.a=pa; new->event.b=pb; new->next=0;\
-  return new;
+#define MIDIEVENT(at,t,ch,pa,pb)				\
+  newlist = (MidEventList *) safe_malloc(sizeof(MidEventList));	\
+  newlist->event.time = at;					\
+  newlist->event.type = t;					\
+  newlist->event.channel = ch;					\
+  newlist->event.a = pa;					\
+  newlist->event.b = pb;					\
+  newlist->next = NULL;						\
+  return newlist;
 
 #define MAGIC_EOT ((MidEventList *)(-1))
 
@@ -120,7 +124,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
   static uint8 nrpn=0, rpn_msb[16], rpn_lsb[16]; /* one per channel */
   uint8 me, type, a,b,c;
   sint32 len;
-  MidEventList *new;
+  MidEventList *newlist;
 
   for (;;)
     {
@@ -128,7 +132,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
       if (mid_istream_read(stream, &me, 1, 1) != 1)
 	{
 	  DEBUG_MSG("read_midi_event: mid_istream_read() failure\n");
-	  return 0;
+	  return NULL;
 	}
       
       if(me==0xF0 || me == 0xF7) /* SysEx event */
@@ -253,8 +257,8 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		    break;
 		  }
 		if (control != 255)
-		  { 
-		    MIDIEVENT(song->at, control, lastchan, b, 0); 
+		  {
+		    MIDIEVENT(song->at, control, lastchan, b, 0);
 		  }
 	      }
 	      break;
@@ -279,7 +283,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	}
     }
   
-  return new;
+  return newlist;
 }
 
 #undef MIDIEVENT
@@ -289,7 +293,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 static int read_track(MidIStream *stream, MidSong *song, int append)
 {
   MidEventList *meep;
-  MidEventList *next, *new;
+  MidEventList *next, *newlist;
   sint32 len;
   char tmp[4];
 
@@ -320,26 +324,26 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
 
   for (;;)
     {
-      if (!(new=read_midi_event(stream, song))) /* Some kind of error  */
+      if (!(newlist=read_midi_event(stream, song))) /* Some kind of error  */
 	return -2;
 
-      if (new==MAGIC_EOT) /* End-of-track Hack. */
+      if (newlist==MAGIC_EOT) /* End-of-track Hack. */
 	{
 	  return 0;
 	}
 
       next=meep->next;
-      while (next && (next->event.time < new->event.time))
+      while (next && (next->event.time < newlist->event.time))
 	{
 	  meep=next;
 	  next=meep->next;
 	}
 	  
-      new->next=next;
-      meep->next=new;
+      newlist->next=next;
+      meep->next=newlist;
 
       song->event_count++; /* Count the event. (About one?) */
-      meep=new;
+      meep=newlist;
     }
 }
 
@@ -354,7 +358,7 @@ static void free_midi_list(MidSong *song)
       free(meep);
       meep=next;
     }
-  song->evlist=0;
+  song->evlist = NULL;
 }
 
 /* Allocate an array of MidiEvents and fill it from the linked list of
@@ -383,7 +387,7 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
   compute_sample_increment(song, tempo, divisions);
 
   /* This may allocate a bit more than we need */
-  groomed_list=lp=safe_malloc(sizeof(MidEvent) * (song->event_count+1));
+  groomed_list=lp=(MidEvent *) safe_malloc(sizeof(MidEvent) * (song->event_count+1));
   meep=song->evlist;
 
   our_event_count=0;
@@ -517,18 +521,18 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
 
   song->event_count=0;
   song->at=0;
-  song->evlist=0;
+  song->evlist = NULL;
 
   if (mid_istream_read(stream, tmp, 1, 4) != 4 || mid_istream_read(stream, &len, 4, 1) != 1)
     {
       DEBUG_MSG("Not a MIDI file!\n");
-      return 0;
+      return NULL;
     }
   len=SWAPBE32(len);
   if (memcmp(tmp, "MThd", 4) || len < 6)
     {
       DEBUG_MSG("Not a MIDI file!\n");
-      return 0;
+      return NULL;
     }
 
   mid_istream_read(stream, &format, 2, 1);
@@ -554,16 +558,16 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
   if (format<0 || format >2)
     {
       DEBUG_MSG("Unknown MIDI file format %d\n", format);
-      return 0;
+      return NULL;
     }
   DEBUG_MSG("Format: %d  Tracks: %d  Divisions: %d\n",
 	  format, tracks, divisions);
 
   /* Put a do-nothing event first in the list for easier processing */
-  song->evlist=safe_malloc(sizeof(MidEventList));
+  song->evlist=(MidEventList *) safe_malloc(sizeof(MidEventList));
   song->evlist->event.time=0;
   song->evlist->event.type=ME_NONE;
-  song->evlist->next=0;
+  song->evlist->next = NULL;
   song->event_count++;
 
   switch(format)
@@ -572,7 +576,7 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
       if (read_track(stream, song, 0))
 	{
 	  free_midi_list(song);
-	  return 0;
+	  return NULL;
 	}
       break;
 
@@ -581,7 +585,7 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
 	if (read_track(stream, song, 0))
 	  {
 	    free_midi_list(song);
-	    return 0;
+	    return NULL;
 	  }
       break;
 
@@ -590,7 +594,7 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
 	if (read_track(stream, song, 1))
 	  {
 	    free_midi_list(song);
-	    return 0;
+	    return NULL;
 	  }
       break;
     }
