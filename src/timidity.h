@@ -34,21 +34,21 @@ extern "C" {
 #define LIBTIMIDITY_VERSION_MINOR 2L
 #define LIBTIMIDITY_PATCHLEVEL    0L
 
-#define LIBTIMIDITY_VERSION		  \
-	((LIBTIMIDITY_VERSION_MAJOR<<16)| \
-	 (LIBTIMIDITY_VERSION_MINOR<< 8)| \
-	 (LIBTIMIDITY_PATCHLEVEL))
+#define LIBTIMIDITY_VERSION               \
+        ((LIBTIMIDITY_VERSION_MAJOR<<16)| \
+         (LIBTIMIDITY_VERSION_MINOR<< 8)| \
+         (LIBTIMIDITY_PATCHLEVEL))
 
 /* Audio format flags (defaults to LSB byte order)
  */
-#define MID_AUDIO_U8		0x0008	/* Unsigned 8-bit samples */
-#define MID_AUDIO_S8		0x8008	/* Signed 8-bit samples */
-#define MID_AUDIO_U16LSB	0x0010	/* Unsigned 16-bit samples */
-#define MID_AUDIO_S16LSB	0x8010	/* Signed 16-bit samples */
-#define MID_AUDIO_U16MSB	0x1010	/* As above, but big-endian byte order */
-#define MID_AUDIO_S16MSB	0x9010	/* As above, but big-endian byte order */
-#define MID_AUDIO_U16		MID_AUDIO_U16LSB
-#define MID_AUDIO_S16		MID_AUDIO_S16LSB
+#define MID_AUDIO_U8      0x0008  /* Unsigned 8-bit samples */
+#define MID_AUDIO_S8      0x8008  /* Signed 8-bit samples */
+#define MID_AUDIO_U16LSB  0x0010  /* Unsigned 16-bit samples */
+#define MID_AUDIO_S16LSB  0x8010  /* Signed 16-bit samples */
+#define MID_AUDIO_U16MSB  0x1010  /* As above, but big-endian byte order */
+#define MID_AUDIO_S16MSB  0x9010  /* As above, but big-endian byte order */
+#define MID_AUDIO_U16     MID_AUDIO_U16LSB
+#define MID_AUDIO_S16     MID_AUDIO_S16LSB
 
 /* Core Library Types
  */
@@ -59,11 +59,10 @@ extern "C" {
   typedef unsigned int uint32;
   typedef signed int sint32;
 
-  typedef size_t (*MidIStreamReadFunc) (void *ctx, void *ptr, size_t size,
-					size_t nmemb);
-  typedef int  (*MidIStreamSeekFunc) (void *ctx, long offset, int whence);
-  typedef long (*MidIStreamTellFunc) (void *ctx);
-  typedef int (*MidIStreamCloseFunc) (void *ctx);
+  typedef size_t (*MidIStreamReadFunc) (void *ctx, void *ptr, size_t size, size_t nmemb);
+  typedef int    (*MidIStreamSeekFunc) (void *ctx, long offset, int whence);
+  typedef long   (*MidIStreamTellFunc) (void *ctx);
+  typedef int    (*MidIStreamCloseFunc)(void *ctx);
 
   typedef struct _MidIStream MidIStream;
   typedef struct _MidDLSPatches MidDLSPatches;
@@ -72,20 +71,18 @@ extern "C" {
   typedef struct _MidSongOptions MidSongOptions;
   struct _MidSongOptions
   {
-    sint32 rate;	/* DSP frequency -- samples per second */
-    uint16 format;	/* Audio data format */
-    uint8 channels;	/* Number of channels: 1 mono, 2 stereo */
-    uint8 width;	/* Sample width: 1 for 8 bit, 2 for 16 bit */
-    uint16 buffer_size;	/* Sample buffer size in samples */
+    sint32 rate;        /* DSP frequency -- samples per second */
+    uint16 format;      /* Audio data format */
+    uint8 channels;     /* Number of channels: 1 mono, 2 stereo */
+    uint8 width;        /* Sample width: 1 for 8 bit, 2 for 16 bit */
+    uint16 buffer_size; /* Sample buffer size in samples */
     uint16 reserved;
   };
 
-  typedef enum
-  {
-    MID_SONG_TEXT = 0,
-    MID_SONG_COPYRIGHT = 1
-#define MID_META_MAX 8
-  } MidSongMetaId;
+  typedef int MidSongMetaId;
+#define MID_SONG_TEXT       0
+#define MID_SONG_COPYRIGHT  1
+#define MID_META_MAX        8
 
 
 /* Compiler magic for shared libraries
