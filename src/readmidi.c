@@ -95,8 +95,7 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
   }
   if (s)
     {
-      if (song->meta_data[id])
-	free(song->meta_data[id]);
+      safe_free(song->meta_data[id]);
       song->meta_data[id] = s;
     }
 	
@@ -285,7 +284,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	}
     }
 
-  return newlist;
+  return NULL;
 }
 
 #undef MIDIEVENT
@@ -358,7 +357,7 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
 static void free_midi_list(MidSong *song)
 {
   MidEventList *meep, *next;
-  if (!(meep = song->evlist)) return;
+  meep = song->evlist;
   while (meep)
     {
       next=meep->next;
