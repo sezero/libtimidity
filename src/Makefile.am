@@ -10,6 +10,7 @@ libtimidity_la_SOURCES = \
 	common.h \
 	dls1.h \
 	dls2.h \
+	filenames.h \
 	instrum.c \
 	instrum_dls.c \
 	instrum_dls.h \

@@ -62,6 +62,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h stdio.h string.h unistd.h math.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
 AC_C_CONST
 AC_TYPE_SIZE_T
 
