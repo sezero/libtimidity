@@ -108,8 +108,7 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
 
 #define MIDIEVENT(at,t,ch,pa,pb)				\
   newlist = (MidEventList *) timi_calloc(sizeof(MidEventList));	\
-  if (!newlist) { song->oom = 1;				\
-   return NULL; }						\
+  if (!newlist) {song->oom = 1; return NULL;}			\
   newlist->event.time = at;					\
   newlist->event.type = t;					\
   newlist->event.channel = ch;					\
