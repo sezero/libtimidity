@@ -6,5 +6,6 @@ includedir=${prefix}/include
 Name: libtimidity
 Description: MIDI to WAVE converter library
 Version: @VERSION@
-Libs: -L${libdir} -ltimidity @LIBTIMIDITY_LIBS@
+Libs: -L${libdir} -ltimidity
+Libs.private: @LIBTIMIDITY_LIBS@
 Cflags: -I${includedir}

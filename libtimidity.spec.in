@@ -4,7 +4,7 @@ Version:   @VERSION@
 Release:   1
 License:   LGPL
 Group:     System Environment/Libraries
-Source:    %{name}-%{version}.tar.bz2
+Source:    %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 
 %description
@@ -47,10 +47,11 @@ rm -rf "$RPM_BUILD_ROOT"
 %files
 %defattr(-, root, root)
 %doc AUTHORS CHANGES COPYING ChangeLog NEWS README README.timidity TODO
-%{_libdir}/libtimidity*.so.*
+%{_libdir}/libtimidity.so.*
 
 %files devel
+%defattr(-, root, root)
 %{_includedir}/timidity.h
-%{_libdir}/libtimidity*.so
-%{_libdir}/libtimidity*.*a
+%{_libdir}/libtimidity.so
+%{_libdir}/libtimidity.*a
 %{_libdir}/pkgconfig
