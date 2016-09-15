@@ -10,7 +10,8 @@
 void
 print_usage(void)
 {
-  printf("Usage: playmidi [-r rate] [-s sample_width] [-c channels]\n"
+  printf("Usage: playmidi [-cfg /path/to/your/timidity.cfg]\n"
+         "                [-r rate] [-s sample_width] [-c channels]\n"
          "                [-v volume] [-q] [midifile]\n");
 }
 
@@ -22,6 +23,7 @@ main (int argc, char *argv[])
   int channels = 2;
   int volume = 100;
   int quiet = 0;
+  char * cfgfile = NULL;
   int arg;
   MidIStream *stream;
   MidSongOptions options;
@@ -82,6 +84,17 @@ main (int argc, char *argv[])
 	{
 	  quiet = 1;
 	}
+      else if (!strcmp(argv[arg], "-cfg"))
+	{
+	  if (++arg >= argc) break;
+	  cfgfile = (char *) malloc (strlen(argv[arg]) + 1);
+	  if (cfgfile == NULL)
+	    {
+	      fprintf (stderr, "Failed allocating memory.\n");
+	      return 1;
+	    }
+	  strcpy(cfgfile,argv[arg]);
+	}
       else if (!strcmp(argv[arg], "-h"))
 	{
 	  print_usage();
@@ -96,9 +109,10 @@ main (int argc, char *argv[])
       else break;
     }
 
-  if (mid_init (NULL) < 0)
+  if (mid_init (cfgfile) < 0)
     {
       fprintf (stderr, "Could not initialise libTiMidity\n");
+      free (cfgfile);
       return 1;
     }
 
@@ -113,6 +127,7 @@ main (int argc, char *argv[])
 	{
 	  fprintf (stderr, "Could not open file %s\n", argv[arg]);
 	  mid_exit ();
+	  free (cfgfile);
 	  return 1;
 	}
     }
@@ -129,6 +144,7 @@ main (int argc, char *argv[])
     {
       fprintf (stderr, "Invalid MIDI file\n");
       mid_exit ();
+      free (cfgfile);
       return 1;
     }
 
@@ -152,6 +168,7 @@ main (int argc, char *argv[])
       ao_shutdown ();
       mid_song_free (song);
       mid_exit ();
+      free (cfgfile);
       return 1;
     }
 
@@ -193,6 +210,7 @@ main (int argc, char *argv[])
   ao_shutdown ();
   mid_song_free (song);
   mid_exit ();
+  free (cfgfile);
 
   return 0;
 }
