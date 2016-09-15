@@ -30,7 +30,6 @@
 
 #include "timidity.h"
 #include "timidity_internal.h"
-#include "options.h"
 #include "common.h"
 #include "instrum.h"
 #include "playmidi.h"
@@ -567,8 +566,10 @@ void pre_resample(MidSong *song, MidSample *sp)
   }
 
   dest = newdata = (sint16 *) safe_malloc((newlen >> (FRACTION_BITS - 1)) + 2);
-  if (!dest)
+  if(!dest) {
+    song->oom=1;
     return;
+  }
 
   if (--count)
     *dest++ = src[0];

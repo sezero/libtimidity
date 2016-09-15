@@ -59,7 +59,7 @@ AM_CONDITIONAL([HAVE_AO], [test $have_ao = yes])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([stdlib.h stdio.h string.h unistd.h math.h])
+AC_CHECK_HEADERS([stdlib.h stdio.h string.h sys/param.h unistd.h math.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

@@ -23,15 +23,14 @@
 #ifndef TIMIDITY_COMMON_H
 #define TIMIDITY_COMMON_H
 
-typedef struct _PathList {
-  char *path;
-  struct _PathList *next;
-} PathList;
-
 extern FILE *open_file(const char *name);
-extern void add_to_pathlist(const char *s, size_t len);
+
+/* pathlist funcs only to be used during mid_init/mid_exit */
+typedef struct _PathList PathList;
+extern int add_to_pathlist(const char *s, size_t len);
 extern void free_pathlist(void);
 
+/* safe_malloc() returns zero'ed mem. */
 extern void *safe_malloc(size_t count);
 #define safe_free free
 

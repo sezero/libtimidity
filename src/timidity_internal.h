@@ -22,6 +22,7 @@
 #define TIMIDITY_INTERNAL_H
 
 #include "timidity.h"
+#include "options.h"
 
 /* Instrument files are little-endian, MIDI files big-endian, so we
    need to do some conversions. */
@@ -160,6 +161,7 @@ struct _MidEventList
 
 struct _MidSong
 {
+  int oom;/* malloc failed */
   int playing;
   sint32 rate;
   sint32 encoding;
@@ -169,6 +171,7 @@ struct _MidSong
   MidDLSPatches *dlspatches;
   MidToneBank *tonebank[128];
   MidToneBank *drumset[128];
+  FILE *ifp; /* patch file pointer used by the instrument loader */
   MidInstrument *default_instrument;
   int default_program;
   void (*write) (void *dp, sint32 *lp, sint32 c);

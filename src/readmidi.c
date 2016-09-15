@@ -28,7 +28,6 @@
 
 #include "timidity.h"
 #include "timidity_internal.h"
-#include "options.h"
 #include "common.h"
 #include "instrum.h"
 #include "playmidi.h"
@@ -75,7 +74,11 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
   MidSongMetaId id;
   char *s = (char *)safe_malloc(len+1);
 
-  if (!s) return -1;
+  if (!s)
+    {
+      mid_istream_skip(stream, len);/* should I ? */
+      return -1;
+    }
   if (len != (sint32) mid_istream_read(stream, s, 1, len))
     {
       free(s);
@@ -104,14 +107,15 @@ static int read_meta_data(MidIStream *stream, sint32 len, uint8 type, MidSong *s
 
 #define MIDIEVENT(at,t,ch,pa,pb)				\
   newlist = (MidEventList *) safe_malloc(sizeof(MidEventList));	\
-  if (!newlist) goto nomem;					\
+  if (!newlist) { song->oom = 1;				\
+   return NULL; }						\
   newlist->event.time = at;					\
   newlist->event.type = t;					\
   newlist->event.channel = ch;					\
   newlist->event.a = pa;					\
   newlist->event.b = pb;					\
-  newlist->next = NULL;						\
   return newlist;
+/*newlist->next = NULL;*/	/* safe_malloc() clears mem already */
 
 #define MAGIC_EOT ((MidEventList *)(-1))
 
@@ -285,8 +289,6 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	}
     }
 
-nomem:
-  DEBUG_MSG("Out of memory\n");
   return NULL;
 }
 
@@ -401,11 +403,11 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
 
   /* This may allocate a bit more than we need */
   groomed_list=lp=(MidEvent *) safe_malloc(sizeof(MidEvent) * (song->event_count+1));
-  if (!groomed_list)
-    {
-      DEBUG_MSG("Out of memory\n");
-      goto done;
-    }
+  if (!groomed_list) {
+    song->oom=1;
+    free_midi_list(song);
+    return NULL;
+  }
   meep=song->evlist;
 
   for (i = 0; i < song->event_count; i++)
@@ -522,7 +524,6 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
   lp->time=st;
   lp->type=ME_EOT;
   our_event_count++;
-done:
   free_midi_list(song);
 
   *eventsp=our_event_count;
@@ -598,14 +599,13 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
 
   /* Put a do-nothing event first in the list for easier processing */
   song->evlist=(MidEventList *) safe_malloc(sizeof(MidEventList));
-  if (!song->evlist)
-    {
-      DEBUG_MSG("Out of memory\n");
-      return NULL;
-    }
-  song->evlist->event.time=0;
+  if (!song->evlist) {
+    song->oom=1;
+    return NULL;
+  }
   song->evlist->event.type=ME_NONE;
-  song->evlist->next = NULL;
+/*song->evlist->event.time=0;
+  song->evlist->next = NULL;*/	/* safe_malloc() clears mem already */
   song->event_count++;
 
   switch(format)

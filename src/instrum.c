@@ -26,13 +26,16 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include "timidity.h"
 #include "timidity_internal.h"
-#include "options.h"
 #include "common.h"
 #include "instrum.h"
 #include "instrum_dls.h"
@@ -161,7 +164,8 @@ static void reverse_data(sint16 *sp, sint32 ls, sint32 le)
    undefined.
 
    TODO: do reverse loops right */
-static MidInstrument *load_instrument(MidSong *song, const char *name,
+static void load_instrument(MidSong *song, const char *name,
+				   MidInstrument **out,
 				   int percussion, int panning,
 				   int amp, int note_to_use,
 				   int strip_loop, int strip_envelope,
@@ -170,36 +174,37 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
   MidInstrument *ip;
   MidSample *sp;
   FILE *fp;
-  char tmp[1024];
+  char tmp[TIM_MAXPATH];
   int i,j;
   static const char *patch_ext[] = PATCH_EXT_LIST;
 
-  if (!name) return NULL;
+  *out = NULL;
+  if (!name) return;
 
   /* Open patch file */
-  if ((fp=open_file(name)) == NULL)
+  if ((song->ifp=open_file(name)) == NULL)
     {
       /* Try with various extensions */
       for (i=0; patch_ext[i]; i++)
 	{
-	  if (strlen(name)+strlen(patch_ext[i])<1024)
+	  if (strlen(name)+strlen(patch_ext[i])<TIM_MAXPATH)
 	    {
 	      strcpy(tmp, name);
 	      strcat(tmp, patch_ext[i]);
-	      if ((fp=open_file(tmp)) != NULL)
+	      if ((song->ifp=open_file(tmp)) != NULL)
 		  break;
 	    }
 	}
     }
 
-  if (fp == NULL)
+  if (song->ifp == NULL)
     {
       DEBUG_MSG("Instrument `%s' can't be found.\n", name);
-      return NULL;
+      return;
     }
+  fp = song->ifp;
 
   DEBUG_MSG("Loading instrument %s\n", tmp);
-  ip = NULL;
 
   /* Read some headers and do cursory sanity checks. There are loads
      of magic offsets. This could be rewritten... */
@@ -226,14 +231,13 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
       goto badpat;
     }
 
-  ip = (MidInstrument *) safe_malloc(sizeof(MidInstrument));
+  *out = (MidInstrument *) safe_malloc(sizeof(MidInstrument));
+  ip = *out;
   if (!ip) goto nomem;
-  memset(ip, 0, sizeof(MidInstrument));
 
   ip->samples = tmp[198];
   ip->sample = (MidSample *) safe_malloc(sizeof(MidSample) * ip->samples);
   if (!ip->sample) goto nomem;
-  memset(ip->sample, 0, sizeof(MidSample) * ip->samples);
 
   for (i=0; i<ip->samples; i++)
     {
@@ -331,7 +335,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 	 understand why, and fixing it by adding the Sustain flag to
 	 all looped patches probably breaks something else. We do it
 	 anyway. */
-      if (sp->modes & MODES_LOOPING) 
+      if (sp->modes & MODES_LOOPING)
 	sp->modes |= MODES_SUSTAIN;
 
       /* Strip any loops and envelopes we're permitted to */
@@ -499,8 +503,10 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 
       /* If this instrument will always be played on the same note,
 	 and it's not looped, we can resample it now. */
-      if (sp->note_to_use && !(sp->modes & MODES_LOOPING))
+      if (sp->note_to_use && !(sp->modes & MODES_LOOPING)) {
 	pre_resample(song, sp);
+	if (song->oom) goto fail;
+      }
 
       if (strip_tail==1)
 	{
@@ -511,10 +517,11 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
     }
 
   fclose(fp);
-  return ip;
+  song->ifp = NULL;
+  return;
 
 nomem:
-  DEBUG_MSG("Out of memory\n");
+  song->oom=1;
   goto fail;
 badread:
   DEBUG_MSG("Error reading sample %d\n", i);
@@ -522,7 +529,8 @@ fail:
   free_instrument (ip);
 badpat:
   fclose(fp);
-  return NULL;
+  song->ifp = NULL;
+  *out = NULL;
 }
 
 static int fill_bank(MidSong *song, int dr, int b)
@@ -539,7 +547,7 @@ static int fill_bank(MidSong *song, int dr, int b)
     {
       if (bank->instrument[i]==MAGIC_LOAD_INSTRUMENT)
 	{
-	  bank->instrument[i]=load_instrument_dls(song, dr, b, i);
+	  load_instrument_dls(song, &bank->instrument[i], dr, b, i);
 	  if (bank->instrument[i])
 	    {
 	      continue;
@@ -569,9 +577,11 @@ static int fill_bank(MidSong *song, int dr, int b)
 	      bank->instrument[i] = NULL;
 	      errors++;
 	    }
-	  else if (!(bank->instrument[i] =
-		     load_instrument(song,
+	  else
+	    {
+	      load_instrument(song,
 				     bank->tone[i].name, 
+				     &bank->instrument[i],
 				     (dr) ? 1 : 0,
 				     bank->tone[i].pan,
 				     bank->tone[i].amp,
@@ -584,12 +594,13 @@ static int fill_bank(MidSong *song, int dr, int b)
 				     (bank->tone[i].strip_envelope != -1) ? 
 				     bank->tone[i].strip_envelope :
 				     ((dr) ? 1 : -1),
-				     bank->tone[i].strip_tail )))
-	    {
-	      DEBUG_MSG("Couldn't load instrument %s (%s %d, program %d)\n",
+				     bank->tone[i].strip_tail);
+	      if (!bank->instrument[i]) {
+		DEBUG_MSG("Couldn't load instrument %s (%s %d, program %d)\n",
 		   bank->tone[i].name,
 		   (dr)? "drum set" : "tone bank", b, i);
-	      errors++;
+		errors++;
+	      }
 	    }
 	}
     }
@@ -623,10 +634,9 @@ void free_instruments(MidSong *song)
 
 int set_default_instrument(MidSong *song, const char *name)
 {
-  MidInstrument *ip;
-  if (!(ip=load_instrument(song, name, 0, -1, -1, -1, 0, 0, 0)))
+  load_instrument(song, name, &song->default_instrument, 0, -1, -1, -1, 0, 0, 0);
+  if (!song->default_instrument)
     return -1;
-  song->default_instrument = ip;
   song->default_program = SPECIAL_PROGRAM;
   return 0;
 }
