@@ -412,7 +412,7 @@ static MidInstrument *load_instrument(MidSong *song, const char *name,
 	  sp->loop_start *= 2;
 	  sp->loop_end *= 2;
 	}
-#ifndef LITTLE_ENDIAN
+#if defined(WORDS_BIGENDIAN)
       else
 	/* convert to machine byte order */
 	{

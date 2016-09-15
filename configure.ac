@@ -65,6 +65,7 @@ AC_CHECK_HEADERS([stdlib.h stdio.h string.h unistd.h math.h])
 AC_C_INLINE
 AC_C_CONST
 AC_TYPE_SIZE_T
+AC_C_BIGENDIAN
 
 # Checks for library functions.
 AC_FUNC_MALLOC
