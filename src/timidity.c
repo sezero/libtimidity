@@ -447,8 +447,7 @@ static int init_with_config(const char *cf)
   rc = read_config_file(cf, 0);
   if (rc != 0)
       mid_exit ();
-  else
-  {
+  else {
       timi_free(rcf_fp);
       rcf_fp = NULL;
   }
@@ -647,8 +646,7 @@ void mid_exit(void)
       MidToneBankElement *e = master_tonebank[i]->tone;
       if (e != NULL)
       {
-	for (j = 0; j < 128; j++)
-	{
+	for (j = 0; j < 128; j++) {
 	  timi_free(e[j].name);
 	}
 	timi_free(e);
@@ -661,8 +659,7 @@ void mid_exit(void)
       MidToneBankElement *e = master_drumset[i]->tone;
       if (e != NULL)
       {
-	for (j = 0; j < 128; j++)
-	{
+	for (j = 0; j < 128; j++) {
 	  timi_free(e[j].name);
 	}
 	timi_free(e);
