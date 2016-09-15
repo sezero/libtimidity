@@ -22,8 +22,8 @@
  * Code to load and unload GUS-compatible instrument patches.
  */
 
-#if HAVE_CONFIG_H
-#  include <config.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
 #endif
 
 #include <stdio.h>

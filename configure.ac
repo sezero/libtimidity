@@ -18,9 +18,13 @@ LIBTIMIDITY_VERSION=$LIBTIMIDITY_MAJOR_VERSION.$LIBTIMIDITY_MINOR_VERSION.$LIBTI
 AM_INIT_AUTOMAKE([libtimidity], [$LIBTIMIDITY_VERSION])
 AM_CONFIG_HEADER([config.h])
 
-AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
-	      [enable debug mode [default=no]]),
-	      , enable_debug=no)
+AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[enable debug mode [default=no]])],
+[if test "$enableval" = "yes"
+then
+  enable_debug=yes
+else
+  enable_debug=no
+fi])
 if test x$enable_debug = xyes; then
 	if test x$ac_cv_prog_cc_g = xyes; then
 		CFLAGS="-g -O0"
@@ -28,7 +32,18 @@ if test x$enable_debug = xyes; then
 		CFLAGS="-O0"
 	fi
 	CFLAGS="$CFLAGS -Wall"
-	AC_DEFINE([TIMIDITY_DEBUG], [], [Debug mode])
+	AC_DEFINE([TIMIDITY_DEBUG], 1, [Debug mode])
+fi
+
+AC_ARG_ENABLE([dls], [AS_HELP_STRING([--enable-dls],[enable DLS instruments support [default=no]])],
+[if test "$enableval" = "yes"
+then
+  enable_dls=yes
+else
+  enable_dls=no
+fi])
+if test x$enable_dls = xyes; then
+	AC_DEFINE([TIMIDITY_USE_DLS], 1, [include DLS instruments support])
 fi
 
 # Checks for programs.

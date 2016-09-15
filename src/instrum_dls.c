@@ -18,6 +18,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -28,6 +32,19 @@
 #include "instrum.h"
 #include "tables.h"
 #include "common.h"
+
+#if !defined(TIMIDITY_USE_DLS) /* stubs */
+MidDLSPatches *mid_dlspatches_load (MidIStream *stream)
+{
+  return NULL;
+}
+
+void mid_dlspatches_free (MidDLSPatches *data)
+{
+}
+
+#else /* DLS support: */
+#include "instrum_dls.h"
 
 /* ------- load_riff.h ------- */
 typedef struct _RIFF_Chunk {
@@ -270,9 +287,6 @@ struct _MidDLSPatches {
     const char *copyright;
     const char *comments;
 };
-
-extern MidDLSPatches* mid_dlspatches_load(MidIStream *stream);
-extern void mid_dlspatches_free(MidDLSPatches *chunk);
 
 /* ------- load_dls.c ------- */
 
@@ -957,3 +971,5 @@ _dodrum:
   return inst;
 #endif
 }
+
+#endif /* TIMIDITY_USE_DLS */
