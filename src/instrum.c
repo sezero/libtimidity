@@ -182,7 +182,7 @@ static void load_instrument(MidSong *song, const char *name,
   if (!name) return;
 
   /* Open patch file */
-  if ((song->ifp=open_file(name)) == NULL)
+  if ((song->ifp=timi_openfile(name)) == NULL)
     {
       /* Try with various extensions */
       for (i=0; patch_ext[i]; i++)
@@ -191,8 +191,8 @@ static void load_instrument(MidSong *song, const char *name,
 	    {
 	      strcpy(tmp, name);
 	      strcat(tmp, patch_ext[i]);
-	      if ((song->ifp=open_file(tmp)) != NULL)
-		  break;
+	      if ((song->ifp=timi_openfile(tmp)) != NULL)
+		break;
 	    }
 	}
     }

@@ -40,7 +40,7 @@
 #include "common.h"
 #include "filenames.h"
 
-/* The paths in this list will be tried whenever open_file()
+/* The paths in this list will be tried whenever timi_openfile()
    reads a file */
 struct _PathList {
   char *path;
@@ -50,7 +50,7 @@ struct _PathList {
 static PathList *pathlist = NULL;
 
 /* This is meant to find and open files for reading */
-FILE *open_file(const char *name)
+FILE *timi_openfile(const char *name)
 {
   FILE *fp;
 
@@ -109,7 +109,7 @@ void *timi_calloc(size_t count)
 }
 
 /* This adds a directory to the path list */
-int add_to_pathlist(const char *s, size_t l)
+int timi_add_pathlist(const char *s, size_t l)
 {
   PathList *plp = (PathList *) timi_malloc(sizeof(PathList));
   if (!plp) return -2;
@@ -124,7 +124,7 @@ int add_to_pathlist(const char *s, size_t l)
   return 0;
 }
 
-void free_pathlist(void)
+void timi_free_pathlist(void)
 {
     PathList *plp = pathlist;
     PathList *next;

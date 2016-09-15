@@ -23,12 +23,12 @@
 #ifndef TIMIDITY_COMMON_H
 #define TIMIDITY_COMMON_H
 
-extern FILE *open_file(const char *name);
+extern FILE *timi_openfile(const char *name);
 
 /* pathlist funcs only to be used during mid_init/mid_exit */
 typedef struct _PathList PathList;
-extern int add_to_pathlist(const char *s, size_t len);
-extern void free_pathlist(void);
+extern int  timi_add_pathlist(const char *s, size_t len);
+extern void timi_free_pathlist(void);
 
 /* in case someone wants to compile with a different malloc() than stdlib */
 #define timi_malloc malloc

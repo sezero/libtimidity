@@ -93,7 +93,7 @@ static int read_config_file(const char *name, int rcf_count)
     return -1;
   }
 
-  if (!(rcf_fp[rcf_count]=open_file(name)))
+  if (!(rcf_fp[rcf_count]=timi_openfile(name)))
     return -1;
 
   bank = NULL;
@@ -206,7 +206,7 @@ static int read_config_file(const char *name, int rcf_count)
 	goto fail;
       }
       for (i=1; i<words; i++) {
-	if (add_to_pathlist(w[i], strlen(w[i])) < 0)
+	if (timi_add_pathlist(w[i], strlen(w[i])) < 0)
 	  goto fail;
       }
     }
@@ -430,7 +430,7 @@ static int init_begin_config(const char *cf)
       return -2;
   p = FIND_LAST_DIRSEP(cf);
   if (p != NULL)
-      return add_to_pathlist(cf, p - cf + 1); /* including DIRSEP */
+      return timi_add_pathlist(cf, p - cf + 1); /* including DIRSEP */
 
   return 0;
 }
@@ -672,11 +672,10 @@ void mid_exit(void)
     }
   }
 
-  free_pathlist();
+  timi_free_pathlist();
 }
 
 long mid_get_version (void)
 {
   return LIBTIMIDITY_VERSION;
 }
-
