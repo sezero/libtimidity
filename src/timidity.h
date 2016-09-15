@@ -87,6 +87,37 @@ extern "C" {
   } MidSongMetaId;
 
 
+/* Compiler magic for shared libraries
+ * ===================================
+ */
+#if defined(_WIN32) || defined(__CYGWIN__)
+  /* if you are compiling for Windows and will link to the
+   * static library, you must define TIMIDITY_STATIC in
+   * your project. otherwise, dllimport will be assumed. */
+# if defined(TIMIDITY_BUILD) && defined(DLL_EXPORT)       /* building libtimidity as a dll for windows */
+#   define TIMI_EXPORT __declspec(dllexport)
+# elif defined(TIMIDITY_BUILD) || defined(TIMIDITY_STATIC) /* building or using static libtimidity for windows */
+#   define TIMI_EXPORT
+# else
+#   define TIMI_EXPORT __declspec(dllimport)                   /* using libtimidity dll for windows */
+# endif
+#elif defined(__OS2__) && defined(__WATCOMC__)
+# if defined(TIMIDITY_BUILD) && defined(__SW_BD)          /* building libtimidity as a dll for os/2 */
+#   define TIMI_EXPORT __declspec(dllexport)
+# else
+#   define TIMI_EXPORT                                    /* using dll or static libtimidity for os/2 */
+# endif
+/* SYM_VISIBILITY should be defined if both the compiler
+ * and the target support the visibility attributes. the
+ * configury does that automatically. for any standalone
+ * makefiles, etc, the developer should add the required
+ * flags, i.e.:  -DSYM_VISIBILITY -fvisibility=hidden  */
+#elif defined(TIMIDITY_BUILD) && defined(SYM_VISIBILITY)
+#   define TIMI_EXPORT __attribute__((visibility("default")))
+#else
+#   define TIMI_EXPORT
+#endif
+
 /* Core Library Functions
  * ======================
  */
@@ -94,16 +125,16 @@ extern "C" {
 /* Initialize the library. If config_file is NULL
  * search for configuratin file in default directories
  */
-  extern int mid_init (const char *config_file);
+  TIMI_EXPORT extern int mid_init (const char *config_file);
 
 /* Initialize the library without reading any
  * configuratin file
  */
-  extern int mid_init_no_config (void);
+  TIMI_EXPORT extern int mid_init_no_config (void);
 
 /* Shutdown the library
  */
-  extern void mid_exit (void);
+  TIMI_EXPORT extern void mid_exit (void);
 
 
 /* Input Stream Functions
@@ -112,45 +143,44 @@ extern "C" {
 
 /* Create input stream from a file name
  */
-  extern MidIStream *mid_istream_open_file (const char *file);
+  TIMI_EXPORT extern MidIStream *mid_istream_open_file (const char *file);
 
 /* Create input stream from a file pointer
  */
-  extern MidIStream *mid_istream_open_fp (FILE * fp, int autoclose);
+  TIMI_EXPORT extern MidIStream *mid_istream_open_fp (FILE *fp, int autoclose);
 
 /* Create input stream from memory
  */
-  extern MidIStream *mid_istream_open_mem (void *mem, size_t size,
-					   int autofree);
+  TIMI_EXPORT extern MidIStream *mid_istream_open_mem (void *mem, size_t size, int autofree);
 
 /* Create custom input stream
  */
-  extern MidIStream *mid_istream_open_callbacks (MidIStreamReadFunc read,
-						 MidIStreamSeekFunc seek,
-						 MidIStreamTellFunc tell,
-						 MidIStreamCloseFunc close,
-						 void *context);
+  TIMI_EXPORT extern MidIStream *mid_istream_open_callbacks (MidIStreamReadFunc readfn,
+                                                             MidIStreamSeekFunc seekfn,
+                                                             MidIStreamTellFunc tellfn,
+                                                             MidIStreamCloseFunc closefn,
+                                                             void *context);
 
 /* Read data from input stream
  */
-  extern size_t mid_istream_read (MidIStream * stream, void *ptr, size_t size,
-				  size_t nmemb);
+  TIMI_EXPORT extern size_t mid_istream_read (MidIStream *stream, void *ptr, size_t size,
+                                              size_t nmemb);
 
 /* Seek to a position in the input stream
  */
-  extern int mid_istream_seek (MidIStream * stream, long offset, int whence);
+  TIMI_EXPORT extern int mid_istream_seek (MidIStream *stream, long offset, int whence);
 
 /* Tell the position of input stream
  */
-  extern long mid_istream_tell (MidIStream * stream);
+  TIMI_EXPORT extern long mid_istream_tell (MidIStream *stream);
 
 /* Skip data from input stream
  */
-  extern int mid_istream_skip (MidIStream * stream, long len);
+  TIMI_EXPORT extern int mid_istream_skip (MidIStream *stream, long len);
 
 /* Close and destroy input stream
  */
-  extern int mid_istream_close (MidIStream * stream);
+  TIMI_EXPORT extern int mid_istream_close (MidIStream *stream);
 
 
 /* DLS Patch Functions
@@ -159,11 +189,11 @@ extern "C" {
 
 /* Load DLS patches
  */
-  extern MidDLSPatches *mid_dlspatches_load (MidIStream * stream);
+  TIMI_EXPORT extern MidDLSPatches *mid_dlspatches_load (MidIStream *stream);
 
 /* Destroy DLS patches
  */
-  extern void mid_dlspatches_free (MidDLSPatches * data);
+  TIMI_EXPORT extern void mid_dlspatches_free (MidDLSPatches *data);
 
 
 /* MIDI Song Functions
@@ -172,46 +202,46 @@ extern "C" {
 
 /* Load MIDI song
  */
-  extern MidSong *mid_song_load (MidIStream * stream,
-				 MidSongOptions * options);
+  TIMI_EXPORT extern MidSong *mid_song_load (MidIStream *stream,
+                                             MidSongOptions *options);
 
 /* Load MIDI song with specified DLS patches
  */
-  extern MidSong *mid_song_load_dls (MidIStream * stream,
-				     MidDLSPatches * dlspatches,
-				     MidSongOptions * options);
+  TIMI_EXPORT extern MidSong *mid_song_load_dls (MidIStream *stream,
+                                                 MidDLSPatches *dlspatches,
+                                                 MidSongOptions *options);
 
 /* Set song amplification value
  */
-  extern void mid_song_set_volume (MidSong * song, int volume);
+  TIMI_EXPORT extern void mid_song_set_volume (MidSong *song, int volume);
 
 /* Seek song to the start position and initialize conversion
  */
-  extern void mid_song_start (MidSong * song);
+  TIMI_EXPORT extern void mid_song_start (MidSong *song);
 
 /* Read WAVE data
  */
-  extern size_t mid_song_read_wave (MidSong * song, sint8 * ptr, size_t size);
+  TIMI_EXPORT extern size_t mid_song_read_wave (MidSong *song, sint8 *ptr, size_t size);
 
 /* Seek song to specified offset in milliseconds
  */
-  extern void mid_song_seek (MidSong * song, uint32 ms);
+  TIMI_EXPORT extern void mid_song_seek (MidSong *song, uint32 ms);
 
 /* Get total song time in milliseconds
  */
-  extern uint32 mid_song_get_total_time (MidSong * song);
+  TIMI_EXPORT extern uint32 mid_song_get_total_time (MidSong *song);
 
 /* Get current song time in milliseconds
  */
-  extern uint32 mid_song_get_time (MidSong * song);
+  TIMI_EXPORT extern uint32 mid_song_get_time (MidSong *song);
 
 /* Get song meta data. Return NULL if no meta data.
  */
-  extern char *mid_song_get_meta (MidSong * song, MidSongMetaId what);
+  TIMI_EXPORT extern char *mid_song_get_meta (MidSong *song, MidSongMetaId what);
 
 /* Destroy song
  */
-  extern void mid_song_free (MidSong * song);
+  TIMI_EXPORT extern void mid_song_free (MidSong *song);
 
 #ifdef __cplusplus
 }

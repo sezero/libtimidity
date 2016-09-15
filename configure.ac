@@ -78,6 +78,34 @@ AC_C_BIGENDIAN
 #AC_FUNC_MEMCMP
 #AC_CHECK_FUNCS([memset pow strchr])
 
+# symbol visibility
+ac_save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
+AC_CACHE_CHECK([if compiler supports visibility attributes],[libtimidity_cv_gcc_visibility],
+	AC_LANG_SAVE
+	AC_LANG_C
+	AC_TRY_COMPILE([void foo(void);
+__attribute__((visibility("default"))) void foo(void) {}],
+		[],
+		[libtimidity_cv_gcc_visibility=yes],
+		[libtimidity_cv_gcc_visibility=no])
+	AC_LANG_RESTORE)
+# we want symbol -fvisibility for elf targets, however it works
+# with darwin/macho too.  other than that, windows, dos, os/2, amiga
+# do not need it:  for any such targets, the -Werror switch is
+# supposed to fail the above check. (I'm adding the manual test
+# below nonetheless, just in case.)
+case $host_os in
+   mingw*|cygwin*|emx*|*djgpp|amigaos*|aros*|morphos*)
+	libtimidity_cv_gcc_visibility=no
+	;;
+esac
+CFLAGS="$ac_save_CFLAGS"
+if test $libtimidity_cv_gcc_visibility = yes
+then
+   SYM_VISIBILITY="-DSYM_VISIBILITY -fvisibility=hidden"
+fi
+
 AC_SUBST(LIBTIMIDITY_MAJOR_VERSION)
 AC_SUBST(LIBTIMIDITY_MINOR_VERSION)
 AC_SUBST(LIBTIMIDITY_MICRO_VERSION)
@@ -87,6 +115,8 @@ AC_SUBST(LIBTIMIDITY_LT_REVISION)
 AC_SUBST(LIBTIMIDITY_LT_AGE)
 
 AC_SUBST(LIBTIMIDITY_LIBS)
+
+AC_SUBST(SYM_VISIBILITY)
 
 AC_CONFIG_FILES([Makefile
 		 libtimidity.pc

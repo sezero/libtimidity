@@ -1,6 +1,12 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)
 
+SYM_VISIBILITY = @SYM_VISIBILITY@
+
+# always define TIMIDITY_BUILD when building libtimidity
+# regardless of static build or shared library build..
+AM_CFLAGS = -DTIMIDITY_BUILD=1 $(SYM_VISIBILITY)
+
 lib_LTLIBRARIES = libtimidity.la
 
 include_HEADERS = timidity.h

@@ -53,6 +53,9 @@ Changes by libtimidity-0.2.0:
 * renamed macro FSCALE to TIM_FSCALE to avoid possible clashes with
   system headers. renamed FSCALENEG to TIM_FSCALENEG for consistency.
 
+* support for elf and macho symbol visibility attributes. support for
+  windows dllexport/dllimport attributes.
+
 * build: changed DEBUG to TIMIDITY_DEBUG for DEBUG_MSG. made to compile
   cleanly using newer gcc versions, as well as clang. made it to compile
   using C++ compilers.
