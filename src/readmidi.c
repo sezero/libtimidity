@@ -158,7 +158,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		mid_istream_read(stream, &b, 1, 1);
 		mid_istream_read(stream, &c, 1, 1);
 		MIDIEVENT(song->at, ME_TEMPO, c, a, b);
-		
+
 	      default:
 		DEBUG_MSG("(Meta event type 0x%02x, length %d)\n", type, len);
 		mid_istream_skip(stream, len);
