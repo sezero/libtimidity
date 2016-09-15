@@ -14,7 +14,7 @@ midi2raw_SOURCES = midi2raw.c
 
 playmidi_SOURCES = playmidi.c
 playmidi_LDADD = $(LDADD) @AO_LIBS@
-playmidi_INCLUDES = $(INCLUDES) @AO_CFLAGS@
+playmidi_CFLAGS = @AO_CFLAGS@
 
 noinst_SCRIPTS = runtest.sh
 TESTS = runtest.sh
