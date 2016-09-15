@@ -547,11 +547,13 @@ static int fill_bank(MidSong *song, int dr, int b)
     {
       if (bank->instrument[i]==MAGIC_LOAD_INSTRUMENT)
 	{
+#if defined(TIMIDITY_USE_DLS)
 	  load_instrument_dls(song, &bank->instrument[i], dr, b, i);
 	  if (bank->instrument[i])
 	    {
 	      continue;
 	    }
+#endif /* TIMIDITY_USE_DLS */
 	  if (!(bank->tone[i].name))
 	    {
 	      DEBUG_MSG("No instrument mapped to %s %d, program %d%s\n",
