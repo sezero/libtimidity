@@ -585,6 +585,7 @@ void mid_exit(void)
         free(e);
       }
       free(master_tonebank[i]);
+      master_tonebank[i] = NULL;
     }
     if (master_drumset[i])
     {
@@ -599,6 +600,7 @@ void mid_exit(void)
         free(e);
       }
       free(master_drumset[i]);
+      master_drumset[i] = NULL;
     }
   }
 
