@@ -156,7 +156,7 @@ main (int argc, char *argv[])
 
   if (!quiet)
     {
-      char *title = mid_song_get_meta (song, MID_SONG_TEXT);
+      const char *title = mid_song_get_meta (song, MID_SONG_TEXT);
       if (title == NULL)
         {
 	  if (arg < argc) title = argv[arg];
@@ -179,7 +179,7 @@ main (int argc, char *argv[])
 	  fflush (stdout);
 	}
       bytes_read = mid_song_read_wave (song, buffer, buffer_size);
-      ao_play (device, buffer, bytes_read);
+      ao_play (device, (char *) buffer, bytes_read);
     }
   while (bytes_read);
 
