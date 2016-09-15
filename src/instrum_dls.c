@@ -714,8 +714,7 @@ MidDLSPatches *mid_dlspatches_load(MidIStream *stream)
 
 void mid_dlspatches_free(MidDLSPatches *data)
 {
-    if (!data )
-	return;
+    if (!data) return;
     if (data->chunk)
 	FreeRIFF(data->chunk);
     FreeInstruments(data);
@@ -817,9 +816,10 @@ static void load_region_dls(MidSong *song, MidSample *sample, DLS_Instrument *in
     return;
   }
   memcpy(sample->data, wave->data, wave->length);
-  /* initialize the added extra sample space (see the +4 bytes in
-     allocation) using the last actual sample:  */
+  /* initialize the 2 extra samples at the end (those +4 bytes) */
+#if 0 /* no need - alloc'ed using timi_calloc() */
   sample->data[sample->data_length] = sample->data[sample->data_length+1] = 0;
+#endif
   if (rgn->wsmp->cSampleLoops) {
     sample->modes |= (MODES_LOOPING|MODES_SUSTAIN);
     sample->loop_start = rgn->wsmp_loop->ulStart / 2;
