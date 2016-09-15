@@ -139,6 +139,7 @@ main (int argc, char *argv[])
 
   ao_initialize ();
   default_driver = ao_default_driver_id ();
+  memset(&format, 0, sizeof(format));
   format.bits = bits;
   format.channels = channels;
   format.rate = rate;
