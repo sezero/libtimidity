@@ -2,21 +2,25 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT
-AC_CONFIG_SRCDIR([src/playmidi.c])
-
+AC_INIT([libtimidity],[0.2.0])
 LIBTIMIDITY_MAJOR_VERSION=0
-LIBTIMIDITY_MINOR_VERSION=1
+LIBTIMIDITY_MINOR_VERSION=2
 LIBTIMIDITY_MICRO_VERSION=0
-BETA=""
+LIBTIMIDITY_VERSION=$LIBTIMIDITY_MAJOR_VERSION.$LIBTIMIDITY_MINOR_VERSION.$LIBTIMIDITY_MICRO_VERSION
 
-LIBTIMIDITY_SO_RELEASE=0.1
-LIBTIMIDITY_SO_VERSION=0:0:0
+AC_CONFIG_SRCDIR([src/playmidi.c])
+AM_INIT_AUTOMAKE([1.7 foreign])
 
-LIBTIMIDITY_VERSION=$LIBTIMIDITY_MAJOR_VERSION.$LIBTIMIDITY_MINOR_VERSION.$LIBTIMIDITY_MICRO_VERSION$BETA
+# Library versioning for libtool: CURRENT, REVISION, AGE
+# - library source changed -> increment REVISION
+# - interfaces added/removed/changed -> increment CURRENT, REVISION = 0
+# - interfaces added -> increment AGE
+# - interfaces removed -> AGE = 0
+LIBTIMIDITY_LT_CURRENT=2
+LIBTIMIDITY_LT_REVISION=0
+LIBTIMIDITY_LT_AGE=0
 
-AM_INIT_AUTOMAKE([libtimidity], [$LIBTIMIDITY_VERSION])
-AM_CONFIG_HEADER([config.h])
+AC_CANONICAL_HOST
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[enable debug mode [default=no]])],
 [if test "$enableval" = "yes"
@@ -26,12 +30,6 @@ else
   enable_debug=no
 fi])
 if test x$enable_debug = xyes; then
-	if test x$ac_cv_prog_cc_g = xyes; then
-		CFLAGS="-g -O0"
-	else
-		CFLAGS="-O0"
-	fi
-	CFLAGS="$CFLAGS -Wall"
 	AC_DEFINE([TIMIDITY_DEBUG], 1, [Debug mode])
 fi
 
@@ -48,11 +46,21 @@ fi
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+#LT_INIT([win32-dll])
+AC_LIBTOOL_WIN32_DLL
 AC_PROG_LIBTOOL
+
+if test $ac_cv_prog_gcc = yes ;
+then
+	CFLAGS="$CFLAGS -Wall"
+fi
 
 # Checks for libraries.
 LIBTIMIDITY_LIBS=""
-AC_CHECK_LIB([m], [pow], [LIBTIMIDITY_LIBS="$TIMIDITY_LIBS -lm"])
+AC_CHECK_LIB([m], [pow], [LIBTIMIDITY_LIBS="$LIBTIMIDITY_LIBS -lm"])
 have_ao=no
 XIPH_PATH_AO([have_ao=yes])
 AM_CONDITIONAL([HAVE_AO], [test $have_ao = yes])
@@ -76,8 +84,9 @@ AC_SUBST(LIBTIMIDITY_MAJOR_VERSION)
 AC_SUBST(LIBTIMIDITY_MINOR_VERSION)
 AC_SUBST(LIBTIMIDITY_MICRO_VERSION)
 AC_SUBST(LIBTIMIDITY_VERSION)
-AC_SUBST(LIBTIMIDITY_SO_RELEASE)
-AC_SUBST(LIBTIMIDITY_SO_VERSION)
+AC_SUBST(LIBTIMIDITY_LT_CURRENT)
+AC_SUBST(LIBTIMIDITY_LT_REVISION)
+AC_SUBST(LIBTIMIDITY_LT_AGE)
 
 AC_SUBST(LIBTIMIDITY_LIBS)
 
@@ -87,4 +96,5 @@ AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 src/timidity.h
 		 tests/Makefile])
+AC_CONFIG_HEADERS([config.h])
 AC_OUTPUT

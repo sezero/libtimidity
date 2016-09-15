@@ -1,9 +1,10 @@
 
-INCLUDES=-I$(top_srcdir)
+AM_CPPFLAGS = -I$(top_srcdir)
 
 lib_LTLIBRARIES = libtimidity.la
 
 include_HEADERS = timidity.h
+EXTRADIST = timidity.h.in
 
 libtimidity_la_SOURCES = \
 	common.c \
@@ -33,8 +34,5 @@ libtimidity_la_SOURCES = \
 	timidity.h \
 	timidity_internal.h
 
-libtimidity_la_LDFLAGS = \
-	@LIBTIMIDITY_LIBS@ \
-	-release @LIBTIMIDITY_SO_RELEASE@ \
-	-version-info @LIBTIMIDITY_SO_VERSION@
-EXTRADIST = timidity.h.in
+libtimidity_la_LDFLAGS = -no-undefined -version-info @LIBTIMIDITY_LT_CURRENT@:@LIBTIMIDITY_LT_REVISION@:@LIBTIMIDITY_LT_AGE@
+libtimidity_la_LIBADD = @LIBTIMIDITY_LIBS@
