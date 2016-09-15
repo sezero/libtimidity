@@ -83,6 +83,7 @@ extern "C" {
   {
     MID_SONG_TEXT = 0,
     MID_SONG_COPYRIGHT = 1
+#define MID_META_MAX 8
   } MidSongMetaId;
 
 

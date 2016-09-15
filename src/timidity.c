@@ -576,8 +576,7 @@ void mid_song_free(MidSong *song)
 
   free_instruments(song);
 
-  for (i = 0; i < 128; i++)
-  {
+  for (i = 0; i < 128; i++) {
     safe_free(song->tonebank[i]);
     safe_free(song->drumset[i]);
   }
@@ -586,8 +585,7 @@ void mid_song_free(MidSong *song)
   safe_free(song->resample_buffer);
   safe_free(song->events);
 
-  for (i = 0; i < (int)(sizeof(song->meta_data) / sizeof(song->meta_data[0])); i++)
-  {
+  for (i = 0; i < MID_META_MAX; i++) {
     safe_free(song->meta_data[i]);
   }
 
