@@ -4,7 +4,6 @@ AM_CPPFLAGS = -I$(top_srcdir)
 lib_LTLIBRARIES = libtimidity.la
 
 include_HEADERS = timidity.h
-EXTRADIST = timidity.h.in
 
 libtimidity_la_SOURCES = \
 	common.c \

@@ -8,8 +8,11 @@ LIBTIMIDITY_MINOR_VERSION=2
 LIBTIMIDITY_MICRO_VERSION=0
 LIBTIMIDITY_VERSION=$LIBTIMIDITY_MAJOR_VERSION.$LIBTIMIDITY_MINOR_VERSION.$LIBTIMIDITY_MICRO_VERSION
 
+AC_CONFIG_AUX_DIR([autotools])
 AC_CONFIG_SRCDIR([src/playmidi.c])
 AM_INIT_AUTOMAKE([1.7 foreign])
+AC_CONFIG_MACRO_DIR([m4])
+AM_MAINTAINER_MODE
 
 # Library versioning for libtool: CURRENT, REVISION, AGE
 # - library source changed -> increment REVISION
@@ -22,25 +25,15 @@ LIBTIMIDITY_LT_AGE=0
 
 AC_CANONICAL_HOST
 
-AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug],[enable debug mode [default=no]])],
-[if test "$enableval" = "yes"
+AC_ARG_ENABLE([debug],[AS_HELP_STRING([--enable-debug],[enable debug mode [default=no]])],,[enable_debug=no])
+if test x$enable_debug = xyes
 then
-  enable_debug=yes
-else
-  enable_debug=no
-fi])
-if test x$enable_debug = xyes; then
 	AC_DEFINE([TIMIDITY_DEBUG], 1, [Debug mode])
 fi
 
-AC_ARG_ENABLE([dls], [AS_HELP_STRING([--enable-dls],[enable DLS instruments support [default=no]])],
-[if test "$enableval" = "yes"
+AC_ARG_ENABLE([dls],[AS_HELP_STRING([--enable-dls],[enable DLS instruments support [default=no]])],,[enable_dls=no])
+if test x$enable_dls = xyes
 then
-  enable_dls=yes
-else
-  enable_dls=no
-fi])
-if test x$enable_dls = xyes; then
 	AC_DEFINE([TIMIDITY_USE_DLS], 1, [include DLS instruments support])
 fi
 
@@ -53,7 +46,7 @@ AC_PROG_MAKE_SET
 AC_LIBTOOL_WIN32_DLL
 AC_PROG_LIBTOOL
 
-if test $ac_cv_prog_gcc = yes ;
+if test $ac_cv_prog_gcc = yes
 then
 	CFLAGS="$CFLAGS -Wall"
 fi
@@ -61,8 +54,13 @@ fi
 # Checks for libraries.
 LIBTIMIDITY_LIBS=""
 AC_CHECK_LIB([m], [pow], [LIBTIMIDITY_LIBS="$LIBTIMIDITY_LIBS -lm"])
+
 have_ao=no
-XIPH_PATH_AO([have_ao=yes])
+AC_ARG_ENABLE([ao],[AS_HELP_STRING([--disable-ao],[disable building libao-depending programs])],,[enable_ao=yes])
+if test x$enable_ao = xyes
+then
+	XIPH_PATH_AO([have_ao=yes])
+fi
 AM_CONDITIONAL([HAVE_AO], [test $have_ao = yes])
 
 # Checks for header files.
@@ -76,9 +74,9 @@ AC_TYPE_SIZE_T
 AC_C_BIGENDIAN
 
 # Checks for library functions.
-AC_FUNC_MALLOC
-AC_FUNC_MEMCMP
-AC_CHECK_FUNCS([memset pow strchr])
+#AC_FUNC_MALLOC
+#AC_FUNC_MEMCMP
+#AC_CHECK_FUNCS([memset pow strchr])
 
 AC_SUBST(LIBTIMIDITY_MAJOR_VERSION)
 AC_SUBST(LIBTIMIDITY_MINOR_VERSION)
@@ -94,7 +92,6 @@ AC_CONFIG_FILES([Makefile
 		 libtimidity.pc
 		 libtimidity.spec
 		 src/Makefile
-		 src/timidity.h
 		 tests/Makefile])
 AC_CONFIG_HEADERS([config.h])
 AC_OUTPUT

@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 SUBDIRS = src tests
 
 pcdata_DATA= libtimidity.pc

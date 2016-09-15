@@ -7,7 +7,7 @@ endif
 
 noinst_PROGRAMS = midi2raw $(PLAYMIDI)
 
-INCLUDES=-I$(top_srcdir) -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/src
 LDADD = $(top_builddir)/src/libtimidity.la @LIBTIMIDITY_LIBS@
 
 midi2raw_SOURCES = midi2raw.c

@@ -1,6 +1,6 @@
 Summary:   MIDI to WAVE converter library
 Name:      libtimidity
-Version:   @VERSION@
+Version:   @LIBTIMIDITY_VERSION@
 Release:   1
 License:   LGPL
 Group:     System Environment/Libraries
@@ -8,7 +8,7 @@ Source:    %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 
 %description
-libTiMidity is MIDI to WAVE converter library. It based on the 
+libTiMidity is MIDI to WAVE converter library. It based on the
 TiMidity decoder from SDL_sound library. Purpose to create this
 library is to avoid unnecessary dependences. SDL_sound requires
 SDL and some other libraries, that not needed to process MIDI
