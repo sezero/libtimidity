@@ -24,6 +24,10 @@
 #include "timidity.h"
 #include "options.h"
 
+#ifndef HAVE_CONFIG_H
+#include "timi_endian.h"
+#endif
+
 /* Instrument files are little-endian, MIDI files big-endian, so we
    need to do some conversions. */
 #define XCHG_SHORT(x) ((((x)&0xFF)<<8) | (((x)>>8)&0xFF))
