@@ -43,6 +43,8 @@ Changes by libtimidity-0.2.0:
 
 * read_config_file(): honor the return code from a recursive call.
 
+* mid_get_version(): new function to retrieve library version.
+
 * DLS instruments support: made it a config time option, disabled by
   default, because the code isn't good enough, neither is it used in
   unix installations where timidity is normally needed.

@@ -175,12 +175,14 @@ main (int argc, char *argv[])
   if (!quiet)
     {
       const char *title = mid_song_get_meta (song, MID_SONG_TEXT);
+      long ver = mid_get_version ();
       if (title == NULL)
         {
 	  if (arg < argc) title = argv[arg];
 	  else title = "stdin";
 	}
-      printf ("Playing: %s\n", title);
+      printf ("Playing: %s, using libTiMidity v%ld.%ld.%ld\n",
+	      title, (ver>>16) & 255, (ver>>8) & 255, ver & 255);
     }
 
   buffer_size = bits * channels / 8 * rate;

@@ -123,6 +123,10 @@ extern "C" {
  * ======================
  */
 
+/* Retrieve library version
+ */
+  TIMI_EXPORT extern long mid_get_version (void);
+
 /* Initialize the library. If config_file is NULL
  * search for configuratin file in default directories
  */

@@ -674,3 +674,9 @@ void mid_exit(void)
 
   free_pathlist();
 }
+
+long mid_get_version (void)
+{
+  return LIBTIMIDITY_VERSION;
+}
+
