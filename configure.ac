@@ -28,8 +28,7 @@ if test x$enable_debug = xyes; then
 		CFLAGS="-O0"
 	fi
 	CFLAGS="$CFLAGS -Wall"
-	AC_DEFINE([DEBUG], [], [Debug mode])
-	AC_DEFINE([DEBUG_CHATTER], [], [Debug chatter])
+	AC_DEFINE([TIMIDITY_DEBUG], [], [Debug mode])
 fi
 
 # Checks for programs.
