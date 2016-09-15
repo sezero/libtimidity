@@ -47,10 +47,8 @@ static void free_instrument(MidInstrument *ip)
   int i;
   if (!ip) return;
   if (ip->sample) {
-    for (i=0; i<ip->samples; i++)
-    {
+    for (i=0; i<ip->samples; i++) {
       sp=&(ip->sample[i]);
-      if (!sp) break;
       timi_free(sp->data);
     }
     timi_free(ip->sample);
