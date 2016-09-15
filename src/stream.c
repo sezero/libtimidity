@@ -1,6 +1,7 @@
 /* libTiMidity -- MIDI to WAVE converter library
  * Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
  * Copyright (C) 2004 Konstantin Korikov <lostclus@ua.fm>
+ * Copyright (C) 2014 O.Sezer <sezero@users.sourceforge.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

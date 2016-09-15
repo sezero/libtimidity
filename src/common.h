@@ -32,6 +32,6 @@ extern void free_pathlist(void);
 
 /* safe_malloc() returns zero'ed mem. */
 extern void *safe_malloc(size_t count);
-#define safe_free free
+#define safe_free(_Memp) free((_Memp))
 
 #endif /* TIMIDITY_COMMON_H */
