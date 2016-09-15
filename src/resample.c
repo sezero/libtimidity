@@ -1,24 +1,24 @@
 /*
-
-    TiMidity -- Experimental MIDI to WAVE converter
-    Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-    resample.c
-*/
+ * TiMidity -- Experimental MIDI to WAVE converter
+ * Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * resample.c
+ */
 
 #if HAVE_CONFIG_H
 #  include <config.h>
@@ -41,7 +41,6 @@
 
 static sample_t *rs_plain(MidSong *song, int v, sint32 *countptr)
 {
-
   /* Play sample until end, then free the voice. */
 
   sample_t v1, v2;
@@ -67,10 +66,10 @@ static sample_t *rs_plain(MidSong *song, int v, sint32 *countptr)
     {
       i = count;
       count = 0;
-    } 
+    }
   else count -= i;
 
-  while (i--) 
+  while (i--)
     {
       v1 = src[ofs >> FRACTION_BITS];
       v2 = src[(ofs >> FRACTION_BITS)+1];
@@ -78,52 +77,51 @@ static sample_t *rs_plain(MidSong *song, int v, sint32 *countptr)
       ofs += incr;
     }
 
-  if (ofs >= le) 
+  if (ofs >= le)
     {
       if (ofs == le)
 	*dest++ = src[ofs >> FRACTION_BITS];
       vp->status=VOICE_FREE;
       *countptr-=count+1;
     }
-  
+
   vp->sample_offset=ofs; /* Update offset */
   return song->resample_buffer;
 }
 
 static sample_t *rs_loop(MidSong *song, MidVoice *vp, sint32 count)
 {
-
   /* Play sample until end-of-loop, skip back and continue. */
 
   sample_t v1, v2;
   sint32 
-    ofs=vp->sample_offset, 
+    ofs=vp->sample_offset,
     incr=vp->sample_increment,
-    le=vp->sample->loop_end, 
+    le=vp->sample->loop_end,
     ll=le - vp->sample->loop_start;
   sample_t
     *dest=song->resample_buffer,
     *src=vp->sample->data;
   sint32 i;
-  
-  while (count) 
+
+  while (count)
     {
       if (ofs >= le)
 	/* NOTE: Assumes that ll > incr and that incr > 0. */
 	ofs -= ll;
       /* Precalc how many times we should go through the loop */
       i = (le - ofs) / incr + 1;
-      if (i > count) 
+      if (i > count)
 	{
 	  i = count;
 	  count = 0;
-	} 
+	}
       else count -= i;
-      while (i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
     }
@@ -141,7 +139,7 @@ static sample_t *rs_bidir(MidSong *song, MidVoice *vp, sint32 count)
     le=vp->sample->loop_end,
     ls=vp->sample->loop_start;
   sample_t 
-    *dest=song->resample_buffer, 
+    *dest=song->resample_buffer,
     *src=vp->sample->data;
   sint32
     le2 = le<<1, 
@@ -149,53 +147,52 @@ static sample_t *rs_bidir(MidSong *song, MidVoice *vp, sint32 count)
     i;
   /* Play normally until inside the loop region */
 
-  if (ofs <= ls) 
+  if (ofs <= ls)
     {
       /* NOTE: Assumes that incr > 0, which is NOT always the case
 	 when doing bidirectional looping.  I have yet to see a case
 	 where both ofs <= ls AND incr < 0, however. */
       i = (ls - ofs) / incr + 1;
-      if (i > count) 
+      if (i > count)
 	{
 	  i = count;
 	  count = 0;
-	} 
+	}
       else count -= i;
-      while (i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
     }
 
   /* Then do the bidirectional looping */
-  
-  while(count) 
+  while(count)
     {
       /* Precalc how many times we should go through the loop */
       i = ((incr > 0 ? le : ls) - ofs) / incr + 1;
-      if (i > count) 
+      if (i > count)
 	{
 	  i = count;
 	  count = 0;
-	} 
+	}
       else count -= i;
-      while (i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
-      if (ofs>=le) 
+      if (ofs>=le)
 	{
 	  /* fold the overshoot back in */
 	  ofs = le2 - ofs;
 	  incr *= -1;
-	} 
-      else if (ofs <= ls) 
+	}
+      else if (ofs <= ls)
 	{
 	  ofs = ls2 - ofs;
 	  incr *= -1;
@@ -229,7 +226,7 @@ static sint32 update_vibrato(MidSong *song, MidVoice *vp, int sign)
   if (vp->vibrato_phase++ >= 2*MID_VIBRATO_SAMPLE_INCREMENTS-1)
     vp->vibrato_phase=0;
   phase=vib_phase_to_inc_ptr(vp->vibrato_phase);
-  
+
   if (vp->vibrato_sample_increment[phase])
     {
       if (sign)
@@ -239,7 +236,6 @@ static sint32 update_vibrato(MidSong *song, MidVoice *vp, int sign)
     }
 
   /* Need to compute this sample increment. */
-    
   depth=vp->sample->vibrato_depth<<7;
 
   if (vp->vibrato_sweep)
@@ -273,7 +269,7 @@ static sint32 update_vibrato(MidSong *song, MidVoice *vp, int sign)
     }
   else
     a *= bend_fine[(pb>>5) & 0xFF] * bend_coarse[pb>>13];
-  
+
   /* If the sweep's over, we can store the newly computed sample_increment */
   if (!vp->vibrato_sweep)
     vp->vibrato_sample_increment[phase]=(sint32) a;
@@ -286,7 +282,6 @@ static sint32 update_vibrato(MidSong *song, MidVoice *vp, int sign)
 
 static sample_t *rs_vib_plain(MidSong *song, int v, sint32 *countptr)
 {
-
   /* Play sample until end, then free the voice. */
 
   sample_t v1, v2;
@@ -335,17 +330,16 @@ static sample_t *rs_vib_plain(MidSong *song, int v, sint32 *countptr)
 
 static sample_t *rs_vib_loop(MidSong *song, MidVoice *vp, sint32 count)
 {
-
   /* Play sample until end-of-loop, skip back and continue. */
-  
+
   sample_t v1, v2;
   sint32 
-    ofs=vp->sample_offset, 
-    incr=vp->sample_increment, 
+    ofs=vp->sample_offset,
+    incr=vp->sample_increment,
     le=vp->sample->loop_end,
     ll=le - vp->sample->loop_start;
   sample_t 
-    *dest=song->resample_buffer, 
+    *dest=song->resample_buffer,
     *src=vp->sample->data;
   int 
     cc=vp->vibrato_control_counter;
@@ -353,7 +347,7 @@ static sample_t *rs_vib_loop(MidSong *song, MidVoice *vp, sint32 count)
   int
     vibflag=0;
 
-  while (count) 
+  while (count)
     {
       /* Hopefully the loop is longer than an increment */
       if(ofs >= le)
@@ -366,17 +360,17 @@ static sample_t *rs_vib_loop(MidSong *song, MidVoice *vp, sint32 count)
 	{
 	  i = cc;
 	  vibflag = 1;
-	} 
+	}
       else cc -= i;
       count -= i;
-      while(i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
-      if(vibflag) 
+      if(vibflag)
 	{
 	  cc = vp->vibrato_control_ratio;
 	  incr = update_vibrato(song, vp, 0);
@@ -394,12 +388,12 @@ static sample_t *rs_vib_bidir(MidSong *song, MidVoice *vp, sint32 count)
 {
   sample_t v1, v2;
   sint32 
-    ofs=vp->sample_offset, 
+    ofs=vp->sample_offset,
     incr=vp->sample_increment,
-    le=vp->sample->loop_end, 
+    le=vp->sample->loop_end,
     ls=vp->sample->loop_start;
   sample_t 
-    *dest=song->resample_buffer, 
+    *dest=song->resample_buffer,
     *src=vp->sample->data;
   int 
     cc=vp->vibrato_control_counter;
@@ -411,66 +405,65 @@ static sample_t *rs_vib_bidir(MidSong *song, MidVoice *vp, sint32 count)
     vibflag = 0;
 
   /* Play normally until inside the loop region */
-  while (count && (ofs <= ls)) 
+  while (count && (ofs <= ls))
     {
       i = (ls - ofs) / incr + 1;
       if (i > count) i = count;
-      if (i > cc) 
+      if (i > cc)
 	{
 	  i = cc;
 	  vibflag = 1;
-	} 
+	}
       else cc -= i;
       count -= i;
-      while (i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
-      if (vibflag) 
+      if (vibflag)
 	{
 	  cc = vp->vibrato_control_ratio;
 	  incr = update_vibrato(song, vp, 0);
 	  vibflag = 0;
 	}
     }
-  
-  /* Then do the bidirectional looping */
 
-  while (count) 
+  /* Then do the bidirectional looping */
+  while (count)
     {
       /* Precalc how many times we should go through the loop */
       i = ((incr > 0 ? le : ls) - ofs) / incr + 1;
       if(i > count) i = count;
-      if(i > cc) 
+      if(i > cc)
 	{
 	  i = cc;
 	  vibflag = 1;
-	} 
+	}
       else cc -= i;
       count -= i;
-      while (i--) 
+      while (i--)
 	{
-          v1 = src[ofs >> FRACTION_BITS];
-          v2 = src[(ofs >> FRACTION_BITS)+1];
-          *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
+	  v1 = src[ofs >> FRACTION_BITS];
+	  v2 = src[(ofs >> FRACTION_BITS)+1];
+	  *dest++ = v1 + (((v2 - v1) * (ofs & FRACTION_MASK)) >> FRACTION_BITS);
 	  ofs += incr;
 	}
-      if (vibflag) 
+      if (vibflag)
 	{
 	  cc = vp->vibrato_control_ratio;
 	  incr = update_vibrato(song, vp, (incr < 0));
 	  vibflag = 0;
 	}
-      if (ofs >= le) 
+      if (ofs >= le)
 	{
 	  /* fold the overshoot back in */
 	  ofs = le2 - ofs;
 	  incr *= -1;
-	} 
-      else if (ofs <= ls) 
+	}
+      else if (ofs <= ls)
 	{
 	  ofs = ls2 - ofs;
 	  incr *= -1;
@@ -492,20 +485,20 @@ sample_t *resample_voice(MidSong *song, int v, sint32 *countptr)
   if (!(vp->sample->sample_rate))
     {
       /* Pre-resampled data -- just update the offset and check if
-         we're out of data. */
+	 we're out of data. */
       ofs=vp->sample_offset >> FRACTION_BITS; /* Kind of silly to use
 						 FRACTION_BITS here... */
       if (*countptr >= (vp->sample->data_length>>FRACTION_BITS) - ofs)
 	{
 	  /* Note finished. Free the voice. */
 	  vp->status = VOICE_FREE;
-	  
+
 	  /* Let the caller know how much data we had left */
 	  *countptr = (vp->sample->data_length>>FRACTION_BITS) - ofs;
 	}
       else
 	vp->sample_offset += *countptr << FRACTION_BITS;
-      
+
       return vp->sample->data+ofs;
     }
 
@@ -575,11 +568,11 @@ void pre_resample(MidSong *song, MidSample *sp)
   while (--count)
     {
       vptr = src + (ofs >> FRACTION_BITS);
-          /*
-           * Electric Fence to the rescue: Accessing *(vptr - 1) is not a
-           * good thing to do when vptr <= src. (TiMidity++ has a similar
-           * safe-guard here.)
-           */
+      /*
+       * Electric Fence to the rescue: Accessing *(vptr - 1) is not a
+       * good thing to do when vptr <= src. (TiMidity++ has a similar
+       * safe-guard here.)
+       */
       v1 = (vptr == src) ? *vptr : *(vptr - 1);
       v2 = *vptr;
       v3 = *(vptr + 1);

@@ -1,3 +1,23 @@
+/* libTiMidity -- MIDI to WAVE converter library
+ * Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
+ * Copyright (C) 2004 Konstantin Korikov <lostclus@ua.fm>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
 #ifndef TIMIDITY_INTERNAL_H
 #define TIMIDITY_INTERNAL_H
 
@@ -23,7 +43,6 @@
 
 /* Instrument files are little-endian, MIDI files big-endian, so we
    need to do some conversions. */
-
 #define XCHG_SHORT(x) ((((x)&0xFF)<<8) | (((x)>>8)&0xFF))
 #ifdef __i486__
 # define XCHG_LONG(x) \
@@ -120,7 +139,6 @@ struct _MidVoice
   int
     vibrato_phase, vibrato_control_ratio, vibrato_control_counter,
     envelope_stage, control_counter, panning, panned;
-
 };
 
 typedef struct _MidInstrument MidInstrument;
