@@ -14,6 +14,7 @@ include_HEADERS = timidity.h
 libtimidity_la_SOURCES = \
 	common.c \
 	common.h \
+	dls_compat.h \
 	dls1.h \
 	dls2.h \
 	filenames.h \
