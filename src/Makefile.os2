@@ -1,0 +1,61 @@
+# Makefile for OS/2 using Watcom compiler.
+#
+# wmake -f Makefile.os2
+# - builds timidity.dll and its import lib (timidity.lib)
+#
+# wmake -f Makefile.os2 target=static
+# - builds the static library timidity_static.lib
+
+!ifndef target
+target = dll
+!endif
+
+INCLUDES=-I.
+CPPFLAGS=-DTIMIDITY_BUILD
+# for DLS instruments support:
+#CPPFLAGS+= -DTIMIDITY_USE_DLS
+# to build a debug version :
+#CPPFLAGS+= -DTIMIDITY_DEBUG
+
+CFLAGS = -bt=os2 -bm -fp5 -fpi87 -mf -oeatxh -w4 -ei -zp8
+# -5s  :  Pentium stack calling conventions.
+# -5r  :  Pentium register calling conventions.
+CFLAGS+= -5s
+DLLFLAGS=-bd
+
+.SUFFIXES:
+.SUFFIXES: .obj .c
+
+DLLNAME=timidity.dll
+EXPNAME=timidity.exp
+LIBNAME=timidity.lib
+LIBSTATIC=timidity_static.lib
+
+!ifeq target static
+BLD_TARGET=$(LIBSTATIC)
+!else
+CFLAGS+= $(DLLFLAGS)
+BLD_TARGET=$(DLLNAME)
+!endif
+
+COMPILE=wcc386 -q $(CFLAGS) $(CPPFLAGS) $(INCLUDES)
+
+OBJ=common.obj instrum.obj instrum_dls.obj mix.obj output.obj playmidi.obj readmidi.obj resample.obj stream.obj tables.obj timidity.obj
+
+all: $(BLD_TARGET)
+
+clean:
+	FOR %F IN ( $(DLLNAME) $(EXPNAME) $(LIBNAME) $(LIBSTATIC) $(OBJ) ) DO IF EXIST %F ERASE %F
+
+$(DLLNAME): $(OBJ)
+	wlink NAM $@ SYSTEM os2v2_dll INITINSTANCE TERMINSTANCE FIL {$(OBJ)} OPTION IMPF=$(EXPNAME)
+	wlib -q -b -iro -inn $(LIBNAME) +$(DLLNAME)
+#	wlib -l $(LIBNAME)
+#EXP=$(EXPNAME)
+#OPTION IMPL=$(LIBNAME)
+
+$(LIBSTATIC): $(OBJ)
+	wlib -q -b -n $@ $(OBJ)
+
+.c.obj:
+	$(COMPILE) -fo=$^@ $<

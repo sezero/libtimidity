@@ -11,6 +11,18 @@ lib_LTLIBRARIES = libtimidity.la
 
 include_HEADERS = timidity.h
 
+EXTRA_DIST = \
+	Makefile.darwin \
+	Makefile.mingw \
+	Makefile.lcc \
+	timidity.def \
+	Makefile.os2 \
+	Makefile.dj \
+	Makefile.morphos \
+	Makefile.amigaos \
+	Makefile.vbcc \
+	Makefile.aros
+
 libtimidity_la_SOURCES = \
 	common.c \
 	common.h \
