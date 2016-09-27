@@ -21,7 +21,9 @@ EXTRA_DIST = \
 	Makefile.morphos \
 	Makefile.amigaos \
 	Makefile.vbcc \
-	Makefile.aros
+	Makefile.aros \
+	VisualStudio \
+	XCode
 
 libtimidity_la_SOURCES = \
 	common.c \
