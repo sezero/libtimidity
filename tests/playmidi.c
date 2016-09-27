@@ -133,7 +133,7 @@ main (int argc, char *argv[])
     }
 
   options.rate = rate;
-  options.format = (bits == 16) ? MID_AUDIO_S16LSB : MID_AUDIO_S8;
+  options.format = (bits == 16)? MID_AUDIO_S16LSB : MID_AUDIO_U8;
   options.channels = channels;
   options.buffer_size = rate;
 

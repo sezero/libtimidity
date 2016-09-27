@@ -2,6 +2,7 @@ Changes by libtimidity-0.2.1:
 -----------------------------
 
 * fixed copyright/license mistakes in some files, license clarification.
+* fixed 8 bit output in test programs. (use U8 format, not S8.)
 
 
 Changes by libtimidity-0.2.0:
