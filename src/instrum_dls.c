@@ -53,7 +53,11 @@ void mid_dlspatches_free (MidDLSPatches *data)
 #ifdef _WIN32
 #include <windows.h>
 #ifndef DEFINE_GUID
-#include <basetyps.h> /* guiddef.h not in all SDKs -- e.g. mingw.org */
+#ifdef __LCC__
+#include <guiddef.h>
+#else
+#include <basetyps.h> /* guiddef.h not in all SDKs, e.g. mingw.org */
+#endif
 #endif
 #include <mmsystem.h>
 #else /* not-windows */
