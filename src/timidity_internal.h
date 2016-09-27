@@ -1,6 +1,19 @@
 /* libTiMidity -- MIDI to WAVE converter library
+ * libTiMidity is licensed under the terms of the GNU Lesser General
+ * Public License: see COPYING for details.
  * Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
  * Copyright (C) 2004 Konstantin Korikov <lostclus@ua.fm>
+ *
+ * Note that the included TiMidity source, based on timidity-0.2i, was
+ * originally licensed under the GPL, but the author extended it so it
+ * can also be used separately under the GNU LGPL or the Perl Artistic
+ * License: see the notice by Tuukka Toivonen as it appears on the web
+ * at http://ieee.uwaterloo.ca/sca/www.cgs.fi/tt/timidity/ .
+ */
+
+/*
+ * TiMidity -- Experimental MIDI to WAVE converter
+ * Copyright (C) 1995 Tuukka Toivonen <toivonen@clinet.fi>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

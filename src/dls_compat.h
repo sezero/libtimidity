@@ -1,6 +1,13 @@
+/* dls_compat.h - Windows compat defs for libtimidity DLS code, based on MinGW headers.
+ *
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * It is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY. ALL WARRANTIES, EXPRESSED OR IMPLIED, ARE HEREBY DISCLAIMED.
+ * This includes, but is not limited to, warranties of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ */
 #ifndef DLS_COMPAT_H
 #define DLS_COMPAT_H
-/* Some typedefs so the public dls headers don't need to be modified */
 
 #define FAR /* */
 
