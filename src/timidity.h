@@ -64,12 +64,19 @@ extern "C" {
 
 /* Core Library Types
  */
+#ifndef __amigaos4__
   typedef unsigned char uint8;
   typedef signed char sint8;
   typedef unsigned short uint16;
   typedef signed short sint16;
   typedef unsigned int uint32;
   typedef signed int sint32;
+#else
+#include <exec/types.h>
+  typedef int8  sint8;
+  typedef int16 sint16;
+  typedef int32 sint32;
+#endif
 
   typedef size_t (*MidIStreamReadFunc) (void *ctx, void *ptr, size_t size, size_t nmemb);
   typedef int    (*MidIStreamSeekFunc) (void *ctx, long offset, int whence);
