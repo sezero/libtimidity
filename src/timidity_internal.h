@@ -44,6 +44,9 @@
 #include "timidity.h"
 #include "options.h"
 
+#if defined(_MSC_VER) && !defined(__cplusplus) && !defined(HAVE_CONFIG_H)
+#define inline __inline
+#endif
 #ifndef HAVE_CONFIG_H
 #include "timi_endian.h"
 #endif
