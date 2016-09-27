@@ -38,6 +38,9 @@
 #undef  TIMI_NAMESPACE
 #define TIMI_NAMESPACE(x) _timi_ ## x
 
+#if defined(__OS2__) || defined(__EMX__)
+#include <os2.h>
+#endif
 #include "timidity.h"
 #include "options.h"
 
