@@ -22,7 +22,9 @@
 /* try system headers first: with BSD and derivatives, <sys/types.h> is
  * supposed to include the correct endian.h.
  */
+#if !defined __VBCC__
 #include <sys/types.h>
+#endif
 
 /* include more if it didn't work: */
 #if !defined(BYTE_ORDER)
