@@ -11,14 +11,6 @@
 
 #define FAR /* */
 
-typedef uint8  BYTE;
-typedef sint16 SHORT;
-typedef uint16 USHORT;
-typedef uint16 WORD;
-typedef sint32 LONG;
-typedef uint32 ULONG;
-typedef uint32 DWORD;
-
 #define mmioFOURCC(A, B, C, D) \
   ( (uint32)(A) | ((uint32)(B) << 8) | ((uint32)(C) << 16) | ((uint32)(D) << 24) )
 

@@ -751,9 +751,9 @@ static sint32 calc_rate(MidSong *song, int diff, int sample_rate, double msec)
     return (sint32)rate;
 }
 
-static int load_connection(ULONG cConnections, CONNECTION *artList, USHORT destination)
+static int load_connection(uint32 cConnections, CONNECTION *artList, uint16 destination)
 {
-  ULONG i;
+  uint32 i;
   int value = 0;
   for (i = 0; i < cConnections; ++i) {
     CONNECTION *conn = &artList[i];
