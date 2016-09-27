@@ -68,7 +68,7 @@ FILE *timi_openfile(const char *name)
 
   /* First try the given name */
   DEBUG_MSG("Trying to open %s\n", name);
-  if ((fp = fopen(name, OPEN_MODE)))
+  if ((fp = fopen(name, OPEN_MODE)) != NULL)
     return fp;
 
   if (!IS_ABSOLUTE_PATH(name))
@@ -91,7 +91,7 @@ FILE *timi_openfile(const char *name)
 	  }
 	strcat(current_filename, name);
 	DEBUG_MSG("Trying to open %s\n", current_filename);
-	if ((fp = fopen(current_filename, OPEN_MODE)))
+	if ((fp = fopen(current_filename, OPEN_MODE)) != NULL)
 	  return fp;
 	plp = plp->next;
     }
