@@ -1,4 +1,8 @@
-/* midi2raw -- MIDI to RAW WAVE data converter
+/* midi2raw.c -- MIDI to RAW WAVE data converter using libtimidity
+ * Copyright (C) 2004 Konstantin Korikov <lostclus@gmail.com>
+ * This example is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRENTY; without event the implied warrenty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 #include <stdio.h>

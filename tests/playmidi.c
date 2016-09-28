@@ -1,4 +1,8 @@
-/* playmidi -- play MIDI files
+/* playmidi.c -- play MIDI files using libtimidity and libao
+ * Copyright (C) 2004 Konstantin Korikov <lostclus@gmail.com>
+ * This example is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRENTY; without event the implied warrenty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 #include <stdio.h>
