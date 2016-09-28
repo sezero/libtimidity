@@ -2,7 +2,7 @@ Changes by libtimidity-0.2.1:
 -----------------------------
 
 * fixed 8 bit output in test programs. (use U8 format, not S8.)
-* fixed some portability issues.
+* fixed some minor portability issues.
 * added project files and standalone makefiles for windows and mac os x.
 * fixed copyright/license mistakes in some files, license clarification.
 * added standalone makefiles for less common operating systems e.g. dos,
