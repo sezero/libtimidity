@@ -5,7 +5,7 @@
 [ "x$builddir" = "x" ] && builddir="."
 [ "x$srcdir" = "x" ] && srcdir="."
 midi_file="$srcdir/ame002.mid"
-midi2raw_opts="-r 44100 -s w -c 2"
+midi2raw_opts="-r 44100 -s 16 -c 2"
 play_cmd=""
 
 if [ -x "$builddir/playmidi" ]; then
@@ -14,7 +14,7 @@ if [ -x "$builddir/playmidi" ]; then
 elif [ "x`which aplay 2>/dev/null`" != "x" ]; then
 	play_cmd="aplay -f cd -"
 elif [ "x`which play 2>/dev/null`" != "x" ]; then
-	play_cmd="play -r 44100 -s w -c 2 -f s -t raw -"
+	play_cmd="play -r 44100 -s -b 16 -c 2 -t raw -"
 else
 	echo "No command found for sound output!\n" >&2
 	exit 1

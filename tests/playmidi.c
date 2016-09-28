@@ -46,7 +46,7 @@ main (int argc, char *argv[])
 	{
 	  if (++arg >= argc) break;
 	  rate = atoi (argv[arg]);
-	  if (rate <= 0)
+	  if (rate < 4000 || rate > 256000)
 	    {
 	      fprintf (stderr, "Invalid rate\n");
 	      return 1;
@@ -55,14 +55,12 @@ main (int argc, char *argv[])
       else if (!strcmp(argv[arg], "-s"))
 	{
 	  if (++arg >= argc) break;
-	  switch (argv[arg][0])
-	  {
-	    case 'b': bits = 8; break;
-	    case 'w': bits = 16; break;
-	    default:
+	  bits = atoi (argv[arg]);
+	  if (bits != 8 && bits != 16)
+	    {
 	      fprintf (stderr, "Invalid sample width\n");
 	      return 1;
-	  }
+	    }
 	}
       else if (!strcmp(argv[arg], "-c"))
 	{
