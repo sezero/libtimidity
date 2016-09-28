@@ -46,7 +46,7 @@ rm -rf "$RPM_BUILD_ROOT"
 
 %files
 %defattr(-, root, root)
-%doc AUTHORS CHANGES COPYING ChangeLog NEWS README README.timidity TODO
+%doc AUTHORS CHANGES COPYING README README.timidity TODO
 %{_libdir}/libtimidity.so.*
 
 %files devel
