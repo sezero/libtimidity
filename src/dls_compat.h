@@ -43,4 +43,8 @@ typedef struct _PCMWAVEFORMAT {
 } PCMWAVEFORMAT;
 #pragma pack(pop)
 
+/* make sure that the two structures above are packed correctly: */
+typedef int _chk_WAVEFORMAT[2*((int)sizeof(WAVEFORMAT) == 14) -1];
+typedef int _chk_PCMWAVEFORMAT[2*((int)sizeof(PCMWAVEFORMAT) == 16) -1];
+
 #endif /* DLS_COMPAT_H */
