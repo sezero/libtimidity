@@ -38,12 +38,12 @@ then
 fi
 
 AC_ARG_WITH([timidity-cfg], AS_HELP_STRING([--with-timidity-cfg=FILE], [Specify the full path to timidity.cfg [default="timidity.cfg"]]),
-timidityconf="$withval", timidityconf="timidity.cfg")
-if test x$timidityconf = xyes || test x$timidityconf = xno
+   timidity_cfg="$withval", timidity_cfg="timidity.cfg")
+if test x$timidity_cfg = xyes || test x$timidity_cfg = xno
 then
-	timidityconf="timidity.cfg"
+	timidity_cfg="timidity.cfg"
 fi
-AC_DEFINE_UNQUOTED(CONFIG_FILE, "$timidityconf", [Define this to the full path of the timidity config file])
+AC_DEFINE_UNQUOTED(TIMIDITY_CFG, "$timidity_cfg", [Define the full path of timidity.cfg])
 
 # Checks for programs.
 AC_PROG_CC

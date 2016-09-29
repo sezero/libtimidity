@@ -97,8 +97,8 @@
 #define MAX_AMPLIFICATION 800
 
 /* The TiMidity configuration file */
-#ifndef CONFIG_FILE
-#define CONFIG_FILE "timidity.cfg"
+#ifndef TIMIDITY_CFG
+#define TIMIDITY_CFG "timidity.cfg"
 #endif
 
 /* These affect general volume */
@@ -124,7 +124,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#if defined(MAXPATHLEN) /* <sys/param.h> */
+#if defined(MAXPATHLEN) /* from sys/param.h */
 #define TIM_MAXPATH MAXPATHLEN
 #elif defined(PATH_MAX)
 #define TIM_MAXPATH PATH_MAX

@@ -476,14 +476,12 @@ int mid_init_no_config(void)
 
 int mid_init(const char *config_file)
 {
-  int rc;
-
-  rc = mid_init_no_config();
+  int rc = mid_init_no_config();
   if (rc != 0)
       return rc;
 
   if (config_file == NULL || *config_file == '\0')
-      return init_with_config(CONFIG_FILE);
+      return init_with_config(TIMIDITY_CFG);
 
   return init_with_config(config_file);
 }
