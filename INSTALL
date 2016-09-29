@@ -7,6 +7,7 @@ In most systems just run:
 
 You need GNU make.  On BSD or SysV systems, you may need to use gmake
 instead of make.  Use ./configure --help to see configuration options.
+Hint:  You may want to use --with-timidty-cfg=/path/to/timidity.cfg .
 To install the library and development components, run "make install"
 as the superuser.  This will install the shared and static libraries,
 header file and pkg-config file into directories under /usr/local or a
