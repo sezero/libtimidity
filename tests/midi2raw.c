@@ -26,6 +26,7 @@ main (int argc, char *argv[])
   int channels = 2;
   int volume = 100;
   FILE * output = stdout;
+  const char *outname = NULL;
   char * cfgfile = NULL;
   int arg;
   MidIStream *stream;
@@ -79,12 +80,7 @@ main (int argc, char *argv[])
       else if (!strcmp(argv[arg], "-o"))
 	{
 	  if (++arg >= argc) break;
-	  output = fopen (argv[arg], "wb");
-	  if (output == NULL)
-	    {
-	      fprintf (stderr, "Could not open output file %s\n", argv[arg]);
-	      return 1;
-	    }
+	  outname = argv[arg];
 	}
       else if (!strcmp(argv[arg], "-cfg"))
 	{
@@ -150,6 +146,15 @@ main (int argc, char *argv[])
       return 1;
     }
 
+  if (outname && !(output = fopen (outname, "wb")))
+    {
+      fprintf (stderr, "Could not open output file %s\n", outname);
+      mid_song_free (song);
+      mid_exit ();
+      free (cfgfile);
+      return 1;
+    }
+
   mid_song_set_volume (song, volume);
   mid_song_start (song);
 
@@ -159,7 +164,7 @@ main (int argc, char *argv[])
   mid_song_free (song);
   mid_exit ();
   free (cfgfile);
-  fclose(output);
+  if (outname) fclose(output);
 
   return 0;
 }
