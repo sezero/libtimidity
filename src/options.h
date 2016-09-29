@@ -97,7 +97,9 @@
 #define MAX_AMPLIFICATION 800
 
 /* The TiMidity configuration file */
+#ifndef CONFIG_FILE
 #define CONFIG_FILE "timidity.cfg"
+#endif
 
 /* These affect general volume */
 #define GUARD_BITS 3

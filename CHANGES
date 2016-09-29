@@ -1,6 +1,8 @@
 Changes by libtimidity-0.2.1:
 -----------------------------
 
+* new --with-timidty-cfg=FILE configury option to specify the full path
+  of timidity.cfg file. default is "timidity.cfg".
 * fixed 8 bit output in test programs. (use U8 format, not S8.)
 * fixed some minor portability issues.
 * added project files and standalone makefiles for windows and mac os x.

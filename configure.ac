@@ -37,6 +37,14 @@ then
 	AC_DEFINE([TIMIDITY_USE_DLS], 1, [include DLS instruments support])
 fi
 
+AC_ARG_WITH([timidity-cfg], AS_HELP_STRING([--with-timidity-cfg=FILE], [Specify the full path to timidity.cfg [default="timidity.cfg"]]),
+timidityconf="$withval", timidityconf="timidity.cfg")
+if test x$timidityconf = xyes || test x$timidityconf = xno
+then
+	timidityconf="timidity.cfg"
+fi
+AC_DEFINE_UNQUOTED(CONFIG_FILE, "$timidityconf", [Define this to the full path of the timidity config file])
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
