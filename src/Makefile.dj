@@ -16,8 +16,6 @@ DXE3GEN=dxe3gen
 
 CPPFLAGS = -DTIMIDITY_BUILD
 ARFLAGS = cr
-# for DLS instruments support:
-#CPPFLAGS+= -DTIMIDITY_USE_DLS
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 
@@ -28,7 +26,7 @@ CFLAGS = -O2 -Wall -ffast-math
 
 COMPILE=$(CC) $(CFLAGS) $(CPPFLAGS) -I. -c
 
-OBJ=common.o instrum.o instrum_dls.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 .PHONY: clean
 
@@ -50,3 +48,4 @@ timidity.dxe: $(OBJ)
 
 .c.o:
 	$(COMPILE) -o $@ $<
+

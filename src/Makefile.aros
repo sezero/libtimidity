@@ -20,8 +20,6 @@ INCLUDE  =-I.
 ARFLAGS  = cr
 CPPFLAGS =-DTIMIDITY_BUILD
 
-# for DLS instruments support:
-#CPPFLAGS+= -DTIMIDITY_USE_DLS
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 
@@ -32,7 +30,7 @@ COMPILE=$(CC) $(CFLAGS) $(INCLUDE) $(CPPFLAGS) -c
 
 LIB=libtimidity.a
 
-OBJ=common.o instrum.o instrum_dls.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 all: $(LIB)
 

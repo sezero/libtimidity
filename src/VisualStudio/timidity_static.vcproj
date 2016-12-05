@@ -274,10 +274,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\instrum_dls.c"
-				>
-			</File>
-			<File
 				RelativePath="..\mix.c"
 				>
 			</File>
@@ -320,27 +316,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\dls1.h"
-				>
-			</File>
-			<File
-				RelativePath="..\dls2.h"
-				>
-			</File>
-			<File
-				RelativePath="..\dls_compat.h"
-				>
-			</File>
-			<File
 				RelativePath="..\filenames.h"
 				>
 			</File>
 			<File
 				RelativePath="..\instrum.h"
-				>
-			</File>
-			<File
-				RelativePath="..\instrum_dls.h"
 				>
 			</File>
 			<File

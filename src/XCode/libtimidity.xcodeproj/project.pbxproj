@@ -11,12 +11,7 @@
 		636ED3401D9B1CBA00577E46 /* timidity.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 63EEA9A61D9B0B1E00A956E0 /* timidity.h */; };
 		63EEA9A71D9B0B1E00A956E0 /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9861D9B0B1E00A956E0 /* common.c */; };
 		63EEA9A81D9B0B1E00A956E0 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9871D9B0B1E00A956E0 /* common.h */; };
-		63EEA9A91D9B0B1E00A956E0 /* dls_compat.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9881D9B0B1E00A956E0 /* dls_compat.h */; };
-		63EEA9AA1D9B0B1E00A956E0 /* dls1.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9891D9B0B1E00A956E0 /* dls1.h */; };
-		63EEA9AB1D9B0B1E00A956E0 /* dls2.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98A1D9B0B1E00A956E0 /* dls2.h */; };
 		63EEA9AC1D9B0B1E00A956E0 /* filenames.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98B1D9B0B1E00A956E0 /* filenames.h */; };
-		63EEA9AD1D9B0B1E00A956E0 /* instrum_dls.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA98C1D9B0B1E00A956E0 /* instrum_dls.c */; };
-		63EEA9AE1D9B0B1E00A956E0 /* instrum_dls.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98D1D9B0B1E00A956E0 /* instrum_dls.h */; };
 		63EEA9AF1D9B0B1E00A956E0 /* instrum.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA98E1D9B0B1E00A956E0 /* instrum.c */; };
 		63EEA9B01D9B0B1E00A956E0 /* instrum.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98F1D9B0B1E00A956E0 /* instrum.h */; };
 		63EEA9B11D9B0B1E00A956E0 /* mix.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9901D9B0B1E00A956E0 /* mix.c */; };
@@ -39,12 +34,7 @@
 		63EEA9C71D9B0B1E00A956E0 /* timidity.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9A61D9B0B1E00A956E0 /* timidity.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		63EEA9C81D9B0B1E00A956E0 /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9861D9B0B1E00A956E0 /* common.c */; };
 		63EEA9C91D9B0B1E00A956E0 /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9871D9B0B1E00A956E0 /* common.h */; };
-		63EEA9CA1D9B0B1E00A956E0 /* dls_compat.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9881D9B0B1E00A956E0 /* dls_compat.h */; };
-		63EEA9CB1D9B0B1E00A956E0 /* dls1.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9891D9B0B1E00A956E0 /* dls1.h */; };
-		63EEA9CC1D9B0B1E00A956E0 /* dls2.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98A1D9B0B1E00A956E0 /* dls2.h */; };
 		63EEA9CD1D9B0B1E00A956E0 /* filenames.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98B1D9B0B1E00A956E0 /* filenames.h */; };
-		63EEA9CE1D9B0B1E00A956E0 /* instrum_dls.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA98C1D9B0B1E00A956E0 /* instrum_dls.c */; };
-		63EEA9CF1D9B0B1E00A956E0 /* instrum_dls.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98D1D9B0B1E00A956E0 /* instrum_dls.h */; };
 		63EEA9D01D9B0B1E00A956E0 /* instrum.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA98E1D9B0B1E00A956E0 /* instrum.c */; };
 		63EEA9D11D9B0B1E00A956E0 /* instrum.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA98F1D9B0B1E00A956E0 /* instrum.h */; };
 		63EEA9D21D9B0B1E00A956E0 /* mix.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9901D9B0B1E00A956E0 /* mix.c */; };
@@ -85,12 +75,7 @@
 		63A00BC51D9B09CA00C50EA5 /* libtimidity.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libtimidity.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		63EEA9861D9B0B1E00A956E0 /* common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = common.c; path = ../common.c; sourceTree = SOURCE_ROOT; };
 		63EEA9871D9B0B1E00A956E0 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../common.h; sourceTree = SOURCE_ROOT; };
-		63EEA9881D9B0B1E00A956E0 /* dls_compat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dls_compat.h; path = ../dls_compat.h; sourceTree = SOURCE_ROOT; };
-		63EEA9891D9B0B1E00A956E0 /* dls1.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dls1.h; path = ../dls1.h; sourceTree = SOURCE_ROOT; };
-		63EEA98A1D9B0B1E00A956E0 /* dls2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dls2.h; path = ../dls2.h; sourceTree = SOURCE_ROOT; };
 		63EEA98B1D9B0B1E00A956E0 /* filenames.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = filenames.h; path = ../filenames.h; sourceTree = SOURCE_ROOT; };
-		63EEA98C1D9B0B1E00A956E0 /* instrum_dls.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = instrum_dls.c; path = ../instrum_dls.c; sourceTree = SOURCE_ROOT; };
-		63EEA98D1D9B0B1E00A956E0 /* instrum_dls.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrum_dls.h; path = ../instrum_dls.h; sourceTree = SOURCE_ROOT; };
 		63EEA98E1D9B0B1E00A956E0 /* instrum.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = instrum.c; path = ../instrum.c; sourceTree = SOURCE_ROOT; };
 		63EEA98F1D9B0B1E00A956E0 /* instrum.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = instrum.h; path = ../instrum.h; sourceTree = SOURCE_ROOT; };
 		63EEA9901D9B0B1E00A956E0 /* mix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mix.c; path = ../mix.c; sourceTree = SOURCE_ROOT; };
@@ -190,12 +175,7 @@
 			children = (
 				63EEA9861D9B0B1E00A956E0 /* common.c */,
 				63EEA9871D9B0B1E00A956E0 /* common.h */,
-				63EEA9881D9B0B1E00A956E0 /* dls_compat.h */,
-				63EEA9891D9B0B1E00A956E0 /* dls1.h */,
-				63EEA98A1D9B0B1E00A956E0 /* dls2.h */,
 				63EEA98B1D9B0B1E00A956E0 /* filenames.h */,
-				63EEA98C1D9B0B1E00A956E0 /* instrum_dls.c */,
-				63EEA98D1D9B0B1E00A956E0 /* instrum_dls.h */,
 				63EEA98E1D9B0B1E00A956E0 /* instrum.c */,
 				63EEA98F1D9B0B1E00A956E0 /* instrum.h */,
 				63EEA9901D9B0B1E00A956E0 /* mix.c */,
@@ -228,11 +208,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				63EEA9C91D9B0B1E00A956E0 /* common.h in Headers */,
-				63EEA9CA1D9B0B1E00A956E0 /* dls_compat.h in Headers */,
-				63EEA9CB1D9B0B1E00A956E0 /* dls1.h in Headers */,
-				63EEA9CC1D9B0B1E00A956E0 /* dls2.h in Headers */,
 				63EEA9CD1D9B0B1E00A956E0 /* filenames.h in Headers */,
-				63EEA9CF1D9B0B1E00A956E0 /* instrum_dls.h in Headers */,
 				63EEA9D11D9B0B1E00A956E0 /* instrum.h in Headers */,
 				63EEA9D31D9B0B1E00A956E0 /* mix.h in Headers */,
 				63EEA9D41D9B0B1E00A956E0 /* options.h in Headers */,
@@ -252,11 +228,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				63EEA9A81D9B0B1E00A956E0 /* common.h in Headers */,
-				63EEA9A91D9B0B1E00A956E0 /* dls_compat.h in Headers */,
-				63EEA9AA1D9B0B1E00A956E0 /* dls1.h in Headers */,
-				63EEA9AB1D9B0B1E00A956E0 /* dls2.h in Headers */,
 				63EEA9AC1D9B0B1E00A956E0 /* filenames.h in Headers */,
-				63EEA9AE1D9B0B1E00A956E0 /* instrum_dls.h in Headers */,
 				63EEA9B01D9B0B1E00A956E0 /* instrum.h in Headers */,
 				63EEA9B21D9B0B1E00A956E0 /* mix.h in Headers */,
 				63EEA9B31D9B0B1E00A956E0 /* options.h in Headers */,
@@ -354,7 +326,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				63EEA9C81D9B0B1E00A956E0 /* common.c in Sources */,
-				63EEA9CE1D9B0B1E00A956E0 /* instrum_dls.c in Sources */,
 				63EEA9D01D9B0B1E00A956E0 /* instrum.c in Sources */,
 				63EEA9D21D9B0B1E00A956E0 /* mix.c in Sources */,
 				63EEA9D51D9B0B1E00A956E0 /* output.c in Sources */,
@@ -372,7 +343,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				63EEA9A71D9B0B1E00A956E0 /* common.c in Sources */,
-				63EEA9AD1D9B0B1E00A956E0 /* instrum_dls.c in Sources */,
 				63EEA9AF1D9B0B1E00A956E0 /* instrum.c in Sources */,
 				63EEA9B11D9B0B1E00A956E0 /* mix.c in Sources */,
 				63EEA9B41D9B0B1E00A956E0 /* output.c in Sources */,

@@ -208,7 +208,7 @@ extern "C" {
  * ===================
  */
 
-/* Load DLS patches
+/* Load DLS patches - No longer supported:  Always returns NULL.
  */
   TIMI_EXPORT extern MidDLSPatches *mid_dlspatches_load (MidIStream *stream);
 
@@ -227,6 +227,7 @@ extern "C" {
                                              MidSongOptions *options);
 
 /* Load MIDI song with specified DLS patches
+ * No longer supported:  Always returns NULL.
  */
   TIMI_EXPORT extern MidSong *mid_song_load_dls (MidIStream *stream,
                                                  MidDLSPatches *dlspatches,

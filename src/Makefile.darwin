@@ -18,8 +18,6 @@ endif
 ARFLAGS = cr
 CPPFLAGS=-DTIMIDITY_BUILD
 LDLIBS=
-# for DLS instruments support:
-#CPPFLAGS+= -DTIMIDITY_USE_DLS
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 
@@ -51,7 +49,7 @@ LIBSTATIC=libtimidity.a
 
 LIBS=$(LIBSHARED)
 
-OBJ=common.o instrum.o instrum_dls.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 help:
 	@echo "Valid targets:"

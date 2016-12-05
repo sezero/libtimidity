@@ -11,7 +11,6 @@ CFLAGS= -A /DWIN32 /DTIMIDITY_BUILD /DDLL_EXPORT
 #LIBS=$(LIBSTATIC)
 #CFLAGS= -A /DWIN32 /DTIMIDITY_BUILD /DTIMIDITY_STATIC
 
-# for DLS instruments support: add  /DTIMIDITY_USE_DLS  to CFLAGS
 # to build a debug version   : add  /DTIMIDITY_DEBUG    to CFLAGS
 
 # Compile command
@@ -24,7 +23,7 @@ LIBNAME=timidity.lib
 DLLNAME=timidity.dll
 LIBSTATIC=timidity_static.lib
 
-OBJ=common.o instrum.o instrum_dls.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 all: $(LIBS)
 

@@ -1,4 +1,4 @@
-# GNU Makefile for targeting m68k-amigaos using VBCC
+# GNU Makefile for targeting m68k-amigaos using VBCC.
 
 CC=vc
 #MKLIB=join $(OBJ) as $(LIB)
@@ -12,8 +12,6 @@ CPPFLAGS =-DTIMIDITY_BUILD
 CPPFLAGS+=-D__AMIGA__
 CPPFLAGS+=-DWORDS_BIGENDIAN=1
 
-# for DLS instruments support:
-#CPPFLAGS+= -DTIMIDITY_USE_DLS
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 
@@ -24,7 +22,7 @@ COMPILE=$(CC) $(CFLAGS) $(INCLUDE) $(CPPFLAGS) -c
 
 LIB=timidity.lib
 
-OBJ=common.o instrum.o instrum_dls.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 all: $(LIB)
 

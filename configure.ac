@@ -31,12 +31,6 @@ then
 	AC_DEFINE([TIMIDITY_DEBUG], 1, [Debug mode])
 fi
 
-AC_ARG_ENABLE([dls],[AS_HELP_STRING([--enable-dls],[enable DLS instruments support [default=no]])],,[enable_dls=no])
-if test x$enable_dls = xyes
-then
-	AC_DEFINE([TIMIDITY_USE_DLS], 1, [include DLS instruments support])
-fi
-
 AC_ARG_WITH([timidity-cfg], AS_HELP_STRING([--with-timidity-cfg=FILE], [Specify the full path to timidity.cfg [default="timidity.cfg"]]),
    timidity_cfg="$withval", timidity_cfg="timidity.cfg")
 if test x$timidity_cfg = xyes || test x$timidity_cfg = xno

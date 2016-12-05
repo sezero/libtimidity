@@ -12,8 +12,6 @@ target = dll
 
 INCLUDES=-I.
 CPPFLAGS=-DTIMIDITY_BUILD
-# for DLS instruments support:
-#CPPFLAGS+= -DTIMIDITY_USE_DLS
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 
@@ -40,7 +38,7 @@ BLD_TARGET=$(DLLNAME)
 
 COMPILE=wcc386 -q $(CFLAGS) $(CPPFLAGS) $(INCLUDES)
 
-OBJ=common.obj instrum.obj instrum_dls.obj mix.obj output.obj playmidi.obj readmidi.obj resample.obj stream.obj tables.obj timidity.obj
+OBJ=common.obj instrum.obj mix.obj output.obj playmidi.obj readmidi.obj resample.obj stream.obj tables.obj timidity.obj
 
 all: $(BLD_TARGET)
 
