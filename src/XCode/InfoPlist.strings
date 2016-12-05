@@ -1,5 +1,5 @@
 /* Localized versions of Info.plist keys */
 
 CFBundleName = "libtimidity";
-CFBundleShortVersionString = "libtimidity version 0.2.1";
-CFBundleGetInfoString = "libtimidity version 0.2.1";
+CFBundleShortVersionString = "libtimidity version 0.2.2";
+CFBundleGetInfoString = "libtimidity version 0.2.2";
