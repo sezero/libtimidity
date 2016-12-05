@@ -637,3 +637,4 @@ int set_default_instrument(MidSong *song, const char *name)
   song->default_program = SPECIAL_PROGRAM;
   return 0;
 }
+
