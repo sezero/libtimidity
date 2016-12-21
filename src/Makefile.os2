@@ -42,18 +42,28 @@ OBJ=common.obj instrum.obj mix.obj output.obj playmidi.obj readmidi.obj resample
 
 all: $(BLD_TARGET)
 
-clean:
-	FOR %F IN ( $(DLLNAME) $(EXPNAME) $(LIBNAME) $(LIBSTATIC) $(OBJ) ) DO IF EXIST %F ERASE %F
-
 $(DLLNAME): $(OBJ)
 	wlink NAM $@ SYSTEM os2v2_dll INITINSTANCE TERMINSTANCE FIL {$(OBJ)} OPTION IMPF=$(EXPNAME)
 	wlib -q -b -iro -inn $(LIBNAME) +$(DLLNAME)
-#	wlib -l $(LIBNAME)
-#EXP=$(EXPNAME)
-#OPTION IMPL=$(LIBNAME)
+#	wlib -q -b -n @$(EXPNAME)
 
 $(LIBSTATIC): $(OBJ)
 	wlib -q -b -n $@ $(OBJ)
 
 .c.obj:
 	$(COMPILE) -fo=$^@ $<
+
+!ifndef __UNIX__
+distclean: clean .symbolic
+	@if exist $(LIBSTATIC) del $(LIBSTATIC)
+	@if exist $(DLLNAME) del $(DLLNAME)
+	@if exist $(EXPNAME) del $(EXPNAME)
+	@if exist $(LIBNAME) del $(LIBNAME)
+clean: .symbolic
+	@if exist *.obj del *.obj
+!else
+distclean: clean .symbolic
+	rm -f $(DLLNAME) $(EXPNAME) $(LIBNAME) $(LIBSTATIC)
+clean: .symbolic
+	rm -f *.obj
+!endif
