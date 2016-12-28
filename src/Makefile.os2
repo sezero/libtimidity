@@ -42,10 +42,11 @@ OBJ=common.obj instrum.obj mix.obj output.obj playmidi.obj readmidi.obj resample
 
 all: $(BLD_TARGET)
 
+# rely on symbol name, not ordinal: -irn switch of wlib is default, but -inn is not.
 $(DLLNAME): $(OBJ)
-	wlink NAM $@ SYSTEM os2v2_dll INITINSTANCE TERMINSTANCE FIL {$(OBJ)} OPTION IMPF=$(EXPNAME)
-	wlib -q -b -iro -inn $(LIBNAME) +$(DLLNAME)
-#	wlib -q -b -n @$(EXPNAME)
+	wlink NAM $@ SYSTEM os2v2_dll INITINSTANCE TERMINSTANCE OPTION MANYAUTODATA FIL {$(OBJ)} OPTION IMPF=$(EXPNAME)
+	wlib -q -b -n -inn $(LIBNAME) +$(DLLNAME)
+#	wlib -q -b -n -inn $(LIBNAME) @$(EXPNAME)
 
 $(LIBSTATIC): $(OBJ)
 	wlib -q -b -n $@ $(OBJ)
