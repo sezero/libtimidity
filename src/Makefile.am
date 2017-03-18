@@ -22,6 +22,7 @@ EXTRA_DIST = \
 	Makefile.amigaos \
 	Makefile.vbcc \
 	Makefile.aros \
+	OWMakefile.win32 \
 	VisualStudio \
 	XCode
 
