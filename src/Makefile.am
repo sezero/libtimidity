@@ -1,4 +1,3 @@
-
 AM_CPPFLAGS = -I$(top_srcdir)
 
 SYM_VISIBILITY = @SYM_VISIBILITY@
@@ -17,6 +16,7 @@ EXTRA_DIST = \
 	Makefile.lcc \
 	timidity.def \
 	Makefile.os2 \
+	Makefile.emx \
 	Makefile.dj \
 	Makefile.morphos \
 	Makefile.amigaos \
