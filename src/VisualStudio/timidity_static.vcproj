@@ -316,10 +316,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\filenames.h"
-				>
-			</File>
-			<File
 				RelativePath="..\instrum.h"
 				>
 			</File>
@@ -329,6 +325,10 @@
 			</File>
 			<File
 				RelativePath="..\options.h"
+				>
+			</File>
+			<File
+				RelativePath="..\ospaths.h"
 				>
 			</File>
 			<File

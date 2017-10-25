@@ -29,12 +29,12 @@ EXTRA_DIST = \
 libtimidity_la_SOURCES = \
 	common.c \
 	common.h \
-	filenames.h \
 	instrum.c \
 	instrum.h \
 	mix.c \
 	mix.h \
 	options.h \
+	ospaths.h \
 	output.c \
 	output.h \
 	playmidi.c \
