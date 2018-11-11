@@ -14,9 +14,15 @@ endif
 
 # compiler flags
 CFLAGS   =-O2 -Wall
-CFLAGS  +=-noixemul
 CFLAGS  +=-ffast-math -fno-common
 #CFLAGS  +=-g
+
+# flags for C library choice
+#CRT_FLAGS=-mcrt=clib2
+#CRT_FLAGS=-mcrt=newlib
+CRT_FLAGS=-noixemul
+CFLAGS  +=$(CRT_FLAGS)
+
 INCLUDE  =-I.
 ARFLAGS  = cr
 CPPFLAGS =-DTIMIDITY_BUILD
