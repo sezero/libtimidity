@@ -29,7 +29,7 @@ CFLAGS+=-fvisibility=hidden -DSYM_VISIBILITY
 LDFLAGS =-dynamiclib -Wl,-single_module
 LDFLAGS+=-Wl,-undefined,error
 LDFLAGS+=-Wl,-install_name,"@executable_path/$(LIBSHARED)"
-LDFLAGS+=-Wl,-compatibility_version,3.0 -Wl,-current_version,3.0
+LDFLAGS+=-Wl,-compatibility_version,3.0 -Wl,-current_version,3.1
 
 # specifically for 10.5 and newer:
 #CFLAGS+=-mmacosx-version-min=10.5
