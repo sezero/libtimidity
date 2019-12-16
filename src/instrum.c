@@ -186,7 +186,7 @@ static void load_instrument(MidSong *song, const char *name,
   int i,j;
   static const char *patch_ext[] = PATCH_EXT_LIST;
 
-  (void)percussion; /* unused */
+  TIMI_UNUSED(percussion);
   *out = NULL;
   if (!name) return;
 
@@ -640,4 +640,3 @@ int set_default_instrument(MidSong *song, const char *name)
   song->default_program = SPECIAL_PROGRAM;
   return 0;
 }
-

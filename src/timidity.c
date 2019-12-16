@@ -666,14 +666,19 @@ long mid_get_version (void)
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)
 {
+  TIMI_UNUSED(stream);
   return NULL;
 }
 
 void mid_dlspatches_free (MidDLSPatches *data)
 {
+  TIMI_UNUSED(data);
 }
 
 MidSong *mid_song_load_dls(MidIStream *stream, MidDLSPatches *dlspatches, MidSongOptions *options)
 {
+  TIMI_UNUSED(stream);
+  TIMI_UNUSED(dlspatches);
+  TIMI_UNUSED(options);
   return NULL;
 }
