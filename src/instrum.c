@@ -186,6 +186,7 @@ static void load_instrument(MidSong *song, const char *name,
   int i,j;
   static const char *patch_ext[] = PATCH_EXT_LIST;
 
+  (void)percussion; /* unused */
   *out = NULL;
   if (!name) return;
 
