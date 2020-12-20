@@ -44,18 +44,31 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-#LT_INIT([win32-dll])
-AC_LIBTOOL_WIN32_DLL
-AC_PROG_LIBTOOL
+dnl AC_LIBTOOL_WIN32_DLL
+dnl AC_PROG_LIBTOOL
+LT_INIT([win32-dll])
 
-if test $ac_cv_prog_gcc = yes
+if test $ac_cv_c_compiler_gnu = yes
 then
 	CFLAGS="$CFLAGS -Wall"
 fi
 
 # Checks for libraries.
 LIBTIMIDITY_LIBS=""
-AC_CHECK_LIB([m], [pow], [LIBTIMIDITY_LIBS="$LIBTIMIDITY_LIBS -lm"])
+use_libm=no
+old_LIBS="${LIBS}"
+AC_CHECK_LIB([m], [pow], [use_libm=yes])
+dnl -lm not needed with darwin and mingw.
+case "${host_os}" in
+ darwin*|mingw*)
+  use_libm=no
+  LIBS="${old_LIBS}"
+  ;;
+esac
+if test $use_libm = yes
+then
+	LIBTIMIDITY_LIBS="-lm"
+fi
 
 have_ao=no
 AC_ARG_ENABLE([ao],[AS_HELP_STRING([--disable-ao],[disable building libao-depending programs])],,[enable_ao=yes])
@@ -75,23 +88,17 @@ AC_C_CONST
 AC_TYPE_SIZE_T
 AC_C_BIGENDIAN
 
-# Checks for library functions.
-#AC_FUNC_MALLOC
-#AC_FUNC_MEMCMP
-#AC_CHECK_FUNCS([memset pow strchr])
-
 # symbol visibility
 ac_save_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
 AC_CACHE_CHECK([if compiler supports visibility attributes],[libtimidity_cv_gcc_visibility],
-	AC_LANG_SAVE
-	AC_LANG_C
+	AC_LANG_PUSH([C])
 	AC_TRY_COMPILE([void foo(void);
 __attribute__((visibility("default"))) void foo(void) {}],
 		[],
 		[libtimidity_cv_gcc_visibility=yes],
 		[libtimidity_cv_gcc_visibility=no])
-	AC_LANG_RESTORE)
+	AC_LANG_POP([C]))
 # we want symbol -fvisibility for elf targets, however it works
 # with darwin/macho too.  other than that, windows, dos, os/2, amiga
 # do not need it:  for any such targets, the -Werror switch is
