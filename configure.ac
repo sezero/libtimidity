@@ -31,7 +31,7 @@ then
 	AC_DEFINE([TIMIDITY_DEBUG], 1, [Debug mode])
 fi
 
-AC_ARG_WITH([timidity-cfg], AS_HELP_STRING([--with-timidity-cfg=FILE], [Specify the full path to timidity.cfg [default="timidity.cfg"]]),
+AC_ARG_WITH([timidity-cfg],[AS_HELP_STRING([--with-timidity-cfg=FILE],[Specify the full path to timidity.cfg [default="timidity.cfg"]])],
    timidity_cfg="$withval", timidity_cfg="timidity.cfg")
 if test x$timidity_cfg = xyes || test x$timidity_cfg = xno
 then
