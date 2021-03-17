@@ -407,10 +407,6 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
   tempo=500000;
   compute_sample_increment(song, tempo, divisions);
 
-  our_event_count=0;
-  st=at=sample_cum=0;
-  counting_time=2; /* We strip any silence before the first NOTE ON. */
-
   /* This may allocate a bit more than we need */
   groomed_list=lp=(MidEvent *) timi_calloc(sizeof(MidEvent) * (song->event_count+1));
   if (!groomed_list) {
@@ -419,6 +415,10 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
     return NULL;
   }
   meep=song->evlist;
+
+  our_event_count=0;
+  st=at=sample_cum=0;
+  counting_time=2; /* We strip any silence before the first NOTE ON. */
 
   for (i = 0; i < song->event_count; i++)
     {
