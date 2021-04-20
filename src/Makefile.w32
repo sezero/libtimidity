@@ -1,9 +1,9 @@
 # Makefile for Windows using Open Watcom compiler.
 #
-# wmake -f OWMakefile.win32
+# wmake -f Makefile.w32
 # - builds timidity.dll and its import library timidity.lib
 #
-# wmake -f OWMakefile.win32 target=static
+# wmake -f Makefile.w32 target=static
 # - builds the static library timidity_static.lib
 
 !ifndef target

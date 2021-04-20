@@ -24,7 +24,5 @@ For Mac OS X, we provide an XCode project file for your convinence.
 For Windows, we provide a Visual Studio project file (for VS2005 or
 newer) for your convinence.
 
-We also provide standalone makefiles for Windows (for both MinGW and
-LCC), Mac OS X (i.e. Darwin), DOS (for DJGPP), OS/2 (for OpenWatcom),
-as well as MorphOS, AmigaOS and AROS: you can use them for compiling
-on the relevant native system, or for cross-compiling.
+We also provide standalone makefiles for Windows, Mac OS X (Darwin),
+DOS (DJGPP), OS/2, as well as MorphOS, AmigaOS and AROS.

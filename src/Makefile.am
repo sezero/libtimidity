@@ -13,8 +13,6 @@ include_HEADERS = timidity.h
 EXTRA_DIST = \
 	Makefile.darwin \
 	Makefile.mingw \
-	Makefile.lcc \
-	timidity.def \
 	Makefile.os2 \
 	Makefile.emx \
 	Makefile.dj \
