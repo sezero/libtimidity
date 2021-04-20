@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
+AC_PREREQ([2.59])
 AC_INIT([libtimidity],[0.2.7])
 LIBTIMIDITY_MAJOR_VERSION=0
 LIBTIMIDITY_MINOR_VERSION=2
@@ -57,12 +57,11 @@ fi
 LIBTIMIDITY_LIBS=""
 use_libm=no
 old_LIBS="${LIBS}"
-AC_CHECK_LIB([m], [pow], [use_libm=yes])
-dnl -lm not needed with darwin and mingw.
 case "${host_os}" in
- darwin*|mingw*)
-  use_libm=no
-  LIBS="${old_LIBS}"
+dnl These system don't have libm, or don't need it
+ darwin*|mingw*|cygwin*|cegcc*|pw32*|beos*|haiku*)
+  ;;
+ *) AC_CHECK_LIB([m], [pow], [use_libm=yes])
   ;;
 esac
 if test $use_libm = yes
@@ -93,9 +92,8 @@ ac_save_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
 AC_CACHE_CHECK([if compiler supports visibility attributes],[libtimidity_cv_gcc_visibility],
 	AC_LANG_PUSH([C])
-	AC_TRY_COMPILE([void foo(void);
-__attribute__((visibility("default"))) void foo(void) {}],
-		[],
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[void foo(void);
+__attribute__((visibility("default"))) void foo(void) {}]], [])],
 		[libtimidity_cv_gcc_visibility=yes],
 		[libtimidity_cv_gcc_visibility=no])
 	AC_LANG_POP([C]))

@@ -55,7 +55,7 @@ dnl
 dnl Now check if the installed ao is sufficiently new.
 dnl
       rm -f conf.aotest
-      AC_TRY_RUN([
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,7 +67,7 @@ int main ()
   return 0;
 }
 
-],, no_ao=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
+]])],[], [no_ao=yes],[echo $ac_n "cross compiling; assumed OK... $ac_c"])
        CFLAGS="$ac_save_CFLAGS"
        LIBS="$ac_save_LIBS"
   fi
@@ -83,10 +83,10 @@ int main ()
        echo "*** Could not run ao test program, checking why..."
        CFLAGS="$CFLAGS $AO_CFLAGS"
        LIBS="$LIBS $AO_LIBS"
-       AC_TRY_LINK([
+       AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdio.h>
 #include <ao/ao.h>
-],     [ return 0; ],
+]], [[ return 0; ]])],
        [ echo "*** The test program compiled, but did not run. This usually means"
        echo "*** that the run-time linker is not finding ao or finding the wrong"
        echo "*** version of ao. If it is not finding ao, you'll need to set your"
