@@ -215,7 +215,6 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	{
 	  DEBUG_MSG("Strange: percussion instrument with %d samples!\n",
 		  ip->samples);
-	  return 0;
 	}
     }
   else
