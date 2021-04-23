@@ -251,9 +251,9 @@ static int read_config_file(const char *name, int rcf_count)
 	goto fail;
       }
       if (!master_drumset[i]) {
-	master_drumset[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+	master_drumset[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
 	if (!master_drumset[i]) goto fail;
-	master_drumset[i]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
+	master_drumset[i]->tone = (MidToneBankElement *) timi_calloc(128, sizeof(MidToneBankElement));
 	if (!master_drumset[i]->tone) goto fail;
       }
       bank=master_drumset[i];
@@ -270,9 +270,9 @@ static int read_config_file(const char *name, int rcf_count)
 	goto fail;
       }
       if (!master_tonebank[i]) {
-	master_tonebank[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+	master_tonebank[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
 	if (!master_tonebank[i]) goto fail;
-	master_tonebank[i]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
+	master_tonebank[i]->tone = (MidToneBankElement *) timi_calloc(128, sizeof(MidToneBankElement));
 	if (!master_tonebank[i]->tone) goto fail;
       }
       bank=master_tonebank[i];
@@ -295,7 +295,7 @@ static int read_config_file(const char *name, int rcf_count)
       }
       timi_free(bank->tone[i].name);
       sz = strlen(w[1])+1;
-      bank->tone[i].name = (char *) timi_calloc(sz);
+      bank->tone[i].name = (char *) timi_malloc(sz);
       if (!bank->tone[i].name) goto fail;
       memcpy(bank->tone[i].name,w[1],sz);
       bank->tone[i].note=bank->tone[i].amp=bank->tone[i].pan=
@@ -379,14 +379,14 @@ fail:
 static int init_alloc_banks (void)
 {
   /* Allocate memory for the standard tonebank and drumset */
-  master_tonebank[0] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+  master_tonebank[0] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
   if (!master_tonebank[0]) goto _nomem;
-  master_tonebank[0]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
+  master_tonebank[0]->tone = (MidToneBankElement *) timi_calloc(128, sizeof(MidToneBankElement));
   if (!master_tonebank[0]->tone) goto _nomem;
 
-  master_drumset[0] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+  master_drumset[0] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
   if (!master_drumset[0]) goto _nomem;
-  master_drumset[0]->tone = (MidToneBankElement *) timi_calloc(128 * sizeof(MidToneBankElement));
+  master_drumset[0]->tone = (MidToneBankElement *) timi_calloc(128, sizeof(MidToneBankElement));
   if (!master_drumset[0]->tone) goto _nomem;
 
   return 0;
@@ -466,17 +466,17 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   }
 
   /* Allocate memory for the song */
-  song = (MidSong *)timi_calloc(sizeof(MidSong));
+  song = (MidSong *)timi_calloc(1, sizeof(MidSong));
   if (!song) return;
 
   for (i = 0; i < 128; i++) {
     if (master_tonebank[i]) {
-      song->tonebank[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+      song->tonebank[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
       if (!song->tonebank[i]) goto fail;
       song->tonebank[i]->tone = master_tonebank[i]->tone;
     }
     if (master_drumset[i]) {
-      song->drumset[i] = (MidToneBank *) timi_calloc(sizeof(MidToneBank));
+      song->drumset[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
       if (!song->drumset[i]) goto fail;
       song->drumset[i]->tone = master_drumset[i]->tone;
     }
@@ -516,9 +516,9 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   }
 
   song->buffer_size = options->buffer_size;
-  song->resample_buffer = (sample_t *) timi_calloc(options->buffer_size * sizeof(sample_t));
+  song->resample_buffer = (sample_t *) timi_malloc(options->buffer_size * sizeof(sample_t));
   if (!song->resample_buffer) goto fail;
-  song->common_buffer = (sint32 *) timi_calloc(options->buffer_size * 2 * sizeof(sint32));
+  song->common_buffer = (sint32 *) timi_malloc(options->buffer_size * 2 * sizeof(sint32));
   if (!song->common_buffer) goto fail;
 
   song->bytes_per_sample = 2;

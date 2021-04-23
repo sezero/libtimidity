@@ -102,18 +102,6 @@ FILE *timi_openfile(const char *name)
     return NULL;
 }
 
-/* This allocates memory and clears it. */
-void *timi_calloc(size_t count)
-{
-    void *p = timi_malloc(count);
-    if (p == NULL) {
-        DEBUG_MSG("malloc() failed for %lu bytes.\n", (unsigned long)count);
-        return NULL;
-    }
-    memset(p, 0, count);
-    return p;
-}
-
 /* This adds a directory to the path list */
 int timi_add_pathlist(const char *s, size_t l)
 {
