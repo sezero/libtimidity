@@ -405,6 +405,7 @@ static void process_chunk(int id, int s, SFInfo *sf, FILE *fd)
 			case INAM_ID:
 				sf->sf_name = (char *)timi_malloc(subchunk.size + 1);
 				fread(sf->sf_name, 1, subchunk.size, fd);
+				sf->sf_name[subchunk.size] = 0;
 				break;
 			*/
 			default:
