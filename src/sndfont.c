@@ -174,7 +174,7 @@ void init_soundfont(MidSong *song, const char *fname, int order)
 	strcpy(sfrec.fname, fname);
 	load_sbk(sfrec.fd, &sfinfo);
 
-	for (i = 0; i < sfinfo.nrpresets; i++) {
+	for (i = 0; i < sfinfo.nrpresets - 1; i++) {
 		int bank = sfinfo.presethdr[i].bank;
 		int preset = sfinfo.presethdr[i].preset;
 		if (is_excluded(bank, preset, -1))
