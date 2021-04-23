@@ -193,13 +193,12 @@ static void load_instrument(MidSong *song, const char *name,
   /* Open patch file */
   if ((fp=timi_openfile(name)) == NULL)
     {
-      size_t l;
       /* Try with various extensions */
       for (i=0; patch_ext[i]; i++)
 	{
-	      l = timi_strxcpy(tmp, name, sizeof(tmp)) -1;
-	      timi_strxcpy(tmp + l, patch_ext[i], sizeof(tmp) - l);
-	      if ((fp=timi_openfile(tmp)) != NULL)
+	    size_t l = timi_strxcpy(tmp, name, sizeof(tmp)) - 1;
+	    timi_strxcpy(tmp + l, patch_ext[i], sizeof(tmp) - l);
+	    if ((fp=timi_openfile(tmp)) != NULL)
 		break;
 	}
     }

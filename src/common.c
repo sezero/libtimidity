@@ -49,8 +49,8 @@
 
 /* The paths in this list will be tried by timi_openfile() */
 struct _PathList {
-  char *path;
-  struct _PathList *next;
+    char *path;
+    struct _PathList *next;
 };
 
 static PathList *pathlist = NULL;
@@ -58,81 +58,77 @@ static PathList *pathlist = NULL;
 /* This is meant to find and open files for reading */
 FILE *timi_openfile(const char *name)
 {
-  FILE *fp;
+    FILE *fp;
 
-  if (!name || !(*name))
-    {
-      DEBUG_MSG("Attempted to open nameless file.\n");
-      return NULL;
+    if (!name || !*name) {
+        DEBUG_MSG("Attempted to open nameless file.\n");
+        return NULL;
     }
 
-  /* First try the given name */
-  DEBUG_MSG("Trying to open %s\n", name);
-  if ((fp = fopen(name, OPEN_MODE)) != NULL)
-    return fp;
+    /* First try the given name */
+    DEBUG_MSG("Trying to open %s\n", name);
+    if ((fp = fopen(name, OPEN_MODE)) != NULL)
+        return fp;
 
-  if (!is_abspath(name))
-  {
-    char current_filename[TIM_MAXPATH];
-    PathList *plp = pathlist;
-    char *p;
-    size_t l;
+    if (!is_abspath(name)) {
+        char current_filename[TIM_MAXPATH];
+        PathList *plp = pathlist;
+        char *p;
+        size_t l;
 
-    while (plp) { /* Try along the path then */
-	*current_filename = 0;
-	p = current_filename;
-	l = strlen(plp->path);
-	if(l >= sizeof(current_filename) - 3) l = 0;
-	if(l)
-	  {
-	    memcpy(current_filename, plp->path, l);
-	    p += l;
-	    if (!is_dirsep(p[-1]))
-	    {
-	      *p++ = CHAR_DIRSEP;
-	      l++;
-	    }
-	  }
-	timi_strxcpy(p, name, sizeof(current_filename) - l);
-	DEBUG_MSG("Trying to open %s\n", current_filename);
-	if ((fp = fopen(current_filename, OPEN_MODE)) != NULL)
-	  return fp;
-	plp = plp->next;
+        while (plp) { /* Try along the path then */
+            *current_filename = 0;
+            p = current_filename;
+            l = strlen(plp->path);
+            if (l >= sizeof(current_filename) - 3) l = 0;
+            if (l != 0) {
+                memcpy(current_filename, plp->path, l);
+                p += l;
+                if (!is_dirsep(p[-1])) {
+                    *p++ = CHAR_DIRSEP;
+                    l++;
+                }
+            }
+            timi_strxcpy(p, name, sizeof(current_filename) - l);
+            DEBUG_MSG("Trying to open %s\n", current_filename);
+            if ((fp = fopen(current_filename, OPEN_MODE)) != NULL)
+                return fp;
+            plp = plp->next;
+        }
     }
-  }
 
-  /* Nothing could be opened. */
-  DEBUG_MSG("Could not open %s\n", name);
-  return NULL;
+    /* Nothing could be opened */
+    DEBUG_MSG("Could not open %s\n", name);
+    return NULL;
 }
 
 /* This allocates memory and clears it. */
 void *timi_calloc(size_t count)
 {
-  void *p = timi_malloc(count);
-  if (p == NULL) {
-    DEBUG_MSG("malloc() failed for %lu bytes.\n", (unsigned long)count);
-    return NULL;
-  }
-  memset(p, 0, count);
-  return p;
+    void *p = timi_malloc(count);
+    if (p == NULL) {
+        DEBUG_MSG("malloc() failed for %lu bytes.\n", (unsigned long)count);
+        return NULL;
+    }
+    memset(p, 0, count);
+    return p;
 }
 
 /* This adds a directory to the path list */
 int timi_add_pathlist(const char *s, size_t l)
 {
-  PathList *plp = (PathList *) timi_malloc(sizeof(PathList));
-  if (!plp) return -2;
-  plp->path = (char *) timi_malloc(l + 1);
-  if (!plp->path) {
-    timi_free (plp);
-    return -2;
-  }
-  plp->next = pathlist;
-  pathlist = plp;
-  memcpy(plp->path, s, l);
-  plp->path[l] = 0;
-  return 0;
+    PathList *plp = (PathList *) timi_malloc(sizeof(PathList));
+    if (!plp) return -2;
+    plp->path = (char *) timi_malloc(l + 1);
+    if (!plp->path) {
+        timi_free (plp);
+        return -2;
+    }
+    plp->next = pathlist;
+    pathlist = plp;
+    memcpy(plp->path, s, l);
+    plp->path[l] = 0;
+    return 0;
 }
 
 void timi_free_pathlist(void)
@@ -141,10 +137,10 @@ void timi_free_pathlist(void)
     PathList *next;
 
     while (plp) {
-	next = plp->next;
-	timi_free(plp->path);
-	timi_free(plp);
-	plp = next;
+        next = plp->next;
+        timi_free(plp->path);
+        timi_free(plp);
+        plp = next;
     }
     pathlist = NULL;
 }
