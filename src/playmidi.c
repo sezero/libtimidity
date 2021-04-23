@@ -202,7 +202,7 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
   MidInstrument *ip;
   MidSample *sp, *closest;
   sint32 f, cdiff, diff;
-  int i, nv, note;
+  int i, s, nv;
 
   if (ISDRUMCHANNEL(song, e->channel))
     {
@@ -211,10 +211,13 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	  if (!(ip=song->drumset[0]->instrument[e->a]))
 	    return 0; /* No instrument? Then we can't play. */
 	}
-      if (ip->type == INST_GUS && ip->samples != 1)
+      s=ip->samples;
+      if (ip->type == INST_GUS)
 	{
-	  DEBUG_MSG("Strange: percussion instrument with %d samples!\n",
-		  ip->samples);
+	  /* drums are supposed to have only one sample */
+	  if (s!=1) {
+	    DEBUG_MSG("Strange: percussion instrument with %d samples!\n", s);
+	  }
 	}
     }
   else
@@ -227,47 +230,51 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	  if (!(ip=song->tonebank[0]->instrument[song->channel[e->channel].program]))
 	    return 0; /* No instrument? Then we can't play. */
 	}
+      s=ip->samples;
     }
 
-  if (ip->sample->note_to_use)
-    note = ip->sample->note_to_use;
+  if (ip->sample->note_to_use) /* Fixed-pitch instrument? */
+    f = freq_table[(int)ip->sample->note_to_use];
   else
-    note = e->a & 0x7f;
-  f = freq_table[note];
+    f = freq_table[e->a & 0x7f];
 
-  nv = 0;
-  for (i = 0, sp = ip->sample; i < ip->samples; i++, sp++)
+  if (s==1)
+    {
+      vlist[0]=find_voice(song, e);
+      song->voice[vlist[0]].orig_frequency=f;
+      song->voice[vlist[0]].sample=ip->sample;
+      return 1;
+    }
+
+  for (i=0, nv=0, sp=ip->sample; i<s; i++, sp++)
     {
       if (sp->low_freq <= f && sp->high_freq >= f)
 	{
-	  vlist[nv] = find_voice(song, e);
-	  song->voice[vlist[nv]].orig_frequency = f;
-	  song->voice[vlist[nv]].sample = sp;
+	  vlist[nv]=find_voice(song, e);
+	  song->voice[vlist[nv]].orig_frequency=f;
+	  song->voice[vlist[nv]].sample=sp;
 	  nv++;
 	}
     }
 
-  if (nv == 0)
-    {
-      cdiff = 0x7FFFFFFF;
-      closest = sp = ip->sample;
-      for (i = 0; i < ip->samples; i++, sp++)
-	{
-	  diff = sp->root_freq - f;
-	  if (diff < 0) diff = -diff;
-	  if (diff < cdiff)
-	    {
-	      cdiff = diff;
-	      closest = sp;
-	    }
-	}
-      vlist[nv] = find_voice(song, e);
-      song->voice[vlist[nv]].orig_frequency = f;
-      song->voice[vlist[nv]].sample = closest;
-      nv++;
-    }
+  if (nv!=0) return nv;
 
-  return nv;
+  cdiff=0x7FFFFFFF;
+  closest=sp=ip->sample;
+  for (i=0; i<s; i++, sp++)
+    {
+      diff=sp->root_freq - f;
+      if (diff<0) diff=-diff;
+      if (diff<cdiff)
+	{
+	  cdiff=diff;
+	  closest=sp;
+	}
+    }
+  vlist[0]=find_voice(song, e);
+  song->voice[vlist[0]].orig_frequency=f;
+  song->voice[vlist[0]].sample=closest;
+  return 1;
 }
 
 static void start_note(MidSong *song, MidEvent *e, int i)
