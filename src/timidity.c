@@ -94,6 +94,7 @@ static int read_config_file(const char *name, int rcf_count)
   FILE *fp;
   char  tmp[TIM_MAXPATH];
   char *w[MAXWORDS], *cp;
+  char *endp;
   MidToneBank *bank;
   int i, j, k, line, r, words;
 
@@ -113,13 +114,13 @@ static int read_config_file(const char *name, int rcf_count)
   {
     line++;
     words=0;
-    w[0]=strtok(tmp, " \t\240");
+    w[0]=timi_strtokr(tmp, " \t\240", &endp);
     if (!w[0]) continue;
 
     /* Originally the TiMidity++ extensions were prefixed like this */
     if (strcmp(w[0], "#extension") == 0)
     {
-      w[0]=strtok(NULL, " \t\240");
+      w[0]=timi_strtokr(NULL, " \t\240", &endp);
       if (!w[0]) continue;
     }
 
@@ -128,7 +129,7 @@ static int read_config_file(const char *name, int rcf_count)
 
     while (w[words] && *w[words] != '#') {
       if (++words == MAXWORDS) break;
-      w[words]=strtok(NULL, " \t\240");
+      w[words]=timi_strtokr(NULL, " \t\240", &endp);
     }
 
     /* TiMidity++ adds a number of extensions to the config file format.
@@ -244,8 +245,7 @@ static int read_config_file(const char *name, int rcf_count)
 		name, line);
 	goto fail;
       }
-      strncpy(def_instr_name, w[1], 255);
-      def_instr_name[255]='\0';
+      timi_strxcpy(def_instr_name, w[1], 256);
     }
     else if (!strcmp(w[0], "drumset"))
     {

@@ -188,21 +188,19 @@ static void load_instrument(MidSong *song, const char *name,
 
   TIMI_UNUSED(percussion);
   *out = NULL;
-  if (!name) return;
+  if (!name || !*name) return;
 
   /* Open patch file */
   if ((fp=timi_openfile(name)) == NULL)
     {
+      size_t l;
       /* Try with various extensions */
       for (i=0; patch_ext[i]; i++)
 	{
-	  if (strlen(name)+strlen(patch_ext[i])<sizeof(tmp))
-	    {
-	      strcpy(tmp, name);
-	      strcat(tmp, patch_ext[i]);
+	      l = timi_strxcpy(tmp, name, sizeof(tmp)) -1;
+	      timi_strxcpy(tmp + l, patch_ext[i], sizeof(tmp) - l);
 	      if ((fp=timi_openfile(tmp)) != NULL)
 		break;
-	    }
 	}
     }
 

@@ -45,4 +45,10 @@ extern void timi_free_pathlist(void);
 /* timi_calloc() returns zero'ed memory using timi_malloc() */
 extern void *timi_calloc(size_t count);
 
+/* timi_strtokr() is a strtok_r() replacement */
+char *timi_strtokr(char *s1, const char *s2, char **ptr);
+
+/* returns the number of chars written, including NULL */
+size_t timi_strxcpy(char *dst, const char *src, size_t size);
+
 #endif /* TIMIDITY_COMMON_H */
