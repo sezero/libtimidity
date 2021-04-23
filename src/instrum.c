@@ -44,6 +44,7 @@
 #include "timidity_internal.h"
 #include "common.h"
 #include "instrum.h"
+#include "sndfont.h"
 #include "resample.h"
 #include "tables.h"
 
@@ -239,6 +240,8 @@ static void load_instrument(MidSong *song, const char *name,
   *out = (MidInstrument *) timi_malloc(sizeof(MidInstrument));
   ip = *out;
   if (!ip) goto nomem;
+
+  ip->type = INST_GUS;
 
   ip->samples = tmp[198];
   ip->sample = (MidSample *) timi_calloc(ip->samples, sizeof(MidSample));
@@ -574,6 +577,14 @@ static int fill_bank(MidSong *song, int dr, int b)
 	    }
 	  else
 	    {
+	      /* preload soundfont */
+	      bank->instrument[i] = load_soundfont(song, 0,
+							(dr)? 128 : b,
+							(dr)? b : i,
+							(dr)? i : -1);
+	      if (bank->instrument[i])
+		continue;
+	      /* try gus patch */
 	      load_instrument(song,
 				     bank->tone[i].name, 
 				     &bank->instrument[i],
@@ -590,6 +601,13 @@ static int fill_bank(MidSong *song, int dr, int b)
 				     bank->tone[i].strip_envelope :
 				     ((dr) ? 1 : -1),
 				     bank->tone[i].strip_tail);
+	      if (bank->instrument[i])
+		continue;
+	      /* no patch; search soundfont again. */
+	      bank->instrument[i] = load_soundfont(song, 1,
+							(dr)? 128 : b,
+							(dr)? b : i,
+							(dr)? i : -1);
 	      if (!bank->instrument[i]) {
 		DEBUG_MSG("Couldn't load instrument %s (%s %d, program %d)\n",
 		   bank->tone[i].name,
