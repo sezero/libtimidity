@@ -92,8 +92,11 @@ ac_save_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -fvisibility=hidden -Werror"
 AC_CACHE_CHECK([if compiler supports visibility attributes],[libtimidity_cv_gcc_visibility],
 	AC_LANG_PUSH([C])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[void foo(void);
-__attribute__((visibility("default"))) void foo(void) {}]], [])],
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+__attribute__((visibility("default"))) int foo(void);
+__attribute__((visibility("hidden")))  int bar(void);
+int foo(void) { return 0; }
+int bar(void) { return 1; }]], [])],
 		[libtimidity_cv_gcc_visibility=yes],
 		[libtimidity_cv_gcc_visibility=no])
 	AC_LANG_POP([C]))
