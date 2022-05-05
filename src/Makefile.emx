@@ -9,6 +9,7 @@ LD=$(CC)
 
 CFLAGS = -I. -Wall -Zmt
 CPPFLAGS = -DTIMIDITY_BUILD
+#CPPFLAGS+=-DLOOKUP_SINE
 # to build a debug version:
 #CPPFLAGS+= -DTIMIDITY_DEBUG
 LDFLAGS = -Zmt

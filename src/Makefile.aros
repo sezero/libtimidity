@@ -19,6 +19,7 @@ CFLAGS  +=-ffast-math -fno-common
 INCLUDE  =-I.
 ARFLAGS  = cr
 CPPFLAGS =-DTIMIDITY_BUILD
+#CPPFLAGS+=-DLOOKUP_SINE
 
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG

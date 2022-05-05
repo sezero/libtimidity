@@ -27,8 +27,9 @@ INCLUDE  =-I.
 ARFLAGS  = cr
 CPPFLAGS =-DTIMIDITY_BUILD
 CPPFLAGS+=-DWORDS_BIGENDIAN=1
+#CPPFLAGS+=-DLOOKUP_SINE
 
-# for amigaos4 -- not really needed.
+# for amigaos4 (not really needed)
 #CPPFLAGS+=-D__USE_INLINE__
 #CPPFLAGS+=-D__USE_OLD_TIMEVAL__
 

@@ -15,6 +15,7 @@ endif
 DXE3GEN=dxe3gen
 
 CPPFLAGS = -DTIMIDITY_BUILD
+#CPPFLAGS+=-DLOOKUP_SINE
 ARFLAGS = cr
 # to build a debug version :
 #CPPFLAGS+= -DTIMIDITY_DEBUG

@@ -25,6 +25,12 @@ LIBTIMIDITY_LT_AGE=0
 
 AC_CANONICAL_HOST
 
+AC_ARG_ENABLE([lookup-sine],[AS_HELP_STRING([--enable-lookup-sine],[use sine lookup table [default=no]])],,[enable_lookup_sine=no])
+if test x$enable_lookup_sine = xyes
+then
+	AC_DEFINE([LOOKUP_SINE], 1, [Use a lookup table for sine values])
+fi
+
 AC_ARG_ENABLE([debug],[AS_HELP_STRING([--enable-debug],[enable debug mode [default=no]])],,[enable_debug=no])
 if test x$enable_debug = xyes
 then
@@ -61,10 +67,10 @@ case "${host_os}" in
 dnl These system don't have libm, or don't need it
  darwin*|mingw*|cygwin*|cegcc*|pw32*|beos*|haiku*)
   ;;
- *) AC_CHECK_LIB([m], [pow], [use_libm=yes])
+ *) AC_CHECK_LIB([m], [sin], [use_libm=yes])
   ;;
 esac
-if test $use_libm = yes
+if test $use_libm = yes && test x$enable_lookup_sine != xyes
 then
 	LIBTIMIDITY_LIBS="-lm"
 fi
