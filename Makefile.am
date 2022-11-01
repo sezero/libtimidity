@@ -5,7 +5,7 @@ SUBDIRS = src tests
 pcdata_DATA= libtimidity.pc
 pcdatadir = $(libdir)/pkgconfig
 
-EXTRA_DIST = CHANGES COPYING.artistic README.timidity TODO
+EXTRA_DIST = CHANGES COPYING.artistic README.sf README.timidity TODO
 
 dist-hook:
 	cp libtimidity.spec $(distdir)

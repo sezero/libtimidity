@@ -47,7 +47,7 @@ DEFNAME=libtimidity-$(DLL_VER).def
 
 LIBS=$(LIBNAME) $(DLLNAME)
 
-OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o readsbk.o sndfont.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 help:
 	@echo "Valid targets:"
