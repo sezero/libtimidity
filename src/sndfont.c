@@ -295,9 +295,12 @@ static MidInstrument *load_from_file(MidSong *song, SFInsts *rec, InstList *ip)
 		sint16 *tmp, s;
 #endif
 		memcpy(sample, &sp->v, sizeof(MidSample));
-		sample->data = (sample_t*) timi_malloc(sp->endsample);
+		sample->data = (sample_t*) timi_malloc(sp->endsample + 6);
 		fseek(rec->fd, sp->startsample, SEEK_SET);
 		fread(sample->data, sp->endsample, 1, rec->fd);
+		/* initialize the 3 extra samples at the end (those +6 bytes) */
+		sample->data[sp->endsample/2] = sample->data[sp->endsample/2 + 1] =
+		sample->data[sp->endsample/2 + 2] = 0;
 #ifdef WORDS_BIGENDIAN
 		tmp = (sint16*)sample->data;
 		for (j = 0; j < sp->endsample/2; j++) {
