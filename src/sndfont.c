@@ -172,7 +172,15 @@ void init_soundfont(MidSong *song, const char *fname, int order)
 	}
 	sfrec.fname = (char*)timi_malloc(strlen(fname)+1);
 	strcpy(sfrec.fname, fname);
-	load_sbk(sfrec.fd, &sfinfo);
+	if (load_sbk(sfrec.fd, &sfinfo) < 0) {
+		DEBUG_MSG("%s: bad soundfont file\n", fname);
+		fclose(sfrec.fd);
+		sfrec.fd = NULL;
+		timi_free(sfrec.fname);
+		sfrec.fname = NULL;
+		free_sbk(&sfinfo);
+		return;
+	}
 
 	for (i = 0; i < sfinfo.nrpresets - 1; i++) {
 		int bank = sfinfo.presethdr[i].bank;
