@@ -218,6 +218,7 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	  if (s!=1) {
 	    DEBUG_MSG("Strange: percussion instrument with %d samples!\n", s);
 	  }
+	  s = 1; /* GUS: emulate timidity-0.2i start_note() */
 	}
     }
   else
@@ -253,6 +254,8 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	  vlist[nv]=find_voice(song, e);
 	  song->voice[vlist[nv]].orig_frequency=f;
 	  song->voice[vlist[nv]].sample=sp;
+	  if (ip->type == INST_GUS)
+	    return 1; /* emulate timidity-0.2i select_sample() */
 	  nv++;
 	}
     }
