@@ -1,9 +1,9 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libtimidity", "libtimidity.vcxproj", "{75E6C1F0-C323-43E9-AA2E-0C7FC635E36F}"
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libtimidity", "libtimidity.vcproj", "{75E6C1F0-C323-43E9-AA2E-0C7FC635E36F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "timidity_static", "timidity_static.vcxproj", "{0E8C9A30-E123-426F-9B15-611C21866C64}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "timidity_static", "timidity_static.vcproj", "{0E8C9A30-E123-426F-9B15-611C21866C64}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
