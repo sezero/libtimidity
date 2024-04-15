@@ -25,10 +25,10 @@ DLLFLAGS=-bd
 .SUFFIXES:
 .SUFFIXES: .obj .c
 
-DLLNAME=timidity.dll
-EXPNAME=timidity.exp
-LIBNAME=timidity.lib
-LIBSTATIC=timidity_static.lib
+DLLNAME=libtimidity.dll
+EXPNAME=libtimidity.exp
+LIBNAME=libtimidity.lib
+LIBSTATIC=timidity-static.lib
 
 !ifeq target static
 CPPFLAGS+= -DTIMIDITY_STATIC
