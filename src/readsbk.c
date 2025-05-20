@@ -363,11 +363,9 @@ static void process_chunk(int id, int s, SFInfo *sf, FILE *fd)
 				break;
 			/*
 			case INAM_ID:
-				sf->sf_name = (char*)timi_malloc(subchunk.size);
-				if (sf->sf_name == NULL) {
-					DEBUG_MSG("can't malloc\n");
-				}
+				sf->sf_name = (char *)timi_malloc(subchunk.size + 1);
 				fread(sf->sf_name, 1, subchunk.size, fd);
+				sf->sf_name[subchunk.size] = 0;
 				break;
 			*/
 			default:
