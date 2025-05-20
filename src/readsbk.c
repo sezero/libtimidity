@@ -135,13 +135,13 @@ enum {
 #if 0
 static void debugid(const char *tag, const char *p)
 {
-	char buf[5]; strncpy(buf, p, 4); buf[4]=0;
+	char buf[5]; timi_strxcpy(buf, p, sizeof(buf));
 	fprintf(stderr,"[%s:%s]\n", tag, buf);
 }
 
 static void debugname(const char *tag, const char *p)
 {
-	char buf[21]; strncpy(buf, p, 20); buf[20]=0;
+	char buf[21]; timi_strxcpy(buf, p, sizeof(buf));
 	fprintf(stderr,"[%s:%s]\n", tag, buf);
 }
 
