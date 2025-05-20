@@ -47,11 +47,11 @@ AC_DEFINE_UNQUOTED(TIMIDITY_CFG, "$timidity_cfg", [Define the full path of timid
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
+AC_PROG_EGREP
 AC_PROG_MAKE_SET
-dnl AC_LIBTOOL_WIN32_DLL
-dnl AC_PROG_LIBTOOL
 LT_INIT([win32-dll])
 
 if test $ac_cv_c_compiler_gnu = yes
@@ -84,8 +84,10 @@ fi
 AM_CONDITIONAL([HAVE_AO], [test $have_ao = yes])
 
 # Checks for header files.
-AC_HEADER_STDC
-AC_CHECK_HEADERS([stdlib.h stdio.h string.h sys/param.h unistd.h math.h])
+dnl AC_CHECK_INCLUDES_DEFAULT is an autoconf-2.7x thing where AC_HEADER_STDC is deprecated.
+m4_ifdef([AC_CHECK_INCLUDES_DEFAULT], [AC_CHECK_INCLUDES_DEFAULT], [AC_HEADER_STDC])
+
+AC_CHECK_HEADERS([sys/param.h unistd.h math.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
