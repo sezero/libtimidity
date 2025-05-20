@@ -162,6 +162,7 @@ static const int cutoff_allowed = 0;
 void init_soundfont(MidSong *song, const char *fname, int order)
 {
 	static SFInfo sfinfo;
+	size_t len;
 	int i;
 
 	DEBUG_MSG("init soundfonts `%s'\n", fname);
@@ -170,8 +171,9 @@ void init_soundfont(MidSong *song, const char *fname, int order)
 		DEBUG_MSG("can't open soundfont file %s\n", fname);
 		return;
 	}
-	sfrec.fname = (char*)timi_malloc(strlen(fname)+1);
-	strcpy(sfrec.fname, fname);
+	len = strlen(fname) + 1;
+	sfrec.fname = (char*)timi_malloc(len);
+	memcpy(sfrec.fname, fname, len);
 	if (load_sbk(sfrec.fd, &sfinfo) < 0) {
 		DEBUG_MSG("%s: bad soundfont file\n", fname);
 		fclose(sfrec.fd);
