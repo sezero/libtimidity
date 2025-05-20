@@ -36,7 +36,13 @@
     <ClCompile Include="..\resample.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\readsbk.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\stream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sndfont.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\tables.c">
@@ -72,6 +78,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\resample.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sbk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sflayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sndfont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\tables.h">

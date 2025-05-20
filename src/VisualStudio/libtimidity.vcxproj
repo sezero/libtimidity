@@ -178,7 +178,9 @@
     <ClCompile Include="..\output.c" />
     <ClCompile Include="..\playmidi.c" />
     <ClCompile Include="..\readmidi.c" />
+    <ClCompile Include="..\readsbk.c" />
     <ClCompile Include="..\resample.c" />
+    <ClCompile Include="..\sndfont.c" />
     <ClCompile Include="..\stream.c" />
     <ClCompile Include="..\tables.c" />
     <ClCompile Include="..\timidity.c" />
@@ -193,6 +195,9 @@
     <ClInclude Include="..\playmidi.h" />
     <ClInclude Include="..\readmidi.h" />
     <ClInclude Include="..\resample.h" />
+    <ClInclude Include="..\sbk.h" />
+    <ClInclude Include="..\sflayer.h" />
+    <ClInclude Include="..\sndfont.h" />
     <ClInclude Include="..\tables.h" />
     <ClInclude Include="..\timi_endian.h" />
     <ClInclude Include="..\timidity.h" />

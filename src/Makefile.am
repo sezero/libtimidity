@@ -41,6 +41,11 @@ libtimidity_la_SOURCES = \
 	readmidi.h \
 	resample.c \
 	resample.h \
+	readsbk.c \
+	sbk.h \
+	sflayer.h \
+	sndfont.c \
+	sndfont.h \
 	stream.c \
 	tables.c \
 	tables.h \

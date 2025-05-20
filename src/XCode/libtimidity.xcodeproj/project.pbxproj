@@ -23,8 +23,13 @@
 		63EEA9B71D9B0B1E00A956E0 /* playmidi.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9961D9B0B1E00A956E0 /* playmidi.h */; };
 		63EEA9B81D9B0B1E00A956E0 /* readmidi.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9971D9B0B1E00A956E0 /* readmidi.c */; };
 		63EEA9B91D9B0B1E00A956E0 /* readmidi.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9981D9B0B1E00A956E0 /* readmidi.h */; };
+		63EEA9BA1D9B0B1E00A956E0 /* readsbk.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9991D9B0B1E00A956E0 /* readsbk.c */; };
 		63EEA9BB1D9B0B1E00A956E0 /* resample.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA99A1D9B0B1E00A956E0 /* resample.c */; };
 		63EEA9BC1D9B0B1E00A956E0 /* resample.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99B1D9B0B1E00A956E0 /* resample.h */; };
+		63EEA9BD1D9B0B1E00A956E0 /* sbk.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99C1D9B0B1E00A956E0 /* sbk.h */; };
+		63EEA9BE1D9B0B1E00A956E0 /* sflayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99D1D9B0B1E00A956E0 /* sflayer.h */; };
+		63EEA9BF1D9B0B1E00A956E0 /* sndfont.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA99E1D9B0B1E00A956E0 /* sndfont.c */; };
+		63EEA9C01D9B0B1E00A956E0 /* sndfont.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99F1D9B0B1E00A956E0 /* sndfont.h */; };
 		63EEA9C11D9B0B1E00A956E0 /* stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9A01D9B0B1E00A956E0 /* stream.c */; };
 		63EEA9C21D9B0B1E00A956E0 /* tables.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9A11D9B0B1E00A956E0 /* tables.c */; };
 		63EEA9C31D9B0B1E00A956E0 /* tables.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9A21D9B0B1E00A956E0 /* tables.h */; };
@@ -46,8 +51,13 @@
 		63EEA9D81D9B0B1E00A956E0 /* playmidi.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9961D9B0B1E00A956E0 /* playmidi.h */; };
 		63EEA9D91D9B0B1E00A956E0 /* readmidi.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9971D9B0B1E00A956E0 /* readmidi.c */; };
 		63EEA9DA1D9B0B1E00A956E0 /* readmidi.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9981D9B0B1E00A956E0 /* readmidi.h */; };
+		63EEA9DB1D9B0B1E00A956E0 /* readsbk.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9991D9B0B1E00A956E0 /* readsbk.c */; };
 		63EEA9DC1D9B0B1E00A956E0 /* resample.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA99A1D9B0B1E00A956E0 /* resample.c */; };
 		63EEA9DD1D9B0B1E00A956E0 /* resample.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99B1D9B0B1E00A956E0 /* resample.h */; };
+		63EEA9DE1D9B0B1E00A956E0 /* sbk.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99C1D9B0B1E00A956E0 /* sbk.h */; };
+		63EEA9DF1D9B0B1E00A956E0 /* sflayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99D1D9B0B1E00A956E0 /* sflayer.h */; };
+		63EEA9E01D9B0B1E00A956E0 /* sndfont.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA99E1D9B0B1E00A956E0 /* sndfont.c */; };
+		63EEA9E11D9B0B1E00A956E0 /* sndfont.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA99F1D9B0B1E00A956E0 /* sndfont.h */; };
 		63EEA9E21D9B0B1E00A956E0 /* stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9A01D9B0B1E00A956E0 /* stream.c */; };
 		63EEA9E31D9B0B1E00A956E0 /* tables.c in Sources */ = {isa = PBXBuildFile; fileRef = 63EEA9A11D9B0B1E00A956E0 /* tables.c */; };
 		63EEA9E41D9B0B1E00A956E0 /* tables.h in Headers */ = {isa = PBXBuildFile; fileRef = 63EEA9A21D9B0B1E00A956E0 /* tables.h */; };
@@ -87,8 +97,13 @@
 		63EEA9961D9B0B1E00A956E0 /* playmidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = playmidi.h; path = ../playmidi.h; sourceTree = SOURCE_ROOT; };
 		63EEA9971D9B0B1E00A956E0 /* readmidi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = readmidi.c; path = ../readmidi.c; sourceTree = SOURCE_ROOT; };
 		63EEA9981D9B0B1E00A956E0 /* readmidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = readmidi.h; path = ../readmidi.h; sourceTree = SOURCE_ROOT; };
+		63EEA9991D9B0B1E00A956E0 /* readsbk.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = readsbk.c; path = ../readsbk.c; sourceTree = SOURCE_ROOT; };
 		63EEA99A1D9B0B1E00A956E0 /* resample.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = resample.c; path = ../resample.c; sourceTree = SOURCE_ROOT; };
 		63EEA99B1D9B0B1E00A956E0 /* resample.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = resample.h; path = ../resample.h; sourceTree = SOURCE_ROOT; };
+		63EEA99C1D9B0B1E00A956E0 /* sbk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sbk.h; path = ../sbk.h; sourceTree = SOURCE_ROOT; };
+		63EEA99D1D9B0B1E00A956E0 /* sflayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sflayer.h; path = ../sflayer.h; sourceTree = SOURCE_ROOT; };
+		63EEA99E1D9B0B1E00A956E0 /* sndfont.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = sndfont.c; path = ../sndfont.c; sourceTree = SOURCE_ROOT; };
+		63EEA99F1D9B0B1E00A956E0 /* sndfont.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sndfont.h; path = ../sndfont.h; sourceTree = SOURCE_ROOT; };
 		63EEA9A01D9B0B1E00A956E0 /* stream.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = stream.c; path = ../stream.c; sourceTree = SOURCE_ROOT; };
 		63EEA9A11D9B0B1E00A956E0 /* tables.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = tables.c; path = ../tables.c; sourceTree = SOURCE_ROOT; };
 		63EEA9A21D9B0B1E00A956E0 /* tables.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tables.h; path = ../tables.h; sourceTree = SOURCE_ROOT; };
@@ -187,8 +202,13 @@
 				63EEA9961D9B0B1E00A956E0 /* playmidi.h */,
 				63EEA9971D9B0B1E00A956E0 /* readmidi.c */,
 				63EEA9981D9B0B1E00A956E0 /* readmidi.h */,
+				63EEA9991D9B0B1E00A956E0 /* readsbk.c */,
 				63EEA99A1D9B0B1E00A956E0 /* resample.c */,
 				63EEA99B1D9B0B1E00A956E0 /* resample.h */,
+				63EEA99C1D9B0B1E00A956E0 /* sbk.h */,
+				63EEA99D1D9B0B1E00A956E0 /* sflayer.h */,
+				63EEA99E1D9B0B1E00A956E0 /* sndfont.c */,
+				63EEA99F1D9B0B1E00A956E0 /* sndfont.h */,
 				63EEA9A01D9B0B1E00A956E0 /* stream.c */,
 				63EEA9A11D9B0B1E00A956E0 /* tables.c */,
 				63EEA9A21D9B0B1E00A956E0 /* tables.h */,
@@ -216,6 +236,9 @@
 				63EEA9D81D9B0B1E00A956E0 /* playmidi.h in Headers */,
 				63EEA9DA1D9B0B1E00A956E0 /* readmidi.h in Headers */,
 				63EEA9DD1D9B0B1E00A956E0 /* resample.h in Headers */,
+				63EEA9DE1D9B0B1E00A956E0 /* sbk.h in Headers */,
+				63EEA9DF1D9B0B1E00A956E0 /* sflayer.h in Headers */,
+				63EEA9E11D9B0B1E00A956E0 /* sndfont.h in Headers */,
 				63EEA9E41D9B0B1E00A956E0 /* tables.h in Headers */,
 				63EEA9E51D9B0B1E00A956E0 /* timi_endian.h in Headers */,
 				63EEA9E81D9B0B1E00A956E0 /* timidity.h in Headers */,
@@ -236,6 +259,9 @@
 				63EEA9B71D9B0B1E00A956E0 /* playmidi.h in Headers */,
 				63EEA9B91D9B0B1E00A956E0 /* readmidi.h in Headers */,
 				63EEA9BC1D9B0B1E00A956E0 /* resample.h in Headers */,
+				63EEA9BD1D9B0B1E00A956E0 /* sbk.h in Headers */,
+				63EEA9BE1D9B0B1E00A956E0 /* sflayer.h in Headers */,
+				63EEA9C01D9B0B1E00A956E0 /* sndfont.h in Headers */,
 				63EEA9C31D9B0B1E00A956E0 /* tables.h in Headers */,
 				63EEA9C41D9B0B1E00A956E0 /* timi_endian.h in Headers */,
 				63EEA9C51D9B0B1E00A956E0 /* timidity_internal.h in Headers */,
@@ -331,7 +357,9 @@
 				63EEA9D51D9B0B1E00A956E0 /* output.c in Sources */,
 				63EEA9D71D9B0B1E00A956E0 /* playmidi.c in Sources */,
 				63EEA9D91D9B0B1E00A956E0 /* readmidi.c in Sources */,
+				63EEA9DB1D9B0B1E00A956E0 /* readsbk.c in Sources */,
 				63EEA9DC1D9B0B1E00A956E0 /* resample.c in Sources */,
+				63EEA9E01D9B0B1E00A956E0 /* sndfont.c in Sources */,
 				63EEA9E21D9B0B1E00A956E0 /* stream.c in Sources */,
 				63EEA9E31D9B0B1E00A956E0 /* tables.c in Sources */,
 				63EEA9E71D9B0B1E00A956E0 /* timidity.c in Sources */,
@@ -348,7 +376,9 @@
 				63EEA9B41D9B0B1E00A956E0 /* output.c in Sources */,
 				63EEA9B61D9B0B1E00A956E0 /* playmidi.c in Sources */,
 				63EEA9B81D9B0B1E00A956E0 /* readmidi.c in Sources */,
+				63EEA9BA1D9B0B1E00A956E0 /* readsbk.c in Sources */,
 				63EEA9BB1D9B0B1E00A956E0 /* resample.c in Sources */,
+				63EEA9BF1D9B0B1E00A956E0 /* sndfont.c in Sources */,
 				63EEA9C11D9B0B1E00A956E0 /* stream.c in Sources */,
 				63EEA9C21D9B0B1E00A956E0 /* tables.c in Sources */,
 				63EEA9C61D9B0B1E00A956E0 /* timidity.c in Sources */,
