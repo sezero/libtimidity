@@ -662,13 +662,23 @@ MidSong *mid_song_load(MidIStream *stream, MidSongOptions *options)
 
 void mid_song_free(MidSong *song)
 {
-  int i;
+  int i, j;
 
   if (!song) return;
 
   free_instruments(song);
 
   for (i = 0; i < 128; i++) {
+    if (!master_tonebank[i] && song->tonebank[i]) { /* might be alloc'ed by sndfont */
+      for (j = 0; j < 128; j++)
+        timi_free(song->tonebank[i]->tone[j].name);
+      timi_free(song->tonebank[i]->tone);
+    }
+    if (!master_drumset[i] && song->drumset[i]) {   /* might be alloc'ed by sndfont */
+      for (j = 0; j < 128; j++)
+        timi_free(song->drumset[i]->tone[j].name);
+      timi_free(song->drumset[i]->tone);
+    }
     timi_free(song->tonebank[i]);
     timi_free(song->drumset[i]);
   }
@@ -713,6 +723,7 @@ void mid_exit(void)
     }
   }
 
+  end_soundfont();
   timi_free(sf_file);
   sf_file = NULL;
   sf_order = 0;
