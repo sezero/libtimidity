@@ -84,9 +84,9 @@ static int READSTR(char *str, FILE *fd)
 
 #define READID(var,fd)	fread(var, 1, 4, fd)
 #define READB(var,fd)	fread(var, 1, 1, fd)
-#define SKIPB(fd)	{uint8 dummy; fread(&dummy, 1, 1, fd);}
-#define SKIPW(fd)	{uint16 dummy; fread(&dummy, 2, 1, fd);}
-#define SKIPDW(fd)	{uint32 dummy; fread(&dummy, 4, 1, fd);}
+#define SKIPB(fd)	fseek(fd, 1, SEEK_CUR)
+#define SKIPW(fd)	fseek(fd, 2, SEEK_CUR)
+#define SKIPDW(fd)	fseek(fd, 4, SEEK_CUR)
 
 static int getchunk(char *id);
 static void process_chunk(int id, int s, SFInfo *sf, FILE *fd);
