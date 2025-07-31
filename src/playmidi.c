@@ -202,7 +202,7 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
   MidInstrument *ip;
   MidSample *sp, *closest;
   sint32 f, cdiff, diff;
-  int i, nv, note;
+  int i, nv, maxnv, note;
 
   if (ISDRUMCHANNEL(song, e->channel))
     {
@@ -236,6 +236,7 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
   f = freq_table[note];
 
   nv = 0;
+  maxnv = (ip->type != INST_GUS) ? 32 : 1; /* GUS: emulate timidity-0.2i start_note() */
   for (i = 0, sp = ip->sample; i < ip->samples; i++, sp++)
     {
       if (sp->low_freq <= f && sp->high_freq >= f)
@@ -243,7 +244,7 @@ static int find_samples(MidSong *song, MidEvent *e, int *vlist)
 	  vlist[nv] = find_voice(song, e);
 	  song->voice[vlist[nv]].orig_frequency = f;
 	  song->voice[vlist[nv]].sample = sp;
-	  nv++;
+	  if (++nv == maxnv) break;
 	}
     }
 
