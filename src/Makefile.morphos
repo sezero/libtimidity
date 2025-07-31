@@ -33,7 +33,7 @@ COMPILE=$(CC) $(CFLAGS) $(INCLUDE) $(CPPFLAGS) -c
 
 LIB=libtimidity.a
 
-OBJ=common.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
+OBJ=common.o readsbk.o sndfont.o instrum.o mix.o output.o playmidi.o readmidi.o resample.o stream.o tables.o timidity.o
 
 all: $(LIB)
 

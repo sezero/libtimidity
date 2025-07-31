@@ -334,7 +334,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\readsbk.c"
+				>
+			</File>
+			<File
 				RelativePath="..\resample.c"
+				>
+			</File>
+			<File
+				RelativePath="..\sndfont.c"
 				>
 			</File>
 			<File
@@ -389,6 +397,18 @@
 			</File>
 			<File
 				RelativePath="..\resample.h"
+				>
+			</File>
+			<File
+				RelativePath="..\sbk.h"
+				>
+			</File>
+			<File
+				RelativePath="..\sflayer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\sndfont.h"
 				>
 			</File>
 			<File

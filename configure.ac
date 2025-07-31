@@ -70,7 +70,8 @@ dnl These system don't have libm, or don't need it
  *) AC_CHECK_LIB([m], [sin], [use_libm=yes])
   ;;
 esac
-if test $use_libm = yes && test x$enable_lookup_sine != xyes
+dnl soundfont code uses libm calls, e.g. pow, log10
+if test $use_libm = yes
 then
 	LIBTIMIDITY_LIBS="-lm"
 fi
