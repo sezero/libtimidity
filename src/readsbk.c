@@ -88,6 +88,17 @@ static int READSTR(char *str, FILE *fd)
 #define SKIPW(fd)	fseek(fd, 2, SEEK_CUR)
 #define SKIPDW(fd)	fseek(fd, 4, SEEK_CUR)
 
+static long FILESIZE(FILE *fd)
+{
+	long len, pos;
+
+	pos = ftell(fd);
+	fseek(fd, 0, SEEK_END);
+	len = ftell(fd) - pos;
+	fseek(fd, pos, SEEK_SET);
+	return len;
+}
+
 static int getchunk(const char *id);
 static void process_chunk(int id, int s, SFInfo *sf, FILE *fd);
 static void load_sample_names(int size, SFInfo *sf, FILE *fd);
@@ -149,13 +160,21 @@ static void debugval(const char *tag, int v)
  * load sbk file
  *----------------------------------------------------------------*/
 
-void load_sbk(FILE *fd, SFInfo *sf)
+int load_sbk(FILE *fd, SFInfo *sf)
 {
 	tchunk chunk, subchunk;
+	long len;
 
-	READID(sf->sbkh.riff, fd);
-	READDW(&sf->sbkh.size, fd);
-	READID(sf->sbkh.sfbk, fd);
+	len = FILESIZE(fd);
+	if (len < 32) /* better?? */
+		return -1;
+
+	READCHUNK(&chunk, fd);
+	if (getchunk(chunk.id) != RIFF_ID) return -1;
+	if (chunk.size != len - 8) return -1;
+
+	READID(chunk.id, fd);
+	if (getchunk(chunk.id) != SFBK_ID) return -1;
 
 	sf->in_rom = 1;
 	while (! feof(fd)) {
@@ -168,6 +187,8 @@ void load_sbk(FILE *fd, SFInfo *sf)
 			break;
 		}
 	}
+
+	return 0;
 }
 
 
