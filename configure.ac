@@ -114,7 +114,7 @@ int bar(void) { return 1; }]], [])],
 # supposed to fail the above check. (I'm adding the manual test
 # below nonetheless, just in case.)
 case $host_os in
-   mingw*|cygwin*|emx*|*djgpp|amigaos*|aros*|morphos*)
+   mingw*|cygwin*|os2*|*djgpp|amigaos*|aros*|morphos*)
 	libtimidity_cv_gcc_visibility=no
 	;;
 esac
