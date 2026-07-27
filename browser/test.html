@@ -60,6 +60,7 @@
       const mid_song_load = Module.cwrap('mid_song_load', 'number', ['number','number']);
       const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
       const mid_song_get_required_patches = Module.cwrap('mid_song_get_required_patches', 'string', ['number']);
+      const mid_song_start = Module.cwrap('mid_song_start', null, ['number']);
       const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']);
       const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number','number']);
       const mid_istream_seek = Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
@@ -125,6 +126,9 @@
           songPtr = mid_song_load(streamPtr, optionsPtr);
           
           if (songPtr !== 0) {
+            // PENTING: Inisialisasi lagu untuk pemutaran
+            mid_song_start(songPtr);
+
             statusEl.textContent = `Playing: ${file.name}`;
             const bufferSize = 4096;
             // Minta 1 channel (mono)
