@@ -669,6 +669,56 @@ long mid_get_version (void)
   return LIBTIMIDITY_VERSION;
 }
 
+/* Helper for collecting patch names */
+static void add_patch_name(char **list, size_t *list_size, size_t *list_cap, const char *name) {
+    if (!name || !*name) return;
+
+    /* Check for duplicates */
+    if (*list && strstr(*list, name)) return;
+
+    size_t name_len = strlen(name);
+    size_t new_size = *list_size + name_len + 1; /* +1 for newline */
+
+    if (new_size >= *list_cap) {
+        *list_cap = (*list_cap == 0) ? 1024 : *list_cap * 2;
+        if (*list_cap <= new_size) *list_cap = new_size + 1;
+        
+        char *new_list = (char *) timi_realloc(*list, *list_cap);
+        if (!new_list) return; /* Out of memory */
+        *list = new_list;
+    }
+
+    strcpy(*list + *list_size, name);
+    (*list)[*list_size + name_len] = '\n';
+    *list_size = new_size;
+}
+
+/* Returns a newline-separated list of required patch files */
+char *mid_song_get_patch_names(MidSong *song) {
+    int i, b;
+    char *patch_list = NULL;
+    size_t list_size = 0, list_cap = 0;
+
+    if (!song) return NULL;
+
+    for (b = 0; b < 128; b++) {
+        if (song->tonebank[b]) {
+            for (i = 0; i < 128; i++) {
+                if (song->tonebank[b]->instrument[i] == MAGIC_LOAD_INSTRUMENT)
+                    add_patch_name(&patch_list, &list_size, &list_cap, song->tonebank[b]->tone[i].name);
+            }
+        }
+        if (song->drumset[b]) {
+            for (i = 0; i < 128; i++) {
+                if (song->drumset[b]->instrument[i] == MAGIC_LOAD_INSTRUMENT)
+                    add_patch_name(&patch_list, &list_size, &list_cap, song->drumset[b]->tone[i].name);
+            }
+        }
+    }
+    if (patch_list) patch_list[list_size] = '\0';
+    return patch_list;
+}
+
 /* ====== for libtimidity <= 0.2.1 compatibility ======
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)

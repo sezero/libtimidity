@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>libTiMidity asm.js Demo</title>
+</head>
+<body>
+  <h1>libTiMidity asm.js MIDI Player</h1>
+  <button id="init">Init</button>
+  <input type="file" id="midiFile" accept=".mid,.midi">
+  <button id="playPause" disabled>Play</button>
+  <button id="stop" disabled>Stop</button>
+  <button id="free">Free Song</button>
+  <button id="exit">Exit</button>
+  <p>Status: <span id="status">Waiting for initialization...</span></p>
+
+  <script>
+    var Module = {};
+
+    // Hanya preload timidity.cfg di awal
+    Module.preRun = [function() {
+        FS.mkdir('/gus-patch');
+        FS.createPreloadedFile('/gus-patch', 'timidity.cfg', 'gus-patch/timidity.cfg', true, true);
+    }];
+
+    const statusEl = document.getElementById("status");
+    let audioContext;
+    let scriptNode;
+    const playPauseBtn = document.getElementById("playPause");
+    const stopBtn = document.getElementById("stop");
+    let songPtr = 0;
+
+    // Fungsi untuk memuat patch yang dibutuhkan secara dinamis
+    async function loadRequiredPatches(patchListString) {
+        const patchFiles = patchListString.split('\n').filter(p => p.length > 0);
+        if (patchFiles.length === 0) return;
+
+        statusEl.textContent = `Loading ${patchFiles.length} required patch files...`;
+        console.log("Required patch files:", patchFiles);
+
+        const preloadPromises = patchFiles.map(file => {
+            const fullVirtualPath = '/gus-patch/' + file;
+            FS.createPath('/gus-patch', PATH.dirname(file)); // Buat direktori induk
+            return new Promise((resolve, reject) => {
+                FS.createPreloadedFile(PATH.dirname(fullVirtualPath), PATH.basename(file), 'gus-patch/' + file, true, true, resolve, reject);
+            });
+        });
+
+        await Promise.all(preloadPromises);
+        console.log("All required patches loaded.");
+    }
+
+    Module.onRuntimeInitialized = function() {
+      statusEl.textContent = "libTiMidity runtime ready. Click 'Init'.";
+
+      const mid_init = Module.cwrap('mid_init', 'number', ['string']);
+      const mid_exit = Module.cwrap('mid_exit', null, []);
+      const mid_get_version = Module.cwrap('mid_get_version', 'number', []);
+      const mid_song_load = Module.cwrap('mid_song_load', 'number', ['number','number']);
+      const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
+      const mid_song_get_patch_names = Module.cwrap('mid_song_get_patch_names', 'string', ['number']);
+      const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number','number','number']);
+      const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number','number']);
+      const mid_istream_seek = Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
+      const mid_istream_close = Module.cwrap('mid_istream_close', null, ['number']);
+
+      // Tombol Init
+      document.getElementById("init").onclick = () => {
+        if (audioContext) {
+          statusEl.textContent = "Already initialized.";
+          return;
+        }
+        const rc = mid_init("./gus-patch/timidity.cfg"); // gunakan path di FS virtual
+        if (rc === 0) {
+          statusEl.textContent = `Initialized libTiMidity v${mid_get_version()}. Select a MIDI file.`;
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // Pindahkan logika ini ke sini, setelah audioContext dibuat.
+          playPauseBtn.disabled = false;
+          stopBtn.disabled = false;
+          playPauseBtn.textContent = "Play";
+          audioContext.suspend(); // Mulai dalam keadaan jeda
+        } else {
+          statusEl.textContent = "Initialization failed. Check patch files.";
+        }
+      };
+
+      // Pilihan file MIDI
+      document.getElementById("midiFile").onchange = async (event) => {
+        if (!audioContext) {
+          statusEl.textContent = "Please click 'Init' first.";
+          event.target.value = '';
+          return;
+        }
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (songPtr !== 0) {
+          document.getElementById("free").onclick();
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const midiData = new Uint8Array(e.target.result);
+          const midiDataPtr = Module._malloc(midiData.length);
+          Module.HEAPU8.set(midiData, midiDataPtr);
+
+          const optionsPtr = Module._malloc(12);
+          Module.setValue(optionsPtr + 0, audioContext.sampleRate, 'i32');
+          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // format S16LSB
+          Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
+          Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+          const streamPtr = mid_istream_open_mem(midiDataPtr, midiData.length);
+          songPtr = mid_song_load(streamPtr, optionsPtr);
+          
+          if (songPtr === 0) {
+            statusEl.textContent = "Failed to parse MIDI file.";
+            mid_istream_close(streamPtr);
+            Module._free(midiDataPtr);
+            Module._free(optionsPtr);
+            return;
+          }
+
+          // Dapatkan daftar patch yang dibutuhkan
+          const patchListString = mid_song_get_patch_names(songPtr);
+          
+          // Bebaskan lagu sementara untuk memuat patch, lalu muat ulang
+          mid_song_free(songPtr);
+          await loadRequiredPatches(patchListString);
+
+          // PENTING: Kembalikan stream ke awal sebelum memuat ulang!
+          mid_istream_seek(streamPtr, 0, 0); // 0 for offset, 0 for SEEK_SET
+
+          // Muat ulang lagu setelah patch tersedia
+          songPtr = mid_song_load(streamPtr, optionsPtr);
+          
+          if (songPtr !== 0) {
+            statusEl.textContent = `Playing: ${file.name}`;
+            const bufferSize = 4096;
+            // Minta 1 channel (mono)
+            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 1); 
+
+            const dummyRightBuffer = new Float32Array(bufferSize);
+
+            scriptNode.onaudioprocess = function(e) {
+              const outL = e.outputBuffer.getChannelData(0);
+              
+              // Panggil fungsi C dengan buffer dummy untuk channel kanan
+              const written = mid_song_read_wave(songPtr, outL.length, outL);
+
+              if (written <= 0) {
+                playPauseBtn.textContent = "Play";
+                playPauseBtn.disabled = true;
+                stopBtn.disabled = true;
+                scriptNode.disconnect();
+                statusEl.textContent = "Playback finished.";
+              }
+            };
+
+            scriptNode.connect(audioContext.destination);
+          } else {
+            playPauseBtn.textContent = "Play";
+            playPauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusEl.textContent = "Failed to load MIDI file.";
+          }
+
+          // Bebaskan memori setelah selesai
+          mid_istream_close(streamPtr);
+          Module._free(midiDataPtr);
+          Module._free(optionsPtr);
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
+      // Tombol Free Song
+      document.getElementById("free").onclick = () => {
+        if (songPtr !== 0) {
+          if (scriptNode) scriptNode.disconnect();
+          scriptNode = null;
+          mid_song_free(songPtr);
+          songPtr = 0;
+          statusEl.textContent = "Song freed.";
+          playPauseBtn.textContent = "Play";
+          playPauseBtn.disabled = true;
+          stopBtn.disabled = true;
+        }
+      };
+
+      // Tombol Exit
+      document.getElementById("exit").onclick = () => {
+        if (songPtr !== 0) {
+          document.getElementById("free").onclick();
+        }
+        mid_exit();
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        statusEl.textContent = "Exited.";
+      };
+    };
+
+    // Kontrol Play/Pause/Stop
+    playPauseBtn.onclick = () => {
+        if (!audioContext || songPtr === 0) return;
+
+        if (audioContext.state === 'running') {
+            audioContext.suspend().then(() => {
+                playPauseBtn.textContent = 'Play';
+                statusEl.textContent = `Paused: ${document.getElementById("midiFile").files[0].name}`;
+            });
+        } else if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                playPauseBtn.textContent = 'Pause';
+                statusEl.textContent = `Playing: ${document.getElementById("midiFile").files[0].name}`;
+            });
+        }
+    }; // End of playPauseBtn.onclick
+    stopBtn.onclick = document.getElementById("free").onclick; // Assign the function reference directly
+  </script>
+  <script src="libtimidity.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>libTiMidity asm.js Demo</title>
+</head>
+<body>
+  <h1>libTiMidity asm.js MIDI Player</h1>
+  <button id="init">Init</button>
+  <input type="file" id="midiFile" accept=".mid,.midi">
+  <button id="free">Free Song</button>
+  <button id="exit">Exit</button>
+  <p>Status: <span id="status">Waiting for initialization...</span></p>
+
+  <script>
+    // Definisikan Module object agar Emscripten runtime dapat menemukannya.
+    var Module = {};
+
+    // --- PRELOADING FILE SYSTEM ---
+    // Beritahu Emscripten untuk mengunduh semua file patch sebelum runtime dimulai.
+    // Ini memastikan bahwa saat C code memanggil fopen(), file sudah ada di memori.
+    Module.preRun = [function() {
+      const patchDir = 'gus-patch';
+      const cfgFile = `${patchDir}/timidity.cfg`;
+
+      // Buat direktori virtual
+      FS.mkdir(patchDir);
+
+      // Muat file konfigurasi utama.
+      FS.createPreloadedFile(
+        '/', // parent directory di virtual FS
+        cfgFile, // path lengkap di virtual FS
+        cfgFile, // path relatif terhadap HTML di server
+    );
+    }];
+
+    const statusEl = document.getElementById("status");
+    let audioContext;
+    let scriptNode;
+    let timidityNode;
+    let songPtr = 0;
+
+    // Tunggu runtime Emscripten siap (Wait for Emscripten runtime to be ready)
+    Module.onRuntimeInitialized = function() {
+      statusEl.textContent = "libTiMidity runtime ready. Click 'Init'.";
+
+      // Bungkus fungsi C agar bisa dipanggil dari JS (Wrap C functions to be callable from JS)
+      const mid_init = Module.cwrap('mid_init', 'number', ['string']);
+      const mid_exit = Module.cwrap('mid_exit', null, []);
+      const mid_get_version = Module.cwrap('mid_get_version', 'number', []);
+      const mid_song_load = Module.cwrap('mid_song_load', 'number', ['number', 'number']);
+      const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
+      const mid_song_start = Module.cwrap('mid_song_start', null, ['number']);
+      const mid_read_wave = Module.cwrap('mid_read_wave', 'number', ['number', 'number', 'number', 'number']);
+      const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number', 'number']);
+      const mid_istream_close = Module.cwrap('mid_istream_close', null, ['number']);
+
+      let rawWasmExports; // Will store the raw WASM exports
+      // Tombol Init
+      document.getElementById("init").onclick = () => {
+        if (audioContext) {
+            statusEl.textContent = "Already initialized.";
+            return;
+        }
+        // Path ke patch Gravis Ultrasound (GUS). Pastikan file ini ada di server.
+        // Sekarang kita bisa memberikan path virtual yang sudah di-preload.
+        // FS.createPreloadedFile di atas sudah membuat file ini di root ('/') filesystem virtual.
+        const rc = mid_init("gus-patch/timidity.cfg"); 
+        if (rc === 0) {
+            statusEl.textContent = `Initialized libTiMidity v${mid_get_version()}. Select a MIDI file.`;            
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } else {
+            statusEl.textContent = "Initialization failed. Check console for errors.";
+        }
+        console.log("Init result:", rc);
+        rawWasmExports = Module.wasmExports; // Get raw exports after init
+      };
+
+      document.getElementById("midiFile").onchange = async (event) => {
+        if (!audioContext) {
+            statusEl.textContent = "Please click 'Init' first.";
+            event.target.value = ''; // Reset input
+            return;
+        }
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Hentikan lagu sebelumnya jika ada
+        if (songPtr !== 0) {
+            document.getElementById("free").onclick();
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const midiData = new Uint8Array(e.target.result);
+            
+            // Salin data MIDI ke memori Emscripten
+            const midiDataPtr = Module._malloc(midiData.length);
+            Module.HEAPU8.set(midiData, midiDataPtr);
+
+            // Buat dan isi struktur MidSongOptions
+            const optionsPtr = Module._malloc(12); // sizeof(MidSongOptions)
+            Module.setValue(optionsPtr + 0, audioContext.sampleRate, 'i32'); // rate
+            Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // format (S16LSB)
+            Module.setValue(optionsPtr + 6, 2, 'i8'); // channels (stereo)
+            Module.setValue(optionsPtr + 8, 4096, 'i16'); // buffer_size
+
+            // Buat stream dari memori dan muat lagu
+            const streamPtr = mid_istream_open_mem(midiDataPtr, midiData.length);
+            songPtr = mid_song_load(streamPtr, optionsPtr);
+            mid_istream_close(streamPtr); // Stream bisa ditutup setelah load
+            Module._free(midiDataPtr); // Data MIDI bisa dibebaskan
+            Module._free(optionsPtr);
+
+            if (songPtr !== 0) {
+                if (!audioContext.audioWorklet) {
+                    statusEl.textContent = "AudioWorklet not supported in this browser.";
+                    return;
+                }
+                await audioContext.audioWorklet.addModule('timidity-processor.js');
+                timidityNode = new AudioWorkletNode(audioContext, 'timidity-processor', {
+                    processorOptions: {
+                        module: Module,
+                        songPtr: songPtr
+                    }
+                });
+
+                timidityNode.port.onmessage = (event) => {
+                    if (event.data === 'finished') {
+                        statusEl.textContent = `Finished: ${file.name}. Select another file.`;
+                    }
+                };
+
+                statusEl.textContent = `Playing: ${file.name}`;
+                mid_song_start(songPtr);
+                timidityNode.connect(audioContext.destination);
+            } else {
+                statusEl.textContent = "Failed to load MIDI file.";
+            }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
+      // Tombol Free Song
+      document.getElementById("free").onclick = () => {
+        if (songPtr !== 0) {
+            if (timidityNode) timidityNode.disconnect();
+            timidityNode = null;
+            mid_song_free(songPtr);
+            songPtr = 0;
+            statusEl.textContent = "Song freed. Select another MIDI file.";
+        }
+      };
+
+      // Tombol Exit
+      document.getElementById("exit").onclick = () => {
+        if (songPtr !== 0) {
+            document.getElementById("free").onclick();
+        }
+        mid_exit();
+        if (audioContext) {
+            audioContext.close();
+            audioContext = null;
+        }
+        statusEl.textContent = "Exited. Refresh page to start again.";
+        console.log("libTiMidity exited.");
+      };
+    };
+
+  </script>
+  <script src="libtimidity.js"></script>
+</body>
+</html>
