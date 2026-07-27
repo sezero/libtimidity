@@ -17,231 +17,485 @@
   <script>
     var Module = {};
 
-    Module.preRun = [function() {
+    // This must be defined *before* libtimidity.js is loaded and executed.
+    Module.preRun = [() => {
         FS.mkdir('/gus-patch');
         FS.createPreloadedFile('/gus-patch', 'timidity.cfg', 'gus-patch/timidity.cfg', true, true);
     }];
 
-    const statusEl = document.getElementById("status");
-    let audioContext;
-    let scriptNode;
-    const playPauseBtn = document.getElementById("playPause");
-    const stopBtn = document.getElementById("stop");
-    let songPtr = 0;
+    class TimidityPlayer {
+        constructor(Module, statusEl) {
+        constructor(options = {}) {
+            this.basePath = options.basePath || '';
+            this.Module = Module;
+            this.statusEl = statusEl;
+            this.audioContext = null;
+            this.scriptNode = null;
+            this.songPtr = 0;
+            this.loadedPatches = new Set();
+            this.eventListeners = {};
+            this.playingInterval = null;
+            this.lastStatus = 'stopped';
 
-    const loadedPatches = new Set();
+            this.Module.preRun = [() => {
+                this.Module.FS.mkdir(this.basePath);
+                this.Module.FS.createPreloadedFile(this.basePath, 'timidity.cfg', `${this.basePath}/timidity.cfg`, true, true);
+            }];
 
-    async function loadRequiredPatches(patchListString) {
-        if (!patchListString) return;
-
-        const requiredPatches = patchListString.split('\n').filter(p => p.length > 0 && !loadedPatches.has(p));
-        if (requiredPatches.length === 0) return;
-
-        statusEl.textContent = `Loading ${requiredPatches.length} new patch files...`;
-        console.log("Required new patch files:", requiredPatches);
-
-        const preloadPromises = requiredPatches.map(file => {
-            const fullVirtualPath = '/gus-patch/' + file;
-            FS.mkdirTree(PATH.dirname(fullVirtualPath)); // Create the full directory path
-            return new Promise((resolve, reject) => {
-                FS.createPreloadedFile(PATH.dirname(fullVirtualPath), PATH.basename(file), 'gus-patch/' + file, true, true, resolve, reject);
-            }).then(() => loadedPatches.add(file));
-        });
-
-        await Promise.all(preloadPromises);
-    }
-
-    Module.onRuntimeInitialized = function() {
-      statusEl.textContent = "libTiMidity runtime ready. Click 'Init'.";
-
-      const mid_init = Module.cwrap('mid_init', 'number', ['string']);
-      const mid_exit = Module.cwrap('mid_exit', null, []);
-      const mid_get_version = Module.cwrap('mid_get_version', 'number', []);
-      const mid_song_load = Module.cwrap('mid_song_load', 'number', ['number','number']);
-      const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
-      const mid_song_get_required_patches = Module.cwrap('mid_song_get_required_patches', 'string', ['number']);
-      const mid_song_start = Module.cwrap('mid_song_start', null, ['number']);
-      const mid_song_set_event_callback = Module.cwrap('mid_song_set_event_callback', null, ['number', 'number']); // Signature doesn't change, it's just a pointer
-      const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']);
-      const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number','number']);
-      const mid_istream_seek = Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
-      const mid_istream_close = Module.cwrap('mid_istream_close', null, ['number']);
-
-      // Tombol Init
-      document.getElementById("init").onclick = () => {
-        if (audioContext) {
-          statusEl.textContent = "Already initialized.";
-          return;
-        }
-        const rc = mid_init("/gus-patch/timidity.cfg");
-        if (rc === 0) {
-          statusEl.textContent = `Initialized libTiMidity v${mid_get_version()}. Select a MIDI file.`;
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          
-          // Pindahkan logika ini ke sini, setelah audioContext dibuat.
-          playPauseBtn.disabled = false;
-          stopBtn.disabled = false;
-          playPauseBtn.textContent = "Play";
-          audioContext.suspend(); // Mulai dalam keadaan jeda
-        } else {
-          statusEl.textContent = "Initialization failed. Check patch files.";
+            this.Module.onRuntimeInitialized = () => this._onRuntimeInitialized();
         }
 
-        // Daftarkan callback function secara global setelah inisialisasi
-        const callbackPtr = addFunction(function(tick, time_ms, type, channel, a, b) {
-          const time_s = time_ms / 1000.0;
-            if (type === 0x05) { // Lyric
-              const lyric = UTF8ToString(a, b);
-              console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Lyric: "${lyric}"`);
+        // --- Event Emitter ---
+        on(eventName, listener) {
+            if (!this.eventListeners[eventName]) {
+                this.eventListeners[eventName] = [];
             }
-           else {
-            //console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Status: 0x${type.toString(16)}, Chan: ${channel}, A: ${a}, B: ${b}`);
-          }
-        }, 'viiiii');
-        mid_song_set_event_callback(0, callbackPtr); // Pass 0 for songPtr as it's now global
-      };
-
-      // Pilihan file MIDI
-      document.getElementById("midiFile").onchange = async (event) => {
-        if (!audioContext) {
-          statusEl.textContent = "Please click 'Init' first.";
-          event.target.value = '';
-          return;
-        }
-        const file = event.target.files[0];
-        if (!file) return;
-
-        if (songPtr !== 0) {
-          document.getElementById("free").onclick();
+            if (!this.eventListeners[eventName]) this.eventListeners[eventName] = [];
+            this.eventListeners[eventName].push(listener);
         }
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const midiData = new Uint8Array(e.target.result);
-          const midiDataPtr = Module._malloc(midiData.length);
-          Module.HEAPU8.set(midiData, midiDataPtr);
+        emit(eventName, ...args) {
+            if (this.eventListeners[eventName]) {
+                this.eventListeners[eventName].forEach(listener => listener(...args));
+            }
+            this.eventListeners[eventName]?.forEach(listener => listener(...args));
+        }
 
-          const optionsPtr = Module._malloc(12);
-          Module.setValue(optionsPtr + 0, audioContext.sampleRate, 'i32');
-          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit, interleaved
-          Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
-          Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
-
-          const streamPtr = mid_istream_open_mem(midiDataPtr, midiData.length);
-
-          // 1. Analisis MIDI untuk mendapatkan daftar patch
-          const patchListString = mid_song_get_required_patches(streamPtr);
-
-          // 2. Unduh patch yang belum ada
-          await loadRequiredPatches(patchListString);
-
-          // 3. Kembalikan stream ke awal dan muat lagu untuk diputar
-          mid_istream_seek(streamPtr, 0, 0); // SEEK_SET
-          songPtr = mid_song_load(streamPtr, optionsPtr);
-          
-          if (songPtr !== 0) {
-            // PENTING: Inisialisasi lagu untuk pemutaran
-            mid_song_start(songPtr);
-
-            statusEl.textContent = `Playing: ${file.name}`;
-            const bufferSize = 4096;
-            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 2); // Request 2 channels for stereo
-
-            scriptNode.onaudioprocess = function(e) {
-              const outL = e.outputBuffer.getChannelData(0);
-              const outR = e.outputBuffer.getChannelData(1);
-
-              // Alokasikan buffer di dalam event handler dan bebaskan setelah digunakan
-              const pcmBytes = bufferSize * 2 * 2; // bufferSize * 2 channels * 2 bytes/sample
-              const pcmBufferPtr = Module._malloc(pcmBytes);
-              
-              // Panggil fungsi C dengan 3 argumen yang benar
-              const bytesRead = mid_song_read_wave(songPtr, pcmBufferPtr, pcmBytes);
-
-              const samplesRead = bytesRead / 4; // 2 channels, 2 bytes/sample each
-
-              // Konversi dan salin data dari buffer C ke buffer output audio
-              for (let i = 0; i < samplesRead; i++) {
-                // De-interleave data: L, R, L, R, ...
-                const s16_left = Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)];
-                const s16_right = Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1];
-                outL[i] = s16_left / 32768.0;
-                outR[i] = s16_right / 32768.0;
-              }
-
-              // Bebaskan buffer setelah selesai
-              Module._free(pcmBufferPtr);
-
-              if (bytesRead <= 0) {
-                playPauseBtn.textContent = "Play";
-                playPauseBtn.disabled = true;
-                stopBtn.disabled = true;
-                scriptNode.disconnect();
-                statusEl.textContent = "Playback finished.";
-              }
+        // --- Private Methods ---
+        _onRuntimeInitialized() {
+            this.mid_init = this.Module.cwrap('mid_init', 'number', ['string']);
+            this.mid_exit = this.Module.cwrap('mid_exit', null, []);
+            this.mid_get_version = this.Module.cwrap('mid_get_version', 'number', []);
+            this.mid_song_load = this.Module.cwrap('mid_song_load', 'number', ['number', 'number']);
+            this.mid_song_free = this.Module.cwrap('mid_song_free', null, ['number']);
+            this.mid_song_get_required_patches = this.Module.cwrap('mid_song_get_required_patches', 'string', ['number']);
+            this.mid_song_start = this.Module.cwrap('mid_song_start', null, ['number']);
+            this.mid_song_set_event_callback = this.Module.cwrap('mid_song_set_event_callback', null, ['number', 'number']);
+            this.mid_song_read_wave = this.Module.cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']);
+            this.mid_istream_open_mem = this.Module.cwrap('mid_istream_open_mem', 'number', ['number', 'number']);
+            this.mid_istream_seek = this.Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
+            this.mid_istream_close = this.Module.cwrap('mid_istream_close', null, ['number']);
+            const cwrap = this.Module.cwrap;
+            this.c = {
+                init: cwrap('mid_init', 'number', ['string']),
+                exit: cwrap('mid_exit', null, []),
+                getVersion: cwrap('mid_get_version', 'number', []),
+                loadSong: cwrap('mid_song_load', 'number', ['number', 'number']),
+                freeSong: cwrap('mid_song_free', null, ['number']),
+                getRequiredPatches: cwrap('mid_song_get_required_patches', 'string', ['number']),
+                startSong: cwrap('mid_song_start', null, ['number']),
+                setEventCallback: cwrap('mid_song_set_event_callback', null, ['number', 'number']),
+                readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']),
+                openMemoryStream: cwrap('mid_istream_open_mem', 'number', ['number', 'number']),
+                seekStream: cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']),
+                closeStream: cwrap('mid_istream_close', null, ['number']),
+                seekSong: cwrap('mid_song_seek', null, ['number', 'number']),
+                setVolume: cwrap('mid_song_set_volume', null, ['number', 'number']),
+                getTime: cwrap('mid_song_get_time', 'number', ['number']),
+                getCurrentTick: cwrap('mid_song_get_current_tick', 'number', ['number']),
             };
 
-            scriptNode.connect(audioContext.destination);
-          } else {
+            this.emit('runtimeInitialized');
+        }
+
+        _handleMidiEvent(tick, time_ms, type, channel, a, b) {
+            const time_s = time_ms / 1000.0;
+            this.emit('midiEvent', { tick, time_s, type, channel, a, b });
+            this.emit('onMIDIEvent', { tick, time_s, type, channel, a, b });
+        }
+
+        async _loadRequiredPatches(patchListString) {
+            if (!patchListString) return;
+
+            const requiredPatches = patchListString.split('\n').filter(p => p.length > 0 && !this.loadedPatches.has(p));
+            if (requiredPatches.length === 0) return;
+            const total = requiredPatches.length;
+            if (total === 0) return;
+
+            this.statusEl.textContent = `Loading ${requiredPatches.length} new patch files...`;
+            console.log("Required new patch files:", requiredPatches);
+            this.emit('onInstrumentLoading', 0, total, '');
+
+            const preloadPromises = requiredPatches.map(file => {
+                const fullVirtualPath = '/gus-patch/' + file;
+                const fullVirtualPath = `${this.basePath}/${file}`;
+                this.Module.FS.mkdirTree(this.Module.PATH.dirname(fullVirtualPath));
+                return new Promise((resolve, reject) => {
+                    this.Module.FS.createPreloadedFile(this.Module.PATH.dirname(fullVirtualPath), this.Module.PATH.basename(file), 'gus-patch/' + file, true, true, resolve, reject);
+                }).then(() => this.loadedPatches.add(file));
+                    this.emit('onInstrumentLoading', this.loadedPatches.size, total, file);
+                    this.Module.FS.createPreloadedFile(this.Module.PATH.dirname(fullVirtualPath), this.Module.PATH.basename(file), `${this.basePath}/${file}`, true, true, resolve, reject);
+                }).then(() => {
+                    this.loadedPatches.add(file);
+                });
+            });
+
+            await Promise.all(preloadPromises);
+            this.emit('onInstrumentLoaded', this.loadedPatches.size);
+        }
+
+        // --- Public API ---
+        init() {
+        init(offline = false) {
+            if (this.audioContext) {
+                this.statusEl.textContent = "Already initialized.";
+                this.emit('error', "Already initialized.");
+                return false;
+            }
+            const rc = this.mid_init("/gus-patch/timidity.cfg");
+            const rc = this.c.init(`${this.basePath}/timidity.cfg`);
+            if (rc === 0) {
+                this.statusEl.textContent = `Initialized libTiMidity v${this.mid_get_version()}. Select a MIDI file.`;
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.audioContext.suspend(); // Start in suspended state
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass();
+                if (!offline) this.audioContext.suspend();
+
+                const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiii');
+                this.mid_song_set_event_callback(0, callbackPtr);
+                this.c.setEventCallback(0, callbackPtr);
+
+                return true;
+            } else {
+                this.statusEl.textContent = "Initialization failed. Check patch files.";
+                this.emit('error', "Initialization failed. Check patch files.");
+                return false;
+            }
+        }
+
+        async loadMidiFile(file) {
+        async load(midi) {
+            if (!this.audioContext) {
+                this.statusEl.textContent = "Please click 'Init' first.";
+                return;
+                this.emit('error', "Player not initialized. Call init() first.");
+                return false;
+            }
+            if (this.songPtr !== 0) {
+                this.stop();
+            }
+
+            const midiData = new Uint8Array(await file.arrayBuffer());
+            this.emit('onMidiLoading', midi);
+            const midiData = (midi instanceof Uint8Array) ? midi : new Uint8Array(await midi.arrayBuffer());
+            const midiDataPtr = this.Module._malloc(midiData.length);
+            this.Module.HEAPU8.set(midiData, midiDataPtr);
+
+            const optionsPtr = this.Module._malloc(12);
+            this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+            this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit, interleaved
+            this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
+            this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+            const streamPtr = this.mid_istream_open_mem(midiDataPtr, midiData.length);
+            const patchListString = this.mid_song_get_required_patches(streamPtr);
+            const streamPtr = this.c.openMemoryStream(midiDataPtr, midiData.length);
+            const patchListString = this.c.getRequiredPatches(streamPtr);
+            await this._loadRequiredPatches(patchListString);
+
+            this.mid_istream_seek(streamPtr, 0, 0); // SEEK_SET
+            this.songPtr = this.mid_song_load(streamPtr, optionsPtr);
+            this.c.seekStream(streamPtr, 0, 0); // SEEK_SET
+            this.songPtr = this.c.loadSong(streamPtr, optionsPtr);
+
+            if (this.songPtr !== 0) {
+                this.mid_song_start(this.songPtr);
+                this.emit('songLoaded', file.name);
+
+                const bufferSize = 4096;
+                this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
+
+                this.scriptNode.onaudioprocess = (e) => {
+                    const outL = e.outputBuffer.getChannelData(0);
+                    const outR = e.outputBuffer.getChannelData(1);
+                    const pcmBytes = bufferSize * 2 * 2;
+                    const pcmBufferPtr = this.Module._malloc(pcmBytes);
+                    const bytesRead = this.mid_song_read_wave(this.songPtr, pcmBufferPtr, pcmBytes);
+                    const samplesRead = bytesRead / 4;
+
+                    if (bytesRead > 0) {
+                        for (let i = 0; i < samplesRead; i++) {
+                            const s16_left = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)];
+                            const s16_right = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1];
+                            outL[i] = s16_left / 32768.0;
+                            outR[i] = s16_right / 32768.0;
+                        }
+                    }
+                    this.Module._free(pcmBufferPtr);
+
+                    if (bytesRead <= 0) {
+                        this.stop();
+                        this.emit('playbackFinished');
+                    }
+                };
+                this.scriptNode.connect(this.audioContext.destination);
+                this.emit('onMidiLoaded', midi);
+                return true;
+            } else {
+                this.emit('error', "Failed to load MIDI file.");
+                return false;
+            }
+
+            this.mid_istream_close(streamPtr);
+            this.c.closeStream(streamPtr);
+            this.Module._free(midiDataPtr);
+            this.Module._free(optionsPtr);
+        }
+
+        play() {
+        async play(offset = 0, options = {}) {
+            if (!this.audioContext || this.songPtr === 0) return;
+
+            this.c.startSong(this.songPtr);
+            if (offset > 0) this.seek(offset);
+
+            const bufferSize = 4096;
+            this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
+
+            this.scriptNode.onaudioprocess = (e) => {
+                const outL = e.outputBuffer.getChannelData(0);
+                const outR = e.outputBuffer.getChannelData(1);
+                const pcmBytes = bufferSize * 2 * 2;
+                const pcmBufferPtr = this.Module._malloc(pcmBytes);
+                const bytesRead = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes);
+                const samplesRead = bytesRead / 4;
+
+                if (bytesRead > 0) {
+                    for (let i = 0; i < samplesRead; i++) {
+                        outL[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)] / 32768.0;
+                        outR[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
+                    }
+                }
+                this.Module._free(pcmBufferPtr);
+
+                if (bytesRead <= 0) {
+                    this.stop();
+                    this.emit('onEnded');
+                }
+            };
+            this.scriptNode.connect(this.audioContext.destination);
+
+            this.resume();
+            this.emit('onPlay');
+
+            this.playingInterval = setInterval(() => {
+                if (this.audioContext.state === 'running') {
+                    this.emit('onPlaying', this.c.getCurrentTick(this.songPtr), this.c.getTime(this.songPtr));
+                }
+            }, 100);
+        }
+
+        async loadAndPlay(midi, offset = 0, options = {}) {
+            if (await this.load(midi)) {
+                await this.play(offset, options);
+            }
+        }
+
+        resume() {
+            if (!this.audioContext || this.songPtr === 0) return;
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => this.emit('played'));
+                this.audioContext.resume().then(() => {
+                    if (this.lastStatus !== 'playing') this.emit('onResume');
+                    this.lastStatus = 'playing';
+                });
+            }
+        }
+
+        pause() {
+            if (!this.audioContext || this.songPtr === 0) return;
+            if (this.audioContext.state === 'running') {
+                this.audioContext.suspend().then(() => this.emit('paused'));
+                this.audioContext.suspend().then(() => {
+                    this.emit('onPause');
+                    this.lastStatus = 'paused';
+                });
+            }
+        }
+
+        stop() {
+            if (this.songPtr !== 0) {
+                if (this.playingInterval) clearInterval(this.playingInterval);
+                this.playingInterval = null;
+                if (this.scriptNode) this.scriptNode.disconnect();
+                this.scriptNode = null;
+                this.mid_song_free(this.songPtr);
+                this.c.freeSong(this.songPtr);
+                this.songPtr = 0;
+                this.emit('stopped');
+                this.emit('onStop');
+                this.lastStatus = 'stopped';
+            }
+        }
+
+        shutdown() {
+            this.stop();
+            this.mid_exit();
+            this.c.exit();
+            if (this.audioContext) {
+                this.audioContext.close();
+                this.audioContext = null;
+            }
+            this.emit('shutdown');
+            this.emit('onShutdown');
+        }
+
+        seek(timeInSeconds) {
+            if (this.songPtr !== 0) {
+                this.c.seekSong(this.songPtr, timeInSeconds * 1000);
+                this.emit('onSeek', this.c.getCurrentTick(this.songPtr), timeInSeconds);
+            }
+        }
+
+        goTo(ticks) {
+            // This is a simplified implementation. A more accurate one would need
+            // to parse tempo changes to convert ticks to milliseconds.
+            this.emit('error', 'goTo(ticks) is not accurately implemented yet.');
+        }
+
+        setVolume(volume) {
+            if (this.songPtr !== 0) {
+                this.c.setVolume(this.songPtr, volume);
+            }
+        }
+
+        audioBufferToWav(buffer) {
+            // Implementation from: https://github.com/mattdiamond/Recorderjs
+            function interleave(inputL, inputR) {
+                let length = inputL.length + inputR.length;
+                let result = new Float32Array(length);
+                let index = 0, inputIndex = 0;
+                while (index < length) {
+                    result[index++] = inputL[inputIndex];
+                    result[index++] = inputR[inputIndex];
+                    inputIndex++;
+                }
+                return result;
+            }
+
+            function floatTo16BitPCM(output, offset, input) {
+                for (let i = 0; i < input.length; i++, offset += 2) {
+                    let s = Math.max(-1, Math.min(1, input[i]));
+                    output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                }
+            }
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            const interleaved = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+            const dataView = new DataView(new ArrayBuffer(44 + interleaved.length * 2));
+            
+            writeString(dataView, 0, 'RIFF');
+            dataView.setUint32(4, 36 + interleaved.length * 2, true);
+            writeString(dataView, 8, 'WAVE');
+            writeString(dataView, 12, 'fmt ');
+            dataView.setUint32(16, 16, true);
+            dataView.setUint16(20, 1, true);
+            dataView.setUint16(22, 2, true);
+            dataView.setUint32(24, buffer.sampleRate, true);
+            dataView.setUint32(28, buffer.sampleRate * 4, true);
+            dataView.setUint16(32, 4, true);
+            dataView.setUint16(34, 16, true);
+            writeString(dataView, 36, 'data');
+            dataView.setUint32(40, interleaved.length * 2, true);
+            floatTo16BitPCM(dataView, 44, interleaved);
+
+            return new Blob([dataView], { type: 'audio/wav' });
+        }
+    }
+
+    // --- Main Application Logic ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const statusEl = document.getElementById("status");
+        const playPauseBtn = document.getElementById("playPause");
+        const stopBtn = document.getElementById("stop");
+        const freeBtn = document.getElementById("free");
+        const exitBtn = document.getElementById("exit");
+        const initBtn = document.getElementById("init");
+        const midiFileEl = document.getElementById("midiFile");
+
+        const player = new TimidityPlayer(Module, statusEl);
+        const player = new TimidityPlayer({ basePath: '/gus-patch' }, statusEl);
+
+        player.on('runtimeInitialized', () => {
+            statusEl.textContent = "Runtime ready. Click 'Init'.";
+        });
+
+        player.on('songLoaded', (fileName) => {
+            statusEl.textContent = `Playing: ${fileName}`;
+        player.on('onMidiLoaded', (midi) => {
+            statusEl.textContent = `Loaded: ${midi.name}`;
+            playPauseBtn.textContent = 'Play';
+            playPauseBtn.disabled = false;
+            stopBtn.disabled = false;
+        });
+
+        player.on('played', () => {
+        player.on('onPlay', () => {
+            playPauseBtn.textContent = 'Pause';
+            statusEl.textContent = `Playing: ${midiFileEl.files[0].name}`;
+        });
+
+        player.on('paused', () => {
+        player.on('onResume', () => {
+            playPauseBtn.textContent = 'Pause';
+            statusEl.textContent = `Playing: ${midiFileEl.files[0].name}`;
+        });
+
+        player.on('onPause', () => {
+            playPauseBtn.textContent = 'Play';
+            statusEl.textContent = `Paused: ${midiFileEl.files[0].name}`;
+        });
+
+        player.on('stopped', () => {
+        player.on('onStop', () => {
+            statusEl.textContent = "Song freed.";
             playPauseBtn.textContent = "Play";
             playPauseBtn.disabled = true;
             stopBtn.disabled = true;
-            statusEl.textContent = "Failed to load MIDI file.";
-          }
+        });
 
-          // Bebaskan memori setelah selesai
-          mid_istream_close(streamPtr);
-          Module._free(midiDataPtr);
-          Module._free(optionsPtr);
+        player.on('playbackFinished', () => {
+        player.on('onEnded', () => {
+            statusEl.textContent = "Playback finished.";
+        });
+
+        player.on('shutdown', () => {
+        player.on('onShutdown', () => {
+            statusEl.textContent = "Exited.";
+        });
+
+        player.on('midiEvent', (event) => {
+        player.on('onMIDIEvent', (event) => {
+            if (event.type === 0xFF && event.channel === 0x05) { // Lyric
+                const lyric = Module.UTF8ToString(event.a, event.b);
+                const lyric = player.Module.UTF8ToString(event.a, event.b);
+                console.log(`Tick: ${event.tick}, Time: ${event.time_s.toFixed(3)}s, Lyric: "${lyric}"`);
+            }
+        });
+
+        initBtn.onclick = () => player.init();
+        midiFileEl.onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) player.loadMidiFile(file);
+            if (file) player.loadAndPlay(file);
         };
-        reader.readAsArrayBuffer(file);
-      };
+        playPauseBtn.onclick = () => {
+            if (player.audioContext.state === 'running') player.pause();
+            else player.play();
+            if (player.audioContext && player.audioContext.state === 'running') player.pause();
+            else player.resume();
+        };
+        stopBtn.onclick = () => player.stop();
+        freeBtn.onclick = () => player.stop();
+        exitBtn.onclick = () => player.shutdown();
+    });
 
-      // Tombol Free Song
-      document.getElementById("free").onclick = () => {
-        if (songPtr !== 0) {
-          if (scriptNode) scriptNode.disconnect();
-          scriptNode = null;
-          mid_song_free(songPtr);
-          songPtr = 0;
-          statusEl.textContent = "Song freed.";
-          playPauseBtn.textContent = "Play";
-          playPauseBtn.disabled = true;
-          stopBtn.disabled = true;
-        }
-      };
-
-      // Tombol Exit
-      document.getElementById("exit").onclick = () => {
-        if (songPtr !== 0) {
-          document.getElementById("free").onclick();
-        }
-        mid_exit();
-        if (audioContext) {
-          audioContext.close();
-          audioContext = null;
-        }
-        statusEl.textContent = "Exited.";
-      };
-    };
-
-    // Kontrol Play/Pause/Stop
-    playPauseBtn.onclick = () => {
-        if (!audioContext || songPtr === 0) return;
-
-        if (audioContext.state === 'running') {
-            audioContext.suspend().then(() => {
-                playPauseBtn.textContent = 'Play';
-                statusEl.textContent = `Paused: ${document.getElementById("midiFile").files[0].name}`;
-            });
-        } else if (audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-                playPauseBtn.textContent = 'Pause';
-                statusEl.textContent = `Playing: ${document.getElementById("midiFile").files[0].name}`;
-            });
-        }
-    }; // End of playPauseBtn.onclick
-    stopBtn.onclick = document.getElementById("free").onclick; // Assign the function reference directly
   </script>
   <script src="libtimidity.js"></script>
 </body>

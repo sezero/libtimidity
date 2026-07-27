@@ -17099,24 +17099,7 @@ function asmFunc(imports) {
   return global$3 | 0;
  }
  
- function $188($0_1) {
-  $0_1 = $0_1 | 0;
-  global$0 = $0_1;
- }
- 
- function $189($0_1) {
-  $0_1 = $0_1 | 0;
-  var $1_1 = 0;
-  $1_1 = (global$0 - $0_1 | 0) & -16 | 0;
-  global$0 = $1_1;
-  return $1_1 | 0;
- }
- 
- function $190() {
-  return global$0 | 0;
- }
- 
- function $191($0_1, $1_1) {
+ function $188($0_1, $1_1) {
   $0_1 = $0_1 | 0;
   $1_1 = $1_1 | 0;
   var $2_1 = 0;
@@ -17143,9 +17126,26 @@ function asmFunc(imports) {
   return $2_1 | 0;
  }
  
- function $192($0_1) {
+ function $189($0_1) {
   $0_1 = $0_1 | 0;
-  return $191($0_1 | 0, $0_1 | 0) | 0 | 0;
+  return $188($0_1 | 0, $0_1 | 0) | 0 | 0;
+ }
+ 
+ function $190($0_1) {
+  $0_1 = $0_1 | 0;
+  global$0 = $0_1;
+ }
+ 
+ function $191($0_1) {
+  $0_1 = $0_1 | 0;
+  var $1_1 = 0;
+  $1_1 = (global$0 - $0_1 | 0) & -16 | 0;
+  global$0 = $1_1;
+  return $1_1 | 0;
+ }
+ 
+ function $192() {
+  return global$0 | 0;
  }
  
  function $193($0_1, $1_1, $2_1, $2$hi, $3_1) {
@@ -17814,14 +17814,14 @@ function asmFunc(imports) {
   "fflush": $117, 
   "emscripten_stack_get_end": $184, 
   "emscripten_stack_get_base": $183, 
-  "strerror": $192, 
+  "strerror": $189, 
   "__get_temp_ret": $187, 
   "__set_temp_ret": $186, 
   "emscripten_stack_init": $181, 
   "emscripten_stack_get_free": $182, 
-  "_emscripten_stack_restore": $188, 
-  "_emscripten_stack_alloc": $189, 
-  "emscripten_stack_get_current": $190, 
+  "_emscripten_stack_restore": $190, 
+  "_emscripten_stack_alloc": $191, 
+  "emscripten_stack_get_current": $192, 
   "dynCall_jiji": $194
  };
 }
@@ -21803,6 +21803,8 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder();
       return ret;
     };
 
+
+
   FS.createPreloadedFile = FS_createPreloadedFile;
   FS.preloadFile = FS_preloadFile;
   FS.staticInit();;
@@ -21860,9 +21862,11 @@ if (Module['printErr']) err = Module['printErr'];
   Module['addFunction'] = addFunction;
   Module['setValue'] = setValue;
   Module['getValue'] = getValue;
+  Module['PATH'] = PATH;
   Module['UTF8ToString'] = UTF8ToString;
   Module['stringToUTF8'] = stringToUTF8;
   Module['lengthBytesUTF8'] = lengthBytesUTF8;
+  Module['FS'] = FS;
   var missingLibrarySymbols = [
   'writeI53ToI64',
   'writeI53ToI64Clamped',
@@ -22072,7 +22076,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'getEmptyTableSlot',
   'updateTableMap',
   'getFunctionAddress',
-  'PATH',
   'PATH_FS',
   'UTF8Decoder',
   'UTF8ArrayToString',
@@ -22121,7 +22124,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'FS_createPath',
   'FS_createDevice',
   'FS_readFile',
-  'FS',
   'FS_root',
   'FS_mounts',
   'FS_devices',
