@@ -109,6 +109,15 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
   /* others not stored in song
      but debug-printed above */
     default: timi_free(s); return 0;
+    case 5: /* Lyric */
+      if (song->event_callback) {
+        uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
+        /* We'll use parameters 'a' and 'b' to pass the string pointer and length */
+        /* The status byte for meta events is 0xFF. The lyric event type is 0x05. */
+        song->event_callback(song->at, current_ms, 0xFF, 0x05, (uintptr_t)s, len);
+      }
+      timi_free(s);
+      return 0;
   }
   timi_free(song->meta_data[id]);
   song->meta_data[id] = s;
@@ -169,6 +178,13 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		mid_istream_read(stream, &a, 1, 1);
 		mid_istream_read(stream, &b, 1, 1);
 		mid_istream_read(stream, &c, 1, 1);
+		/* Invoke the event callback if it's set */
+		if (song->event_callback) {
+			uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
+			/* Pack the 24-bit tempo into two arguments */
+			song->event_callback(song->at, current_ms, 0xFF, 0x51, (a << 8) | b, c);
+		}
+
 		MIDIEVENT(song->at, ME_TEMPO, c, a, b);
 
 	      default:
@@ -417,7 +433,7 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
 
   our_event_count=0;
   st=at=sample_cum=0;
-  counting_time=2; /* We strip any silence before the first NOTE ON. */
+  counting_time=0; /* We strip any silence before the first NOTE ON. */
 
   for (i = 0; i < song->event_count; i++)
     {

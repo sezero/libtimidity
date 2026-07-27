@@ -61,6 +61,7 @@
       const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
       const mid_song_get_required_patches = Module.cwrap('mid_song_get_required_patches', 'string', ['number']);
       const mid_song_start = Module.cwrap('mid_song_start', null, ['number']);
+      const mid_song_set_event_callback = Module.cwrap('mid_song_set_event_callback', null, ['number', 'number']); // Signature doesn't change, it's just a pointer
       const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']);
       const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number','number']);
       const mid_istream_seek = Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
@@ -109,8 +110,8 @@
 
           const optionsPtr = Module._malloc(12);
           Module.setValue(optionsPtr + 0, audioContext.sampleRate, 'i32');
-          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
-          Module.setValue(optionsPtr + 6, 1, 'i8');       // mono
+          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit, interleaved
+          Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
           Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
 
           const streamPtr = mid_istream_open_mem(midiDataPtr, midiData.length);
@@ -129,28 +130,53 @@
             // PENTING: Inisialisasi lagu untuk pemutaran
             mid_song_start(songPtr);
 
+            // Daftarkan callback function
+            const callbackPtr = addFunction(function(tick, time_ms, type, channel, a, b) {
+              // Konversi waktu dari milidetik ke detik
+              const time_s = time_ms / 1000.0;
+              if (type === 0xFF) { // Meta Event
+                if (channel === 0x51) { // Tempo Change
+                  // Unpack the 24-bit tempo from a and b. Note that the 3rd byte is now in 'b'.
+                  const tempo = (a << 8) | arguments[5];
+                  console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Tempo: ${60000000/tempo} BPM`);
+                } else if (type === 0x05) { // Lyric
+                  const lyric = UTF8ToString(a, b);
+                  console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Lyric: "${lyric}"`);
+                } else {
+                  // Other meta events can be handled here
+                }
+              } else {
+                // Channel Event
+                console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Status: 0x${type.toString(16)}, Chan: ${channel}, A: ${a}, B: ${b}`);
+              }
+            }, 'viiiii');
+            mid_song_set_event_callback(songPtr, callbackPtr);
+
+
             statusEl.textContent = `Playing: ${file.name}`;
             const bufferSize = 4096;
-            // Minta 1 channel (mono)
-            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 1);
+            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 2); // Request 2 channels for stereo
 
             scriptNode.onaudioprocess = function(e) {
               const outL = e.outputBuffer.getChannelData(0);
+              const outR = e.outputBuffer.getChannelData(1);
 
               // Alokasikan buffer di dalam event handler dan bebaskan setelah digunakan
-              const pcmBytes = bufferSize * 1 * 2; // bufferSize * 1 channel * 2 bytes/sample
+              const pcmBytes = bufferSize * 2 * 2; // bufferSize * 2 channels * 2 bytes/sample
               const pcmBufferPtr = Module._malloc(pcmBytes);
               
               // Panggil fungsi C dengan 3 argumen yang benar
               const bytesRead = mid_song_read_wave(songPtr, pcmBufferPtr, pcmBytes);
 
-              const samplesRead = bytesRead / 2; // 1 channel, 2 bytes/sample
+              const samplesRead = bytesRead / 4; // 2 channels, 2 bytes/sample each
 
               // Konversi dan salin data dari buffer C ke buffer output audio
               for (let i = 0; i < samplesRead; i++) {
-                // Baca S16 (sekarang datanya mono, tidak interleaved)
-                const s16_left = Module.HEAP16[(pcmBufferPtr >> 1) + i];
+                // De-interleave data: L, R, L, R, ...
+                const s16_left = Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)];
+                const s16_right = Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1];
                 outL[i] = s16_left / 32768.0;
+                outR[i] = s16_right / 32768.0;
               }
 
               // Bebaskan buffer setelah selesai

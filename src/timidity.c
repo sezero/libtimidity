@@ -664,6 +664,12 @@ void mid_exit(void)
   timi_free_pathlist();
 }
 
+/* Set a callback function to be called for each MIDI event */
+void mid_song_set_event_callback(MidSong *song, MidEventCallback callback)
+{
+  if (song) song->event_callback = callback;
+}
+
 long mid_get_version (void)
 {
   return LIBTIMIDITY_VERSION;
@@ -731,6 +737,9 @@ char *mid_song_get_required_patches(MidIStream *stream)
   /* Allocate a temporary song structure for analysis */
   song = (MidSong *)timi_calloc(1, sizeof(MidSong));
   if (!song) return NULL;
+
+  /* This is the crucial part: Initialize drumchannels for the analysis. */
+  song->drumchannels = DEFAULT_DRUMCHANNELS;
 
   /* Copy master banks to the temporary song structure */
   for (i = 0; i < 128; i++) {

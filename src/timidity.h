@@ -64,18 +64,20 @@ extern "C" {
 
 /* Core Library Types
  */
-#ifndef __amigaos4__
+#ifdef __amigaos4__
+#include <exec/types.h>
+  typedef int8  sint8;
+  typedef int16 sint16;
+  typedef int32 sint32;
+  typedef uint64 uint64;
+#else
   typedef unsigned char uint8;
   typedef signed char sint8;
   typedef unsigned short uint16;
   typedef signed short sint16;
   typedef unsigned int uint32;
   typedef signed int sint32;
-#else
-#include <exec/types.h>
-  typedef int8  sint8;
-  typedef int16 sint16;
-  typedef int32 sint32;
+  typedef unsigned long long uint64;
 #endif
 
   typedef size_t (*MidIStreamReadFunc) (void *ctx, void *ptr, size_t size, size_t nmemb);
@@ -102,7 +104,6 @@ extern "C" {
 #define MID_SONG_TEXT       0
 #define MID_SONG_COPYRIGHT  1
 #define MID_META_MAX        8
-
 
 /* Compiler magic for shared libraries
  * ===================================
@@ -264,6 +265,12 @@ extern "C" {
 /* Destroy song
  */
   TIMI_EXPORT extern void mid_song_free (MidSong *song);
+
+/* Callback for MIDI events during playback */
+typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 type, uint8 channel, uint8 a, uint8 b);
+
+/* Set a callback function to be called for each MIDI event */
+TIMI_EXPORT extern void mid_song_set_event_callback(MidSong *song, MidEventCallback callback);
 
 /* Get a list of required patch files for a song.
  * Returns a string with filenames separated by newlines.

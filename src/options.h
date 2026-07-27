@@ -43,7 +43,7 @@
    Some files (notably C:\WINDOWS\CANYON.MID) think that 16 is one too.
    On the other hand, some files know that 16 is not a drum channel and
    try to play music on it. */
-#define DEFAULT_DRUMCHANNELS (1<<9) /* | (1<<15) */
+#define DEFAULT_DRUMCHANNELS (1<<9)
 
 /* In percent. */
 #define DEFAULT_AMPLIFICATION	70

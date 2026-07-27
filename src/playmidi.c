@@ -680,6 +680,34 @@ size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
   do {
     /* Handle all events that should happen at this time */
     while (song->current_event->time <= song->current_sample) {
+      /* Invoke the event callback if it's set */
+      if (song->event_callback) {
+        uint32 current_ms = (uint32)(((uint64)song->current_sample * 1000) / song->rate);
+        uint8 gm_type = 0;
+        switch(song->current_event->type) {
+          case ME_NOTEON:       gm_type = 0x90; break;
+          case ME_NOTEOFF:      gm_type = 0x80; break;
+          case ME_KEYPRESSURE:  gm_type = 0xA0; break;
+          case ME_PROGRAM:      gm_type = 0xC0; break;
+          case ME_PITCHWHEEL:   gm_type = 0xE0; break;
+          /* Control Changes */
+          case ME_MAINVOLUME:   gm_type = 0xB0; break;
+          case ME_PAN:          gm_type = 0xB0; break;
+          case ME_EXPRESSION:   gm_type = 0xB0; break;
+          case ME_SUSTAIN:      gm_type = 0xB0; break;
+          case ME_ALL_SOUNDS_OFF: gm_type = 0xB0; break;
+          case ME_RESET_CONTROLLERS: gm_type = 0xB0; break;
+          case ME_ALL_NOTES_OFF: gm_type = 0xB0; break;
+          case ME_TONE_BANK:    gm_type = 0xB0; break;
+          /* Other events can be added here if needed */
+        }
+        
+        if (gm_type != 0) {
+            song->event_callback(song->current_event->time, current_ms, gm_type,
+                                 song->current_event->channel, song->current_event->a, song->current_event->b);
+        }
+      }
+
       switch(song->current_event->type) {
 	/* Effects affecting a single note */
 	case ME_NOTEON:
