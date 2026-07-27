@@ -243,7 +243,7 @@ extern "C" {
 
 /* Read WAVE data
  */
-  TIMI_EXPORT extern size_t mid_song_read_wave (MidSong *song, size_t samples, float *l, float *r);
+  TIMI_EXPORT extern size_t mid_song_read_wave (MidSong *song, sint8 *ptr, size_t size);
 
 /* Seek song to specified offset in milliseconds
  */
@@ -269,6 +269,11 @@ extern "C" {
  * Returns a string with filenames separated by newlines.
  * The caller is responsible for freeing the returned string. */
   TIMI_EXPORT extern char *mid_song_get_patch_names(MidSong *song);
+
+/* Analyze a MIDI stream and get a list of required patch files.
+ * This function does not load the song, only analyzes it.
+ * The caller is responsible for freeing the returned string. */
+  TIMI_EXPORT extern char *mid_song_get_required_patches(MidIStream *stream);
 
 #ifdef __cplusplus
 }

@@ -5,19 +5,18 @@
   <title>libTiMidity asm.js Demo</title>
 </head>
 <body>
-  <h1>libTiMidity asm.js MIDI Player</h1>
+  <h1>libTiMidity Player</h1>
   <button id="init">Init</button>
   <input type="file" id="midiFile" accept=".mid,.midi">
   <button id="playPause" disabled>Play</button>
   <button id="stop" disabled>Stop</button>
   <button id="free">Free Song</button>
   <button id="exit">Exit</button>
-  <p>Status: <span id="status">Waiting for initialization...</span></p>
+  <p>Status: <span id="status">Loading patch files...</span></p>
 
   <script>
     var Module = {};
 
-    // Hanya preload timidity.cfg di awal
     Module.preRun = [function() {
         FS.mkdir('/gus-patch');
         FS.createPreloadedFile('/gus-patch', 'timidity.cfg', 'gus-patch/timidity.cfg', true, true);
@@ -30,24 +29,26 @@
     const stopBtn = document.getElementById("stop");
     let songPtr = 0;
 
-    // Fungsi untuk memuat patch yang dibutuhkan secara dinamis
+    const loadedPatches = new Set();
+
     async function loadRequiredPatches(patchListString) {
-        const patchFiles = patchListString.split('\n').filter(p => p.length > 0);
-        if (patchFiles.length === 0) return;
+        if (!patchListString) return;
 
-        statusEl.textContent = `Loading ${patchFiles.length} required patch files...`;
-        console.log("Required patch files:", patchFiles);
+        const requiredPatches = patchListString.split('\n').filter(p => p.length > 0 && !loadedPatches.has(p));
+        if (requiredPatches.length === 0) return;
 
-        const preloadPromises = patchFiles.map(file => {
+        statusEl.textContent = `Loading ${requiredPatches.length} new patch files...`;
+        console.log("Required new patch files:", requiredPatches);
+
+        const preloadPromises = requiredPatches.map(file => {
             const fullVirtualPath = '/gus-patch/' + file;
-            FS.createPath('/gus-patch', PATH.dirname(file)); // Buat direktori induk
+            FS.mkdirTree(PATH.dirname(fullVirtualPath)); // Create the full directory path
             return new Promise((resolve, reject) => {
                 FS.createPreloadedFile(PATH.dirname(fullVirtualPath), PATH.basename(file), 'gus-patch/' + file, true, true, resolve, reject);
-            });
+            }).then(() => loadedPatches.add(file));
         });
 
         await Promise.all(preloadPromises);
-        console.log("All required patches loaded.");
     }
 
     Module.onRuntimeInitialized = function() {
@@ -58,8 +59,8 @@
       const mid_get_version = Module.cwrap('mid_get_version', 'number', []);
       const mid_song_load = Module.cwrap('mid_song_load', 'number', ['number','number']);
       const mid_song_free = Module.cwrap('mid_song_free', null, ['number']);
-      const mid_song_get_patch_names = Module.cwrap('mid_song_get_patch_names', 'string', ['number']);
-      const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number','number','number']);
+      const mid_song_get_required_patches = Module.cwrap('mid_song_get_required_patches', 'string', ['number']);
+      const mid_song_read_wave = Module.cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']);
       const mid_istream_open_mem = Module.cwrap('mid_istream_open_mem', 'number', ['number','number']);
       const mid_istream_seek = Module.cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']);
       const mid_istream_close = Module.cwrap('mid_istream_close', null, ['number']);
@@ -70,7 +71,7 @@
           statusEl.textContent = "Already initialized.";
           return;
         }
-        const rc = mid_init("./gus-patch/timidity.cfg"); // gunakan path di FS virtual
+        const rc = mid_init("/gus-patch/timidity.cfg");
         if (rc === 0) {
           statusEl.textContent = `Initialized libTiMidity v${mid_get_version()}. Select a MIDI file.`;
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -107,49 +108,51 @@
 
           const optionsPtr = Module._malloc(12);
           Module.setValue(optionsPtr + 0, audioContext.sampleRate, 'i32');
-          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // format S16LSB
-          Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
+          Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+          Module.setValue(optionsPtr + 6, 1, 'i8');       // mono
           Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
 
           const streamPtr = mid_istream_open_mem(midiDataPtr, midiData.length);
-          songPtr = mid_song_load(streamPtr, optionsPtr);
-          
-          if (songPtr === 0) {
-            statusEl.textContent = "Failed to parse MIDI file.";
-            mid_istream_close(streamPtr);
-            Module._free(midiDataPtr);
-            Module._free(optionsPtr);
-            return;
-          }
 
-          // Dapatkan daftar patch yang dibutuhkan
-          const patchListString = mid_song_get_patch_names(songPtr);
-          
-          // Bebaskan lagu sementara untuk memuat patch, lalu muat ulang
-          mid_song_free(songPtr);
+          // 1. Analisis MIDI untuk mendapatkan daftar patch
+          const patchListString = mid_song_get_required_patches(streamPtr);
+
+          // 2. Unduh patch yang belum ada
           await loadRequiredPatches(patchListString);
 
-          // PENTING: Kembalikan stream ke awal sebelum memuat ulang!
-          mid_istream_seek(streamPtr, 0, 0); // 0 for offset, 0 for SEEK_SET
-
-          // Muat ulang lagu setelah patch tersedia
+          // 3. Kembalikan stream ke awal dan muat lagu untuk diputar
+          mid_istream_seek(streamPtr, 0, 0); // SEEK_SET
           songPtr = mid_song_load(streamPtr, optionsPtr);
           
           if (songPtr !== 0) {
             statusEl.textContent = `Playing: ${file.name}`;
             const bufferSize = 4096;
             // Minta 1 channel (mono)
-            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 1); 
-
-            const dummyRightBuffer = new Float32Array(bufferSize);
+            scriptNode = audioContext.createScriptProcessor(bufferSize, 0, 1);
 
             scriptNode.onaudioprocess = function(e) {
               const outL = e.outputBuffer.getChannelData(0);
-              
-              // Panggil fungsi C dengan buffer dummy untuk channel kanan
-              const written = mid_song_read_wave(songPtr, outL.length, outL);
 
-              if (written <= 0) {
+              // Alokasikan buffer di dalam event handler dan bebaskan setelah digunakan
+              const pcmBytes = bufferSize * 1 * 2; // bufferSize * 1 channel * 2 bytes/sample
+              const pcmBufferPtr = Module._malloc(pcmBytes);
+              
+              // Panggil fungsi C dengan 3 argumen yang benar
+              const bytesRead = mid_song_read_wave(songPtr, pcmBufferPtr, pcmBytes);
+
+              const samplesRead = bytesRead / 2; // 1 channel, 2 bytes/sample
+
+              // Konversi dan salin data dari buffer C ke buffer output audio
+              for (let i = 0; i < samplesRead; i++) {
+                // Baca S16 (sekarang datanya mono, tidak interleaved)
+                const s16_left = Module.HEAP16[(pcmBufferPtr >> 1) + i];
+                outL[i] = s16_left / 32768.0;
+              }
+
+              // Bebaskan buffer setelah selesai
+              Module._free(pcmBufferPtr);
+
+              if (bytesRead <= 0) {
                 playPauseBtn.textContent = "Play";
                 playPauseBtn.disabled = true;
                 stopBtn.disabled = true;

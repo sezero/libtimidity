@@ -677,7 +677,7 @@ size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
 
   start_sample = song->current_sample;
   end_sample = song->current_sample+samples;
-  while ( song->current_sample < end_sample ) {
+  do {
     /* Handle all events that should happen at this time */
     while (song->current_event->time <= song->current_sample) {
       switch(song->current_event->type) {
@@ -779,7 +779,7 @@ size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
       compute_data(song, &ptr, end_sample-song->current_sample);
     else
       compute_data(song, &ptr, song->current_event->time-song->current_sample);
-  }
+  } while ( song->current_sample < end_sample );
   return samples * song->bytes_per_sample;
 }
 

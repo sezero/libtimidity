@@ -719,6 +719,50 @@ char *mid_song_get_patch_names(MidSong *song) {
     return patch_list;
 }
 
+/* Analyze a MIDI stream and get a list of required patch files. */
+char *mid_song_get_required_patches(MidIStream *stream)
+{
+  MidSong *song;
+  char *patch_list = NULL;
+  int i;
+
+  if (!stream) return NULL;
+
+  /* Allocate a temporary song structure for analysis */
+  song = (MidSong *)timi_calloc(1, sizeof(MidSong));
+  if (!song) return NULL;
+
+  /* Copy master banks to the temporary song structure */
+  for (i = 0; i < 128; i++) {
+    if (master_tonebank[i]) {
+      song->tonebank[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
+      if (!song->tonebank[i]) goto cleanup;
+      song->tonebank[i]->tone = master_tonebank[i]->tone;
+    }
+    if (master_drumset[i]) {
+      song->drumset[i] = (MidToneBank *) timi_calloc(1, sizeof(MidToneBank));
+      if (!song->drumset[i]) goto cleanup;
+      song->drumset[i]->tone = master_drumset[i]->tone;
+    }
+  }
+
+  /* Analyze the MIDI file to mark required instruments.
+     This function is in readmidi.c and it's what marks instruments with MAGIC_LOAD_INSTRUMENT */
+  song->events = read_midi_file(stream, song, &(song->groomed_event_count), &song->samples);
+
+  if (song->events) {
+    /* Now that the song struct is populated with requirements, get the patch names */
+    patch_list = mid_song_get_patch_names(song);
+  }
+
+cleanup:
+  /* Free the temporary song structure. We don't call mid_song_free because it's not fully loaded. */
+  for (i = 0; i < 128; i++) { timi_free(song->tonebank[i]); timi_free(song->drumset[i]); }
+  timi_free(song->events);
+  timi_free(song);
+  return patch_list;
+}
+
 /* ====== for libtimidity <= 0.2.1 compatibility ======
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)
