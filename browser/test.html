@@ -86,6 +86,19 @@
         } else {
           statusEl.textContent = "Initialization failed. Check patch files.";
         }
+
+        // Daftarkan callback function secara global setelah inisialisasi
+        const callbackPtr = addFunction(function(tick, time_ms, type, channel, a, b) {
+          const time_s = time_ms / 1000.0;
+            if (type === 0x05) { // Lyric
+              const lyric = UTF8ToString(a, b);
+              console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Lyric: "${lyric}"`);
+            }
+           else {
+            //console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Status: 0x${type.toString(16)}, Chan: ${channel}, A: ${a}, B: ${b}`);
+          }
+        }, 'viiiii');
+        mid_song_set_event_callback(0, callbackPtr); // Pass 0 for songPtr as it's now global
       };
 
       // Pilihan file MIDI
@@ -129,29 +142,6 @@
           if (songPtr !== 0) {
             // PENTING: Inisialisasi lagu untuk pemutaran
             mid_song_start(songPtr);
-
-            // Daftarkan callback function
-            const callbackPtr = addFunction(function(tick, time_ms, type, channel, a, b) {
-              // Konversi waktu dari milidetik ke detik
-              const time_s = time_ms / 1000.0;
-              if (type === 0xFF) { // Meta Event
-                if (channel === 0x51) { // Tempo Change
-                  // Unpack the 24-bit tempo from a and b. Note that the 3rd byte is now in 'b'.
-                  const tempo = (a << 8) | arguments[5];
-                  console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Tempo: ${60000000/tempo} BPM`);
-                } else if (type === 0x05) { // Lyric
-                  const lyric = UTF8ToString(a, b);
-                  console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Lyric: "${lyric}"`);
-                } else {
-                  // Other meta events can be handled here
-                }
-              } else {
-                // Channel Event
-                console.log(`Tick: ${tick}, Time: ${time_s.toFixed(3)}s, Status: 0x${type.toString(16)}, Chan: ${channel}, A: ${a}, B: ${b}`);
-              }
-            }, 'viiiii');
-            mid_song_set_event_callback(songPtr, callbackPtr);
-
 
             statusEl.textContent = `Playing: ${file.name}`;
             const bufferSize = 4096;

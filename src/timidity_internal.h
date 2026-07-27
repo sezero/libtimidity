@@ -214,7 +214,7 @@ typedef struct _MidEvent MidEvent;
 struct _MidEvent
 {
   sint32 time;
-  uint8 channel, type, a, b;
+  uint8 channel, type, a, b, midi_event_type;
 };
 
 typedef struct _MidEventList MidEventList;
@@ -264,5 +264,8 @@ struct _MidSong
   char *meta_data[MID_META_MAX];
   MidEventCallback event_callback;
 };
+
+/* The global callback, shared between modules */
+extern MidEventCallback global_event_callback;
 
 #endif /* TIMIDITY_INTERNAL_H */

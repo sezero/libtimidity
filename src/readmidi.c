@@ -113,8 +113,8 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
       if (song->event_callback) {
         uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
         /* We'll use parameters 'a' and 'b' to pass the string pointer and length */
-        /* The status byte for meta events is 0xFF. The lyric event type is 0x05. */
-        song->event_callback(song->at, current_ms, 0xFF, 0x05, (uintptr_t)s, len);
+        /* The status byte for meta events is 0xFF. The lyric event type is 5. */
+        song->event_callback(song->at, current_ms, 0xFF, 5, (uintptr_t)s, len);
       }
       timi_free(s);
       return 0;
@@ -131,6 +131,7 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
   newlist->event.type = t;					\
   newlist->event.channel = ch;					\
   newlist->event.a = pa;					\
+  newlist->event.midi_event_type = me; \
   newlist->event.b = pb;					\
   return newlist;
 
@@ -153,6 +154,10 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	{
 	  DEBUG_MSG("read_midi_event: mid_istream_read() failure\n");
 	  return NULL;
+	}
+	if (global_event_callback) {
+		uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
+		global_event_callback(song->at, current_ms, 0xFF, 0x51, (a << 8) | b, c);
 	}
 
       if(me==0xF0 || me == 0xF7) /* SysEx event */
@@ -178,12 +183,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		mid_istream_read(stream, &a, 1, 1);
 		mid_istream_read(stream, &b, 1, 1);
 		mid_istream_read(stream, &c, 1, 1);
-		/* Invoke the event callback if it's set */
-		if (song->event_callback) {
-			uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
-			/* Pack the 24-bit tempo into two arguments */
-			song->event_callback(song->at, current_ms, 0xFF, 0x51, (a << 8) | b, c);
-		}
+		
 
 		MIDIEVENT(song->at, ME_TEMPO, c, a, b);
 
