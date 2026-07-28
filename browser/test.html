@@ -468,6 +468,9 @@
             if (player.audioContext && player.audioContext.state === 'running') player.pause();
             else player.resume();
         };
+        seekerEl.onchange = (event) => {
+            player.seek(event.target.value);
+        };
         stopBtn.onclick = () => player.stop();
         freeBtn.onclick = () => player.stop();
         exitBtn.onclick = () => player.shutdown();
