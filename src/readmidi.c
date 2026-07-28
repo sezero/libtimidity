@@ -111,7 +111,6 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
     default: timi_free(s); return 0;
     case 5: /* Lyric - will be handled as a regular event */
       song->lyric_text = s;
-      timi_free(s);
       return 0;
   }
   timi_free(song->meta_data[id]);
