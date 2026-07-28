@@ -50,4 +50,7 @@ char *timi_strtokr(char *s1, const char *s2, char **ptr);
 /* returns the number of chars written, including NULL */
 size_t timi_strxcpy(char *dst, const char *src, size_t size);
 
+/* For debug messages */
+void timi_debug_msg(const char *fmt, ...);
+
 #endif /* TIMIDITY_COMMON_H */

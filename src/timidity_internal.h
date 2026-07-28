@@ -43,6 +43,7 @@
 #endif
 #include "timidity.h"
 #include "options.h"
+#include "common.h"
 
 #if defined(_MSC_VER) && !defined(__cplusplus) && !defined(HAVE_CONFIG_H)
 #define inline __inline
@@ -110,19 +111,18 @@ extern sint32 XCHG_LONG (sint32);
 #endif
 
 #if defined(__GNUC__) && !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
-/* this is more compatible with very old gcc */
 #ifdef TIMIDITY_DEBUG
-#define DEBUG_MSG(fmt, args...) fprintf(stderr, fmt, ##args)
-#else
-#define DEBUG_MSG(fmt, args...)
-#endif
-#else /* use C99 varargs macros */
-#ifdef TIMIDITY_DEBUG
-#define DEBUG_MSG(...) fprintf(stderr, __VA_ARGS__)
+#define DEBUG_MSG(fmt, args...) timi_debug_msg(fmt, ##args)
 #else
 #define DEBUG_MSG(...)
 #endif
+#else /* use C99 varargs macros */
+#ifdef TIMIDITY_DEBUG
+#define DEBUG_MSG(...) timi_debug_msg(__VA_ARGS__)
+#else
+#define DEBUG_MSG(...)
 #endif
+#endif /* C99 varargs */
 
 #ifndef __VBCC__
 #define TIMI_UNUSED(x) (void)(x)
@@ -264,11 +264,11 @@ struct _MidSong
   sint32 at;
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];
-  MidEventCallback event_callback;
   char *lyric_text; /* Temporary storage for lyric text during parsing */
 };
 
 /* The global callback, shared between modules */
 extern MidEventCallback global_event_callback;
+extern MidDebugMsgCallback global_debug_msg_callback;
 
 #endif /* TIMIDITY_INTERNAL_H */

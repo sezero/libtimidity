@@ -280,6 +280,12 @@ typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 type, uint8 
 /* Set a callback function to be called for each MIDI event */
 TIMI_EXPORT extern void mid_song_set_event_callback(MidSong *song, MidEventCallback callback);
 
+/* Callback for debug messages */
+typedef void (*MidDebugMsgCallback)(const char *msg);
+
+/* Set a callback function to be called for debug messages */
+TIMI_EXPORT extern void mid_set_debug_msg_callback(MidDebugMsgCallback callback);
+
 /* Get a list of required patch files for a song.
  * Returns a string with filenames separated by newlines.
  * The caller is responsible for freeing the returned string. */

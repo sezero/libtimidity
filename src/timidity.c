@@ -50,6 +50,7 @@
 
 #include "ospaths.h"
 MidEventCallback global_event_callback = NULL;
+MidDebugMsgCallback global_debug_msg_callback = NULL;
 
 static MidToneBank *master_tonebank[128], *master_drumset[128];
 
@@ -671,6 +672,12 @@ void mid_song_set_event_callback(MidSong *song, MidEventCallback callback)
   global_event_callback = callback;
 }
 
+/* Set a callback function to be called for debug messages */
+void mid_set_debug_msg_callback(MidDebugMsgCallback callback)
+{
+  global_debug_msg_callback = callback;
+}
+
 long mid_get_version (void)
 {
   return LIBTIMIDITY_VERSION;
@@ -738,9 +745,6 @@ char *mid_song_get_required_patches(MidIStream *stream)
   /* Allocate a temporary song structure for analysis */
   song = (MidSong *)timi_calloc(1, sizeof(MidSong));
   if (!song) return NULL;
-
-  /* Use the global callback for analysis */
-  song->event_callback = global_event_callback;
 
   /* This is the crucial part: Initialize drumchannels for the analysis. */
   song->drumchannels = DEFAULT_DRUMCHANNELS;

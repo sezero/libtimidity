@@ -35,10 +35,13 @@
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
+#include <stdarg.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "timidity_internal.h"
 
 /* I guess "rb" should be right for any libc */
 #define OPEN_MODE "rb"
@@ -201,4 +204,22 @@ char *timi_strtokr(char *s1, const char *s2, char **ptr)
 
     /* parsed to end of string */
     return s1;
+}
+
+void timi_debug_msg(const char *fmt, ...)
+{
+    char buffer[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    if (global_debug_msg_callback)
+    {
+        global_debug_msg_callback(buffer);
+    }
+    else
+    {
+        fprintf(stderr, "%s", buffer);
+    }
 }

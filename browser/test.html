@@ -76,9 +76,20 @@
                 getTime: cwrap('mid_song_get_time', 'number', ['number']),
                 getTotalTime: cwrap('mid_song_get_total_time', 'number', ['number']),
                 getCurrentTick: cwrap('mid_song_get_current_tick', 'number', ['number']),
+                setDebugCallback: cwrap('mid_set_debug_msg_callback', null, ['number']),
             };
+            this._setupDebugCallback(); // Set up the debug callback
 
             this.emit('runtimeInitialized');
+        }
+
+        _setupDebugCallback() {
+            const debugCallback = (messagePtr) => {
+                const message = this.Module.UTF8ToString(messagePtr);
+                console.log("libTiMidity DEBUG:", message.trim()); // trim() to remove trailing newlines
+            };
+            const callbackPtr = this.Module.addFunction(debugCallback, 'vi');
+            this.c.setDebugCallback(callbackPtr);
         }
 
         _handleMidiEvent(tick, time_ms, type, channel, a, b) {
