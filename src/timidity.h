@@ -266,6 +266,14 @@ extern "C" {
  */
   TIMI_EXPORT extern void mid_song_free (MidSong *song);
 
+/* Set song amplification value
+ */
+  TIMI_EXPORT extern void mid_song_set_volume (MidSong *song, int volume);
+
+/* Get current song tick
+ */
+  TIMI_EXPORT extern uint32 mid_song_get_current_tick(MidSong *song);
+
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 type, uint8 channel, uint8 a, uint8 b);
 

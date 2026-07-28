@@ -776,6 +776,12 @@ cleanup:
   return patch_list;
 }
 
+/* Get current song tick */
+uint32 mid_song_get_current_tick(MidSong *song)
+{
+    if (!song || !song->current_event) return 0;
+    return song->current_event->time;
+}
 /* ====== for libtimidity <= 0.2.1 compatibility ======
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)
