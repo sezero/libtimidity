@@ -33,12 +33,14 @@
             this.Module = Module;
             this.audioContext = null;
             this.scriptNode = null;
-            this.songPtr = 0;
+            this.songPtr = 0; // Pointer to the C MidSong object
             this.loadedPatches = new Set();
             this.eventListeners = {};
             this.playingInterval = null;
             this.isPlaying = false;
             this.isPaused = false;
+            this.isSeeking = false; // New flag to control seeker updates
+            this.totalDuration = 0; // Total duration in seconds
 
             this.Module.onRuntimeInitialized = () => this._onRuntimeInitialized();
         }
@@ -177,7 +179,7 @@
             this.c.startSong(this.songPtr);
             if (offset > 0) this.seek(offset);
 
-            const bufferSize = 4096;
+            const bufferSize = 4096; // Web Audio API buffer size
             this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
 
             this.scriptNode.onaudioprocess = (e) => {
@@ -204,10 +206,10 @@
             this.scriptNode.connect(this.audioContext.destination);
 
             this.resume();
-            this.emit('onPlay');
 
             this.playingInterval = setInterval(() => {
-                if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running') {
+                // Only emit onPlaying if not currently seeking to prevent UI jumps
+                if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) {
                     this.emit('onPlaying', this.c.getCurrentTick(this.songPtr), this.c.getTime(this.songPtr));
                 }
             }, 100);
@@ -222,7 +224,7 @@
         resume() {
             if (!this.audioContext || this.songPtr === 0) return;
             if (this.audioContext.state === 'suspended') {
-                this.audioContext.resume().then(() => {
+                this.audioContext.resume().then(() => { // AudioContext.resume() is async
                     if (!this.isPlaying) this.emit('onPlay');
                     else this.emit('onResume');
                     this.isPlaying = true;
@@ -234,7 +236,7 @@
         pause() {
             if (!this.audioContext || this.songPtr === 0) return;
             if (this.audioContext.state === 'running') {
-                this.audioContext.suspend().then(() => {
+                this.audioContext.suspend().then(() => { // AudioContext.suspend() is async
                     this.isPaused = true;
                     this.emit('onPause');
                 });
@@ -249,8 +251,6 @@
                 this.scriptNode = null;
                 this.c.freeSong(this.songPtr);
                 this.songPtr = 0;
-                this.isPlaying = false;
-                this.isPaused = false;
                 this.emit('onStop');
             }
         }
@@ -262,7 +262,6 @@
                 this.audioContext.close();
                 this.audioContext = null;
             }
-            this.emit('onShutdown');
         }
 
         seek(timeInSeconds) {
@@ -431,6 +430,15 @@
             seekerEl.value = timeInSeconds;
             statusEl.textContent = `Seeking to ${player.formatTime(timeInSeconds)}...`;
         });
+
+        player.on('onInstrumentLoading', (loaded, total, pathToLoad) => {
+            statusEl.textContent = `Loading patches (${loaded}/${total}): ${pathToLoad}`;
+        });
+
+        player.on('onInstrumentLoaded', (count) => {
+            statusEl.textContent = `Loaded ${count} patches.`;
+        });
+
 
         player.on('onMIDIEvent', (event) => {
             if (event.type === 0xFF && event.channel === 0x05) { // Lyric
