@@ -21,15 +21,17 @@
   <script>
     var Module = {};
 
+    let patchUrlBase = 'gus-patch';
+
     // This must be defined *before* libtimidity.js is loaded and executed.
     Module.preRun = [() => {
         FS.mkdir('/gus-patch');
-        FS.createPreloadedFile('/gus-patch', 'timidity.cfg', 'gus-patch/timidity.cfg', true, true);
+        FS.createPreloadedFile('/gus-patch', 'timidity.cfg', patchUrlBase + '/timidity.cfg', true, true);
     }];
 
     class TimidityPlayer {
         constructor(options = {}) {
-            this.patchUrlBase = options.patchUrlBase || 'gus-patch';
+            this.patchUrlBase = options.patchUrlBase;
             this.Module = Module;
             this.audioContext = null;
             this.scriptNode = null;
@@ -371,7 +373,7 @@
         const totalTimeEl = document.getElementById("totalTime");
 
 
-        const player = new TimidityPlayer({ basePath: 'gus-patch' });
+        const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
 
         player.on('runtimeInitialized', () => {
             statusEl.textContent = "Runtime ready. Click 'Init'.";
@@ -453,6 +455,10 @@
             if (event.type === 0xFF && event.channel === 0x05) { // Lyric
                 const lyric = player.Module.UTF8ToString(event.a, event.b);
                 console.log(`Tick: ${event.tick}, Time: ${event.time_s.toFixed(3)}s, Lyric: "${lyric}"`);
+            }
+            else
+            {
+                console.log(`MIDI Event: Tick=${event.tick}, Time=${event.time_s.toFixed(3)}s, Type=0x${event.type.toString(16)}, Channel=${event.channel}, A=${event.a}, B=${event.b}`);
             }
             // Tambahkan penanganan event MIDI lainnya di sini jika diperlukan
             // console.log(`MIDI Event: Tick=${event.tick}, Time=${event.time_s.toFixed(3)}s, Type=0x${event.type.toString(16)}, Channel=${event.channel}, A=${event.a}, B=${event.b}`);
