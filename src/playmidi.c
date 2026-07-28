@@ -681,28 +681,26 @@ size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
   do {
     /* Handle all events that should happen at this time */
     while (song->current_event->time <= song->current_sample) {
-      if (global_event_callback) {
-        uint32 current_ms = (uint32)(((uint64)song->current_sample * 1000) / song->rate);
-        uint8 event_type_for_callback = song->current_event->midi_event_type;
-        uint8 event_channel_for_callback = song->current_event->channel;
+      if (global_event_callback && song->rate != 0) {
+          uint32 current_ms = (uint32)(((uint64)song->current_event->time * 1000) / song->rate);
+          uint8 event_status = song->current_event->midi_event_type;
+          uint8 event_type   = song->current_event->channel;
+          const char *text   = NULL;
 
-        // Handle internal meta-event types (ME_TEMPO, ME_LYRIC)
-        if (song->current_event->type == ME_TEMPO) {
-            event_type_for_callback = 0xFF; // Standard MIDI Meta-event status byte
-            event_channel_for_callback = 0x51; // Meta-event type for Tempo
-            // Data (a, b) already packed for tempo
-        } else if (song->current_event->type == ME_LYRIC) {
-            event_type_for_callback = 0xFF; // Standard MIDI Meta-event status byte
-            event_channel_for_callback = 0x05; // Meta-event type for Lyric
-            // Data (a, b) already contains string pointer and length
-        } else {
-            // For channel events, midi_event_type is already the correct status byte
-            // and channel is the MIDI channel.
-        }
+          // Meta-event handling
+          if (song->current_event->type == ME_TEMPO) {
+            event_status = 0xFF; // Meta-event
+            event_type   = 0x51; // Tempo
+          } else if (song->current_event->type == ME_LYRIC) {
+            event_status = 0xFF; // Meta-event
+            event_type   = 0x05; // Lyric
+            text = (const char*) song->current_event->a;
+          }
 
-        global_event_callback(song->current_event->time, current_ms,
-                              event_type_for_callback, event_channel_for_callback,
-                              song->current_event->a, song->current_event->b);
+          global_event_callback(song->current_event->time, current_ms,
+                        event_status, event_type,
+                        song->current_event->a, song->current_event->b,
+                        text);
       }
 
       switch(song->current_event->type) {

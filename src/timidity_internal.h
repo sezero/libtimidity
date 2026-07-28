@@ -214,7 +214,9 @@ typedef struct _MidEvent MidEvent;
 struct _MidEvent
 {
   sint32 time;
-  uint8 channel, type, a, b, midi_event_type;
+  /* Using uintptr_t for a and b to allow storing pointers for meta events like lyrics. */
+  uintptr_t a, b;
+  uint8 channel, type, midi_event_type;
 };
 
 typedef struct _MidEventList MidEventList;
@@ -263,6 +265,7 @@ struct _MidSong
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];
   MidEventCallback event_callback;
+  char *lyric_text; /* Temporary storage for lyric text during parsing */
 };
 
 /* The global callback, shared between modules */

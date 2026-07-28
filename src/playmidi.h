@@ -49,7 +49,6 @@
 #define ME_RESET_CONTROLLERS	13
 #define ME_ALL_NOTES_OFF	14
 #define ME_TONE_BANK	15
-
 #define ME_LYRIC	16
 
 #define ME_EOT		99

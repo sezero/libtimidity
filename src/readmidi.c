@@ -109,13 +109,8 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
   /* others not stored in song
      but debug-printed above */
     default: timi_free(s); return 0;
-    case 5: /* Lyric */
-      if (song->event_callback) {
-        uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
-        /* We'll use parameters 'a' and 'b' to pass the string pointer and length */
-        /* The status byte for meta events is 0xFF. The lyric event type is 5. */
-        song->event_callback(song->at, current_ms, 0xFF, 5, (uintptr_t)s, len);
-      }
+    case 5: /* Lyric - will be handled as a regular event */
+      song->lyric_text = s;
       timi_free(s);
       return 0;
   }
@@ -188,6 +183,12 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		mid_istream_skip(stream, len);
 		break;
 	      }
+	  /* If a lyric was parsed, create an event for it. */
+	  if (song->lyric_text)
+	  {
+	    MIDIEVENT(song->at, ME_LYRIC, 0, (uintptr_t)song->lyric_text, strlen(song->lyric_text));
+	    song->lyric_text = NULL; /* Reset after use */
+	  }
 	}
       else
 	{
