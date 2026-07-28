@@ -131,7 +131,7 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
   newlist->event.type = t;					\
   newlist->event.channel = ch;					\
   newlist->event.a = pa;					\
-  newlist->event.midi_event_type = me; \
+  newlist->event.midi_event_type = me; /* Original MIDI status byte */ \
   newlist->event.b = pb;					\
   return newlist;
 
@@ -154,10 +154,6 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	{
 	  DEBUG_MSG("read_midi_event: mid_istream_read() failure\n");
 	  return NULL;
-	}
-	if (global_event_callback) {
-		uint32 current_ms = (uint32)(((uint64)song->at * 1000) / song->rate);
-		global_event_callback(song->at, current_ms, 0xFF, 0x51, (a << 8) | b, c);
 	}
 
       if(me==0xF0 || me == 0xF7) /* SysEx event */
