@@ -10,6 +10,10 @@
   <input type="file" id="midiFile" accept=".mid,.midi">
   <button id="playPause" disabled>Play</button>
   <button id="stop" disabled>Stop</button>
+  <div style="margin-top: 10px;">
+    <input type="range" id="seeker" min="0" value="0" disabled style="width: 300px;">
+    <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+  </div>
   <button id="free">Free Song</button>
   <button id="exit">Exit</button>
   <p>Status: <span id="status">Loading patch files...</span></p>
@@ -68,6 +72,7 @@
                 seekSong: cwrap('mid_song_seek', null, ['number', 'number']),
                 setVolume: cwrap('mid_song_set_volume', null, ['number', 'number']),
                 getTime: cwrap('mid_song_get_time', 'number', ['number']),
+                getTotalTime: cwrap('mid_song_get_total_time', 'number', ['number']),
                 getCurrentTick: cwrap('mid_song_get_current_tick', 'number', ['number']),
             };
 
@@ -153,6 +158,7 @@
             this.songPtr = this.c.loadSong(streamPtr, optionsPtr);
 
             if (this.songPtr !== 0) {
+                this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
                 this.emit('onMidiLoaded', midi);
                 return true;
             } else {
@@ -201,7 +207,7 @@
             this.emit('onPlay');
 
             this.playingInterval = setInterval(() => {
-                if (this.isPlaying && !this.isPaused) {
+                if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running') {
                     this.emit('onPlaying', this.c.getCurrentTick(this.songPtr), this.c.getTime(this.songPtr));
                 }
             }, 100);
@@ -261,6 +267,7 @@
 
         seek(timeInSeconds) {
             if (this.songPtr !== 0) {
+                this.emit('onSeek', this.c.getCurrentTick(this.songPtr), timeInSeconds);
                 this.c.seekSong(this.songPtr, timeInSeconds * 1000);
                 this.emit('onSeek', this.c.getCurrentTick(this.songPtr), timeInSeconds);
             }
@@ -325,6 +332,21 @@
 
             return new Blob([dataView], { type: 'audio/wav' });
         }
+
+        formatTime(seconds) {
+          if (isNaN(seconds) || seconds < 0) return "0:00";
+
+          const hrs = Math.floor(seconds / 3600);
+          const mins = Math.floor((seconds % 3600) / 60);
+          const secs = Math.floor(seconds % 60);
+
+          if (hrs > 0) {
+            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          } else {
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+          }
+        }
+
     }
 
     // --- Main Application Logic ---
@@ -336,6 +358,10 @@
         const exitBtn = document.getElementById("exit");
         const initBtn = document.getElementById("init");
         const midiFileEl = document.getElementById("midiFile");
+        const seekerEl = document.getElementById("seeker");
+        const currentTimeEl = document.getElementById("currentTime");
+        const totalTimeEl = document.getElementById("totalTime");
+
 
         const player = new TimidityPlayer({ basePath: 'gus-patch' });
 
@@ -344,10 +370,28 @@
         });
 
         player.on('onMidiLoaded', (midi) => {
-            statusEl.textContent = `Loaded: ${midi.name}`;
+            statusEl.textContent = `Loaded: ${midi.name || 'MIDI File'}`;
             playPauseBtn.textContent = 'Play';
             playPauseBtn.disabled = false;
             stopBtn.disabled = false;
+            seekerEl.disabled = false;
+            seekerEl.max = player.totalDuration;
+            seekerEl.value = 0;
+            currentTimeEl.textContent = player.formatTime(0);
+            totalTimeEl.textContent = player.formatTime(player.totalDuration);
+        });
+
+        player.on('onInstrumentLoading', (loaded, total, pathToLoad) => {
+            statusEl.textContent = `Loading patches (${loaded}/${total}): ${pathToLoad}`;
+        });
+
+        player.on('onInstrumentLoaded', (count) => {
+            statusEl.textContent = `Loaded ${count} patches.`;
+        });
+
+        player.on('onPlaying', (tick, elapsedMs) => {
+            seekerEl.value = elapsedMs / 1000;
+            currentTimeEl.textContent = player.formatTime(elapsedMs / 1000);
         });
 
         player.on('onPlay', () => {
@@ -369,6 +413,8 @@
             statusEl.textContent = "Song freed.";
             playPauseBtn.textContent = "Play";
             playPauseBtn.disabled = true;
+            seekerEl.disabled = true;
+            seekerEl.value = 0;
             stopBtn.disabled = true;
         });
 
@@ -380,11 +426,25 @@
             statusEl.textContent = "Exited.";
         });
 
+        player.on('onSeek', (tick, timeInSeconds) => {
+            currentTimeEl.textContent = player.formatTime(timeInSeconds);
+            seekerEl.value = timeInSeconds;
+            statusEl.textContent = `Seeking to ${player.formatTime(timeInSeconds)}...`;
+        });
+
         player.on('onMIDIEvent', (event) => {
             if (event.type === 0xFF && event.channel === 0x05) { // Lyric
                 const lyric = player.Module.UTF8ToString(event.a, event.b);
                 console.log(`Tick: ${event.tick}, Time: ${event.time_s.toFixed(3)}s, Lyric: "${lyric}"`);
             }
+            // Tambahkan penanganan event MIDI lainnya di sini jika diperlukan
+            // console.log(`MIDI Event: Tick=${event.tick}, Time=${event.time_s.toFixed(3)}s, Type=0x${event.type.toString(16)}, Channel=${event.channel}, A=${event.a}, B=${event.b}`);
+        });
+
+        player.on('error', (message) => {
+            statusEl.textContent = `Error: ${message}`;
+            playPauseBtn.disabled = true;
+            stopBtn.disabled = true;
         });
 
         initBtn.onclick = () => {
