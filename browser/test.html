@@ -76,9 +76,7 @@
                 getTime: cwrap('mid_song_get_time', 'number', ['number']),
                 getTotalTime: cwrap('mid_song_get_total_time', 'number', ['number']),
                 getCurrentTick: cwrap('mid_song_get_current_tick', 'number', ['number']),
-                setDebugCallback: cwrap('mid_set_debug_msg_callback', null, ['number']),
             };
-            this._setupDebugCallback(); // Set up the debug callback
 
             this.emit('runtimeInitialized');
         }
