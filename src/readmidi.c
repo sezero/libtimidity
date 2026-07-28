@@ -57,6 +57,10 @@ static void compute_sample_increment(MidSong *song, sint32 tempo,
 	  song->sample_increment, song->sample_correction);
 }
 
+/* Forward declarations for static functions */
+static void add_event_to_list(MidSong *song, MidEventList *new_event);
+static void add_event(MidSong *song, uint8 type, uint8 channel, uintptr_t a, uintptr_t b, uint8 status);
+
 /* Read variable-length number (7 bits per byte, MSB first) */
 static sint32 getvl(MidIStream *stream)
 {
@@ -109,25 +113,15 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
   /* others not stored in song
      but debug-printed above */
     default: timi_free(s); return 0;
-    case 5: /* Lyric - will be handled as a regular event */
-      song->lyric_text = s;
+    case 5: /* Lyric */
+      /* The memory for 's' is now owned by the event list */
+      add_event(song, ME_LYRIC, 0, (uintptr_t)s, strlen(s), 0xFF);
       return 0;
   }
   timi_free(song->meta_data[id]);
   song->meta_data[id] = s;
   return 0;
 }
-
-#define MIDIEVENT(at,t,ch,pa,pb)				\
-  newlist = (MidEventList *)timi_calloc(1,sizeof(MidEventList));\
-  if (!newlist) {song->oom = 1; return NULL;}			\
-  newlist->event.time = at;					\
-  newlist->event.type = t;					\
-  newlist->event.channel = ch;					\
-  newlist->event.a = pa;					\
-  newlist->event.midi_event_type = me; /* Original MIDI status byte */ \
-  newlist->event.b = pb;					\
-  return newlist;
 
 #define MAGIC_EOT ((MidEventList *)(-1))
 
@@ -139,6 +133,17 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
   static uint8 nrpn=0, rpn_msb[16], rpn_lsb[16]; /* one per channel */
   uint8 me, type, a,b,c;
   sint32 len;
+#define MIDIEVENT(at,t,ch,pa,pb)				\
+  newlist = (MidEventList *)timi_calloc(1,sizeof(MidEventList));\
+  if (!newlist) {song->oom = 1; return NULL;}			\
+  newlist->event.time = at;					\
+  newlist->event.type = t;					\
+  newlist->event.channel = ch;					\
+  newlist->event.a = pa;					\
+  newlist->event.midi_event_type = me; /* Original MIDI status byte */ \
+  newlist->event.b = pb;					\
+  return newlist;
+
   MidEventList *newlist;
 
   for (;;)
@@ -182,12 +187,6 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		mid_istream_skip(stream, len);
 		break;
 	      }
-	  /* If a lyric was parsed, create an event for it. */
-	  if (song->lyric_text)
-	  {
-	    MIDIEVENT(song->at, ME_LYRIC, 0, (uintptr_t)song->lyric_text, strlen(song->lyric_text));
-	    song->lyric_text = NULL; /* Reset after use */
-	  }
 	}
       else
 	{
@@ -204,12 +203,12 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 	    case 0: /* Note off */
 	      mid_istream_read(stream, &b, 1, 1);
 	      b &= 0x7F;
-	      MIDIEVENT(song->at, ME_NOTEOFF, lastchan, a,b);
+	      MIDIEVENT(song->at, ME_NOTEOFF, lastchan, a, b);
 
 	    case 1: /* Note on */
 	      mid_istream_read(stream, &b, 1, 1);
 	      b &= 0x7F;
-	      MIDIEVENT(song->at, ME_NOTEON, lastchan, a,b);
+	      MIDIEVENT(song->at, ME_NOTEON, lastchan, a, b);
 
 	    case 2: /* Key Pressure */
 	      mid_istream_read(stream, &b, 1, 1);
@@ -279,7 +278,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
 		    break;
 
 		  default:
-		    DEBUG_MSG("(Control %d: %d)\n", a, b);
+		    /* DEBUG_MSG("(Control %d: %d)\n", a, b); */
 		    break;
 		  }
 		if (control != 255)
@@ -312,13 +311,39 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
   return NULL;
 }
 
-#undef MIDIEVENT
+/* Helper to add a new event to the sorted list. This function is now static
+   and only called by the ADD_EVENT macro. */
+static void add_event(MidSong *song, uint8 type, uint8 channel, uintptr_t a, uintptr_t b, uint8 status) {
+    MidEventList *new_event_list = (MidEventList *)timi_calloc(1, sizeof(MidEventList));
+    if (!new_event_list) { song->oom = 1; return; }
 
+    new_event_list->event.time = song->at;
+    new_event_list->event.type = type;
+    new_event_list->event.channel = channel;
+    new_event_list->event.a = a;
+    new_event_list->event.b = b;
+    new_event_list->event.midi_event_type = status;
+    add_event_to_list(song, new_event_list);
+}
+
+/* Helper to add a new event to the sorted list */
+static void add_event_to_list(MidSong *song, MidEventList *new_event) {
+    MidEventList *meep = song->evlist;
+    MidEventList *next = meep->next;
+
+    while (next && (next->event.time < new_event->event.time)) {
+        meep = next;
+        next = meep->next;
+    }
+    new_event->next = next;
+    meep->next = new_event;
+    song->event_count++;
+}
 /* Read a midi track into the linked list, either merging with any previous
    tracks or appending to them. */
 static int read_track(MidIStream *stream, MidSong *song, int append)
 {
-  MidEventList *meep;
+  MidEventList *meep = song->evlist;
   MidEventList *next, *newlist;
   sint32 len;
   long next_pos, pos;
@@ -334,7 +359,6 @@ static int read_track(MidIStream *stream, MidSong *song, int append)
     }
   else
     song->at=0;
-
   /* Check the formalities */
   if (mid_istream_read(stream, tmp, 1, 4) != 4 || mid_istream_read(stream, &len, 4, 1) != 1)
     {

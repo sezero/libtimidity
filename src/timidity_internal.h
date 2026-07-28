@@ -264,7 +264,6 @@ struct _MidSong
   sint32 at;
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];
-  char *lyric_text; /* Temporary storage for lyric text during parsing */
 };
 
 /* The global callback, shared between modules */
