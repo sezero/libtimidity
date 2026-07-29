@@ -124,7 +124,7 @@
             bottom: 0;
             transform-origin: top; /* The bar will "shrink" from the top down */
             transform: scaleY(1); /* Start fully scaled (volume at 0) */
-            transition: transform 0.02s linear;
+            transition: transform 0.015s linear;
         }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
@@ -1051,9 +1051,6 @@
                 const vuR = vuRightControls[channel];
 
                 if (vuL && vuR) {
-                    // Set a transition for a smooth decay
-                    vuL.style.transition = 'transform 0.5s ease-out';
-                    vuR.style.transition = 'transform 0.5s ease-out';
                     // Set the target scale to 0
                     vuL.style.transform = 'scaleY(1)';
                     vuR.style.transform = 'scaleY(1)';
