@@ -165,9 +165,8 @@ static void reverse_data(sint16 *sp, sint32 ls, sint32 le)
 
    For other parameters, 1 means yes, 0 means no, other values are
    undefined.
-
-   TODO: do reverse loops right */
-static void load_instrument(MidSong *song, const char *name,
+ */
+int load_instrument(MidSong *song, const char *name,
 				   MidInstrument **out,
 				   int percussion, int panning,
 				   int amp, int note_to_use,
@@ -188,7 +187,7 @@ static void load_instrument(MidSong *song, const char *name,
 
   TIMI_UNUSED(percussion);
   *out = NULL;
-  if (!name || !*name) return;
+  if (!name || !*name) return -1;
 
   /* Open patch file */
   i = -1;
@@ -207,7 +206,7 @@ static void load_instrument(MidSong *song, const char *name,
   if (fp == NULL)
     {
       DEBUG_MSG("Instrument `%s' can't be found.\n", name);
-      return;
+      return -1;
     }
 
   DEBUG_MSG("Loading instrument %s\n", (i < 0)? name : tmp);
@@ -520,7 +519,7 @@ static void load_instrument(MidSong *song, const char *name,
     }
 
   fclose(fp);
-  return;
+  return 0;
 
 nomem:
   song->oom=1;
@@ -532,6 +531,7 @@ fail:
 badpat:
   fclose(fp);
   *out = NULL;
+  return -1;
 }
 
 static int fill_bank(MidSong *song, int dr, int b)

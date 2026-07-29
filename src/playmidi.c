@@ -45,6 +45,8 @@
 #include "output.h"
 #include "mix.h"
 #include "tables.h"
+#include "readmidi.h"
+#include "instrum.h"
 
 static void adjust_amplification(MidSong *song)
 {
@@ -56,6 +58,26 @@ static void reset_voices(MidSong *song)
   int i;
   for (i=0; i<MID_MAX_VOICES; i++)
     song->voice[i].status=VOICE_FREE;
+}
+static void kill_note(MidSong *song, int i);
+
+static int find_free_voice(MidSong *song, MidEvent *e)
+{
+    int i = song->voices, lowest = -1;
+    sint32 lv = 0x7FFFFFFF, v;
+
+    while (i--)
+    {
+        if (song->voice[i].status == VOICE_FREE)
+            return i; /* Found a free voice. */
+
+        if (song->voice[i].channel == e->channel && (song->voice[i].note == e->a || song->channel[song->voice[i].channel].mono))
+        {
+            kill_note(song, i);
+            return i; /* Use the voice we just killed */
+        }
+    }
+    return -1; /* No voice available */
 }
 
 /* Process the Reset All Controllers event */
@@ -823,4 +845,71 @@ void mid_song_set_volume(MidSong *song, int volume)
 	recompute_amp(song, i);
 	apply_envelope_to_amp(song, i);
       }
+}
+
+int mid_note_on(MidSong *song, int channel, int program, int note, int velocity)
+{
+  MidEvent e;
+  MidInstrument *ip;
+  int i;
+
+  if (!song || !song->playing) return -1;
+
+  if (ISDRUMCHANNEL(song, channel))
+  {
+    if (!(ip = song->drumset[song->channel[channel].bank]->instrument[note]))
+    {
+      if (!(ip = song->drumset[0]->instrument[note]))
+        return note; /* Return missing drum note (as program) */
+    }
+  }
+  else
+  {
+    /* Change program if needed */
+    if (song->channel[channel].program != program)
+    {
+      song->channel[channel].program = program;
+    }
+    if (song->channel[channel].program == SPECIAL_PROGRAM)
+      ip = song->default_instrument;
+    else if (!(ip = song->tonebank[song->channel[channel].bank]->instrument[song->channel[channel].program]))
+    {
+      if (!(ip = song->tonebank[0]->instrument[song->channel[channel].program]))
+      {
+        return program; /* Return missing program number */
+      }
+      if (!ip)
+        return program; /* Return missing program number */
+    }
+  }
+
+  e.type = ME_NOTEON;
+  e.channel = channel;
+  e.a = note;
+  e.b = velocity;
+
+  /* Find a free voice and start the note */
+  i = find_free_voice(song, &e);
+  if (i != -1)
+  {
+    start_note(song, &e, i);
+  }
+  return 0; /* Success */
+}
+
+void mid_note_off(MidSong *song, int channel, int note)
+{
+  if (!song || !song->playing) return;
+
+  MidEvent e;
+  e.type = ME_NOTEOFF;
+  e.channel = channel;
+  e.a = note;
+  e.b = 0; // Velocity for note-off is typically 0
+
+  /* Temporarily set the current_event to our new event */
+  MidEvent *original_event = song->current_event;
+  song->current_event = &e;
+  note_off(song);
+  song->current_event = original_event;
 }

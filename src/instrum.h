@@ -49,9 +49,16 @@
 #define load_missing_instruments TIMI_NAMESPACE(load_missing_instruments)
 #define free_instruments TIMI_NAMESPACE(free_instruments)
 #define set_default_instrument TIMI_NAMESPACE(set_default_instrument)
+#define load_instrument TIMI_NAMESPACE(load_instrument)
 
 extern int load_missing_instruments(MidSong *song);
 extern void free_instruments(MidSong *song);
 extern int set_default_instrument(MidSong *song, const char *name);
+extern int load_instrument(MidSong *song, const char *name,
+				   MidInstrument **out,
+				   int percussion, int panning,
+				   int amp, int note_to_use,
+				   int strip_loop, int strip_envelope,
+				   int strip_tail);
 
 #endif /* TIMIDITY_INSTRUM_H */

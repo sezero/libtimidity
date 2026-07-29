@@ -72,4 +72,10 @@
 
 #define ISDRUMCHANNEL(s, c) (((s)->drumchannels & (1<<(c))))
 
+/* Real-time event functions */
+extern int mid_note_on(MidSong *song, int channel, int program, int note, int velocity);
+extern void mid_note_off(MidSong *song, int channel, int note);
+extern void mid_set_channel_panning(MidSong *song, int channel, int pan);
+extern void mid_set_channel_pitch_bend(MidSong *song, int channel, int bend);
+
 #endif /* TIMIDITY_PLAYMIDI_H */
