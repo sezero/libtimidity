@@ -160,7 +160,7 @@
         <h3>Mixing Console</h3>
         <div style="margin-bottom: 15px;">
             <label>
-                <input type="checkbox" id="mixerSyncToggle"> Sync with MIDI Events
+                <input type="checkbox" id="mixerSyncToggle" checked> Sync with MIDI Events
             </label>
         </div>
         <div id="mixer" class="mixer-container"></div>
@@ -191,9 +191,8 @@
                 this.isSyncEnabled = false; // New flag for mixer sync
                 this.isPaused = false;
                 this.isSeeking = false; // New flag to control seeker updates
-                this.totalDuration = 0; // Total duration in seconds
-
-                // MIDI Event Constants
+                
+                // MIDI Event Constants (re-added as they are used in the handler)
                 this.ME_NOTEON = 1;
                 this.ME_NOTEOFF = 2;
                 this.ME_KEYPRESSURE = 3;
@@ -209,6 +208,8 @@
                 this.ME_RESET_CONTROLLERS = 13;
                 this.ME_ALL_NOTES_OFF = 14;
                 this.ME_TONE_BANK = 15;
+                this.ME_CONTROL_CHANGE = 16; // New constant for generic Control Change
+                this.totalDuration = 0; // Total duration in seconds
 
                 this.Module.onRuntimeInitialized = () => this._onRuntimeInitialized();
             }
@@ -437,6 +438,10 @@
 
                 if (this.songPtr !== 0) {
                     this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
+                    // Process initial events at tick 0 to set up mixer state
+                    if (this.isSyncEnabled) {
+                        this.seek(0);
+                    }
                     this.emit('onMidiLoaded', midi);
                     return true;
                 } else {
@@ -702,22 +707,21 @@
             const mixerSyncToggle = document.getElementById("mixerSyncToggle");
             const initBtn = document.getElementById("init");
             const midiFileEl = document.getElementById("midiFile");
+            const pianoChannelSelect = document.getElementById('pianoChannel');
             const seekerEl = document.getElementById("seeker");
             const currentTimeEl = document.getElementById("currentTime");
             const totalTimeEl = document.getElementById("totalTime");
             const noteOnBtn = document.getElementById("noteOn");
             const noteOffBtn = document.getElementById("noteOff");
 
-            for(let i = 0; i<16; i++)
-            {
-                volumeControls[i] = document.getElementById(`vol-${i}`);
-                panControls[i] = document.getElementById(`pan-${i}`);
-            }
-
+            
             mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
 
 
             const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
+            // Set initial sync state from the checkbox
+            player.isSyncEnabled = mixerSyncToggle.checked;
+
 
             player.on('runtimeInitialized', () => {
                 statusEl.textContent = "Runtime ready. Click 'Init'.";
@@ -799,7 +803,6 @@
 
             const subtitleBox = document.getElementById('subtitleBox');
             const pianoContainer = document.getElementById('piano');
-            const pianoChannelSelect = document.getElementById('pianoChannel');
             const mixerContainer = document.getElementById('mixer');
 
             // 1. Build Piano Channels Dropdown
@@ -857,6 +860,13 @@
                 });
             }
 
+            for(let i = 0; i<16; i++)
+            {
+                volumeControls[i] = mixerContainer.querySelector(`#vol-${i}`);
+                panControls[i] = mixerContainer.querySelector(`#pan-${i}`);
+            }
+
+
             player.on('onMIDIEvent', (event) => {
                 // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05, type ME_LYRIC)
                 if (event.status === 0xFF && event.channel === 0x05 && event.type === player.ME_LYRIC) {
@@ -876,16 +886,22 @@
                 
                 // Control Change events (volume/pan sync)
                 if (player.isSyncEnabled) {
-                    
-                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
-                    if ((event.status & 0xF0) === 0xB0) {
-                        const controllerNumber = event.a;
-                        const value = event.b;
-                        if (controllerNumber === 7 && volumeControls[event.channel]) { // CC7 = Main Volume
+                    // Check for internal event types for Volume and Pan
+                     const value = event.a;
+                    console.log("event.type", event.type);
+                    console.log("value", value);
+                    console.log(parseInt(event.type) + ' == ' + player.ME_MAINVOLUME)
+                    if (parseInt(event.type) == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
+                       console.log(volumeControls[event.channel])
+                        if (volumeControls[event.channel]) {
                             volumeControls[event.channel].value = value;
+                            console.log(`New Value volumeControls[${event.channel}] = ${volumeControls[event.channel].value}`)
                         }
-                        if (controllerNumber === 10 && panControls[event.channel]) { // CC10 = Pan
+                    } else if (parseInt(event.type) == player.ME_PAN) { // ME_PAN is 5
+                        console.log(panControls[event.channel])
+                        if (panControls[event.channel]) {
                             panControls[event.channel].value = value;
+                            console.log(`New Value panControls[${event.channel}] = ${panControls[event.channel].value}`)
                         }
                     }
                 }
