@@ -355,7 +355,7 @@
             }
 
             // --- Public API ---
-            init(offline = false) {
+            async init(offline = false) {
                 if (this.audioContext) {
                     this.emit('error', "Already initialized.");
                     return false;
@@ -363,11 +363,11 @@
                 const rc = this.c.init(`/${this.patchUrlBase}/timidity.cfg`); // Initialize libTiMidity with config file
                 if (rc === 0) {
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass();
+                    this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass({ sampleRate: 44100 });
                     if (!offline) {
                         this.audioContext.suspend();
                         
-                        this.initRealtimeSong();
+                        await this.initRealtimeSong();
 
                         const bufferSize = 4096;
                         this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
@@ -415,6 +415,12 @@
                         
                         this.scriptNode.connect(this.audioContext.destination);
                     }
+
+                    // Preload the default instrument (Acoustic Grand Piano) for the real-time player
+                    // This ensures that the debug buttons and initial MIDI controller input work immediately.
+                    await this.setRealtimeInstrument(0, 0, 0).then(() => {
+                        console.log("Default real-time instrument (Piano) preloaded.");
+                    });
 
                     const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiii');
                     this.c.setEventCallback(0, callbackPtr);
@@ -605,13 +611,12 @@
             }
 
             async noteOn(channel, program, pitch, velocity = 100, { bank = 0, pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
-                if (!this.audioContext || this.audioContext.state === 'closed') return;
+                if (!this.realtimeSongPtr || !this.audioContext || this.audioContext.state === 'closed') return;
 
                 // If realtime synth was freed (e.g. after a stop()), re-initialize it.
                 if (!this.realtimeSongPtr) {
                     await this._reinitRealtimeSong();
                 }
-
 
                 if (this.audioContext?.state == 'suspended') {
                     this.audioContext.resume();
@@ -621,46 +626,13 @@
                 const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
 
                 if (missingProgram > 0) {
-                    console.warn(`Instrument for program ${missingProgram} (bank ${bank}) is missing. Dynamically loading...`);
-
-                    if (!this.requestedPrograms) this.requestedPrograms = new Set();
-                    this.requestedPrograms.add(missingProgram);
-
-                    // 1. Create a tiny dummy MIDI to discover which patch file corresponds to this program
-                    const isDrum = channel === 9 ? 1 : 0;
-                    const testProgram = isDrum ? 0 : missingProgram;
-                    const testNote = isDrum ? missingProgram : 60;
-
-                    const midiBytes = [
-                        0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd
-                        0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x16, // MTrk (length 22)
-                        0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF, // Tempo
-                        0x00, (0xB0 | (isDrum ? 9 : 0)), 0x00, bank & 0x7F, // Bank Select MSB (Control Change 0)
-                        0x00, (0xC0 | (isDrum ? 9 : 0)), testProgram & 0x7F, // Program Change
-                        0x00, (0x90 | (isDrum ? 9 : 0)), testNote & 0x7F, 0x64, // Note On
-                        0x00, 0xFF, 0x2F, 0x00 // End of Track
-                    ];
-                    const dummyMidi = new Uint8Array(midiBytes);
-                    const dummyMidiPtr = this.Module._malloc(dummyMidi.length);
-                    this.Module.HEAPU8.set(dummyMidi, dummyMidiPtr);
-
-                    const streamPtr = this.c.openMemoryStream(dummyMidiPtr, dummyMidi.length);
-                    const patchListString = this.c.getRequiredPatches(streamPtr);
-                    this.c.closeStream(streamPtr);
-                    this.Module._free(dummyMidiPtr);
-
-                    // 2. Download the patch file if not already downloaded
-                    if (patchListString) {
-                        await this._loadRequiredPatches(patchListString);
-                    }
-
-                    // 3. Command C to dynamically load the patch into the active realtimeSongPtr
-                    if (this.c.loadProgram(this.realtimeSongPtr, bank, missingProgram, isDrum) === 0) {
-                        console.log(`Successfully dynamically loaded program ${missingProgram} (bank ${bank})`);
-                        // 4. Retry playing the note
+                    console.warn(`Instrument for program ${program} (bank ${bank}) is missing. Dynamically loading...`);
+                    
+                    // Load the instrument and then retry playing the note.
+                    const loaded = await this.setRealtimeInstrument(channel, program, bank);
+                    if (loaded) {
+                        console.log(`Retrying noteOn for program ${program}`);
                         this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
-                    } else {
-                        console.warn(`Failed to dynamically load program ${missingProgram} (bank ${bank}) into MidSong.`);
                     }
                 }
             }
@@ -670,6 +642,44 @@
                     return;
                 }
                 this.c.noteOff(this.realtimeSongPtr, channel, pitch);
+            }
+
+            async setRealtimeInstrument(channel, program, bank = 0) {
+                if (!this.realtimeSongPtr) {
+                    console.warn("Realtime song not initialized, cannot set instrument.");
+                    return false;
+                }
+
+                // This function is now the central point for loading patches for the realtime player.
+                const isDrum = channel === 9;
+                const testProgram = isDrum ? 0 : program;
+                const testNote = isDrum ? program : 60;
+
+                // 1. Create a tiny dummy MIDI to discover which patch file corresponds to this program
+                const midiBytes = [
+                    0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd
+                    0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x16, // MTrk (length 22)
+                    0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF, // Tempo
+                    0x00, (0xB0 | (isDrum ? 9 : 0)), 0x00, bank & 0x7F, // Bank Select MSB (Control Change 0)
+                    0x00, (0xC0 | (isDrum ? 9 : 0)), testProgram & 0x7F, // Program Change
+                    0x00, (0x90 | (isDrum ? 9 : 0)), testNote & 0x7F, 0x64, // Note On
+                    0x00, 0xFF, 0x2F, 0x00 // End of Track
+                ];
+                const dummyMidi = new Uint8Array(midiBytes);
+                const dummyMidiPtr = this.Module._malloc(dummyMidi.length);
+                this.Module.HEAPU8.set(dummyMidi, dummyMidiPtr);
+                const streamPtr = this.c.openMemoryStream(dummyMidiPtr, dummyMidi.length);
+                const patchListString = this.c.getRequiredPatches(streamPtr);
+                this.c.closeStream(streamPtr);
+                this.Module._free(dummyMidiPtr);
+
+                // 2. Download the patch file(s) if not already downloaded
+                if (patchListString) {
+                    await this._loadRequiredPatches(patchListString);
+                    // 3. Command C to load the patch into the active realtimeSongPtr
+                    return this.c.loadProgram(this.realtimeSongPtr, bank, program, isDrum) === 0;
+                }
+                return false;
             }
 
             sendEvent(eventType, channel, a, b = 0) {
@@ -684,6 +694,38 @@
                 }
                 if (this.songPtr !== 0) {
                     this.c.sendEvent(this.songPtr, eventType, channel, a, b);
+                }
+            }
+
+            /**
+             * Send MIDI event from MIDI Controller
+             **/
+            sendMessage(selectedChannel, bank, program, event) {
+                // Ekstrak command dan channel dari byte status MIDI
+                const command = event.data[0] >> 4;
+                const channel = event.data[0] & 0x0f;
+
+                // Ambil channel yang dipilih di UI untuk filtering
+                
+
+                // Hanya proses event jika channel-nya cocok dengan yang dipilih di UI
+                if (channel !== selectedChannel) return;
+
+                const note = event.data[1];
+                const velocity = (event.data.length > 2) ? event.data[2] : 0;
+
+                
+                switch (command) {
+                    case 9: // Note On
+                        if (velocity > 0) {
+                            player.noteOn(channel, program, note, velocity, { bank: bank });
+                        } else {
+                            player.noteOff(channel, note); // Some controllers send Note On with velocity 0 for Note Off
+                        }
+                        break;
+                    case 8: // Note Off
+                        player.noteOff(channel, note);
+                        break;
                 }
             }
 
@@ -1069,10 +1111,8 @@
                 stopBtn.disabled = true;
             });
 
-            initBtn.onclick = () => {
-                if (player.init()) {
-                    initBtn.disabled = true; // Disable init button after successful init
-                }
+            initBtn.onclick = async () => {
+                if (await player.init()) initBtn.disabled = true;
             };
             midiFileEl.onchange = (event) => {
                 const file = event.target.files[0];
@@ -1199,34 +1239,10 @@
 
         function handleMIDIMessage(event) {
             if (!player || !player.realtimeSongPtr) return;
-
-            // Ekstrak command dan channel dari byte status MIDI
-            const command = event.data[0] >> 4;
-            const channel = event.data[0] & 0x0f;
-
-            // Ambil channel yang dipilih di UI untuk filtering
-            const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
-
-            // Hanya proses event jika channel-nya cocok dengan yang dipilih di UI
-            if (channel !== selectedChannel) return;
-
-            const note = event.data[1];
-            const velocity = (event.data.length > 2) ? event.data[2] : 0;
-
-            const program = document.getElementById('realtimeProgram').valueAsNumber;
-            const bank = document.getElementById('realtimeBank').valueAsNumber;
-            switch (command) {
-                case 9: // Note On
-                    if (velocity > 0) {
-                        player.noteOn(channel, program, note, velocity, { bank: bank });
-                    } else {
-                        player.noteOff(channel, note); // Some controllers send Note On with velocity 0 for Note Off
-                    }
-                    break;
-                case 8: // Note Off
-                    player.noteOff(channel, note);
-                    break;
-            }
+const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
+                const program = document.getElementById('realtimeProgram').valueAsNumber;
+                const bank = document.getElementById('realtimeBank').valueAsNumber;
+            player.sendMessage(selectedChannel, bank, program, event);
         }
 
         function vuMeter(channel, tick)
