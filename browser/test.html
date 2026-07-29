@@ -904,18 +904,17 @@
                 if (player.isSyncEnabled) {
                     // Check for internal event types for Volume and Pan
                      
-                    console.log(parseInt(event.type) + ' == ' + player.ME_MAINVOLUME)
-                    if (parseInt(event.type) == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
+                    if (event.type == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
                         if (volumeControls[event.channel]) {
                             const value = event.a;
                             volumeControls[event.channel].value = value;
                         }
-                    } else if (parseInt(event.type) == player.ME_PAN) { // ME_PAN is 5
+                    } else if (event.type == player.ME_PAN) { // ME_PAN is 5
                         if (panControls[event.channel]) {
                             const value = event.a;
                             panControls[event.channel].value = value;
                         }
-                    } else if (parseInt(event.type) == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
+                    } else if (event.type == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
                         if (pbControls[event.channel]) {
                             const value = event.a | (event.b << 7);
                             pbControls[event.channel].value = value;
