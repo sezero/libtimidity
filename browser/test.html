@@ -22,6 +22,14 @@
     <button id="exit">Exit</button>
     <p>Status: <span id="status">Loading patch files...</span></p>
 
+    <div style="margin-top: 15px; border: 1px solid #ccc; padding: 10px; width: 300px;">
+        <h3>DAW Controls (Channel 5)</h3>
+        <label style="display:block">Volume: <input type="range" id="ctrlVolume" min="0" max="127" value="127"></label>
+        <label style="display:block">Panning: <input type="range" id="ctrlPan" min="0" max="127" value="64"></label>
+        <label style="display:block">Pitch Bend: <input type="range" id="ctrlBend" min="0" max="16383" value="8192"></label>
+        <label style="display:block">Expression: <input type="range" id="ctrlExpr" min="0" max="127" value="127"></label>
+    </div>
+
     <script>
         var Module = {};
 
@@ -47,6 +55,23 @@
                 this.isPaused = false;
                 this.isSeeking = false; // New flag to control seeker updates
                 this.totalDuration = 0; // Total duration in seconds
+
+                // MIDI Event Constants
+                this.ME_NOTEON = 1;
+                this.ME_NOTEOFF = 2;
+                this.ME_KEYPRESSURE = 3;
+                this.ME_MAINVOLUME = 4;
+                this.ME_PAN = 5;
+                this.ME_SUSTAIN = 6;
+                this.ME_EXPRESSION = 7;
+                this.ME_PITCHWHEEL = 8;
+                this.ME_PROGRAM = 9;
+                this.ME_TEMPO = 10;
+                this.ME_PITCH_SENS = 11;
+                this.ME_ALL_SOUNDS_OFF = 12;
+                this.ME_RESET_CONTROLLERS = 13;
+                this.ME_ALL_NOTES_OFF = 14;
+                this.ME_TONE_BANK = 15;
 
                 this.Module.onRuntimeInitialized = () => this._onRuntimeInitialized();
             }
@@ -86,6 +111,7 @@
                     noteOn: cwrap('mid_note_on', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number']),
                     noteOff: cwrap('mid_note_off', null, ['number', 'number', 'number']),
                     loadProgram: cwrap('mid_song_load_program', 'number', ['number', 'number', 'number', 'number']),
+                    sendEvent: cwrap('mid_send_event', null, ['number', 'number', 'number', 'number', 'number']),
                 };
 
                 this.emit('runtimeInitialized');
@@ -426,6 +452,21 @@
                 this.c.noteOff(this.realtimeSongPtr, channel, pitch);
             }
 
+            sendEvent(type, channel, a, b = 0) {
+                // Disabled saat render offline agar tidak merusak hasil render
+                if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
+                    return;
+                }
+                
+                // Send event to BOTH realtime and main song so it affects any active voices on that channel
+                if (this.realtimeSongPtr !== 0) {
+                    this.c.sendEvent(this.realtimeSongPtr, type, channel, a, b);
+                }
+                if (this.songPtr !== 0) {
+                    this.c.sendEvent(this.songPtr, type, channel, a, b);
+                }
+            }
+
             goTo(ticks) {
                 // This is a simplified implementation. A more accurate one would need
                 // to parse tempo changes to convert ticks to milliseconds.
@@ -638,6 +679,24 @@
 
             noteOnBtn.onclick = () => player.noteOn(5, 30, 60, 127, { bank: 0 });
             noteOffBtn.onclick = () => player.noteOff(5, 60);
+
+            // Bind DAW controls
+            const testChannel = 5;
+            document.getElementById("ctrlVolume").oninput = (e) => {
+                player.sendEvent(player.ME_MAINVOLUME, testChannel, parseInt(e.target.value));
+            };
+            document.getElementById("ctrlPan").oninput = (e) => {
+                player.sendEvent(player.ME_PAN, testChannel, parseInt(e.target.value));
+            };
+            document.getElementById("ctrlBend").oninput = (e) => {
+                const val = parseInt(e.target.value);
+                const lsb = val & 0x7F;
+                const msb = (val >> 7) & 0x7F;
+                player.sendEvent(player.ME_PITCHWHEEL, testChannel, lsb, msb);
+            };
+            document.getElementById("ctrlExpr").oninput = (e) => {
+                player.sendEvent(player.ME_EXPRESSION, testChannel, parseInt(e.target.value));
+            };
         });
 
     </script>

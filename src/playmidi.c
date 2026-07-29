@@ -923,3 +923,75 @@ void mid_note_off(MidSong *song, int channel, int note)
   note_off(song);
   song->current_event = original_event;
 }
+
+void mid_send_event(MidSong *song, int type, int channel, int a, int b)
+{
+  if (!song || !song->playing) return;
+  
+  MidEvent e;
+  e.type = type;
+  e.channel = channel;
+  e.a = a;
+  e.b = b;
+
+  MidEvent *original_event = song->current_event;
+  song->current_event = &e;
+
+  switch(e.type) {
+    case ME_PITCH_SENS:
+      song->channel[channel].pitchsens = a;
+      song->channel[channel].pitchfactor = 0;
+      break;
+
+    case ME_PITCHWHEEL:
+      song->channel[channel].pitchbend = a + b * 128;
+      song->channel[channel].pitchfactor = 0;
+      adjust_pitchbend(song);
+      break;
+
+    case ME_MAINVOLUME:
+      song->channel[channel].volume = a;
+      adjust_volume(song);
+      break;
+
+    case ME_PAN:
+      song->channel[channel].panning = a;
+      break;
+
+    case ME_EXPRESSION:
+      song->channel[channel].expression = a;
+      adjust_volume(song);
+      break;
+
+    case ME_SUSTAIN:
+      song->channel[channel].sustain = a;
+      if (!a)
+        drop_sustain(song);
+      break;
+
+    case ME_PROGRAM:
+      if (ISDRUMCHANNEL(song, channel))
+        song->channel[channel].bank = a;
+      else
+        song->channel[channel].program = a;
+      break;
+      
+    case ME_RESET_CONTROLLERS:
+      reset_controllers(song, channel);
+      break;
+      
+    case ME_ALL_NOTES_OFF:
+      all_notes_off(song);
+      break;
+
+    case ME_ALL_SOUNDS_OFF:
+      all_sounds_off(song);
+      break;
+
+    case ME_TONE_BANK:
+      song->channel[channel].bank = a;
+      break;
+  }
+
+  song->current_event = original_event;
+}
