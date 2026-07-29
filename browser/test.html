@@ -215,7 +215,7 @@
 
                 this.isRealtime = isRealtime;
                 if (!this.isRealtime) this.emit('onMidiLoading', midi);
-                
+
                 const midiData = (midi instanceof Uint8Array) ? midi : new Uint8Array(await midi.arrayBuffer()); // Handle File object or Uint8Array
                 const midiDataPtr = this.Module._malloc(midiData.length);
                 this.Module.HEAPU8.set(midiData, midiDataPtr);
@@ -360,7 +360,7 @@
 
                 if (this.songPtr === 0) return;
 
-                if(this.audioContext?.state == 'suspended') {
+                if (this.audioContext?.state == 'suspended') {
                     this.audioContext.resume();
                 }
 
@@ -392,7 +392,7 @@
                     const dummyMidi = new Uint8Array(midiBytes);
                     const dummyMidiPtr = this.Module._malloc(dummyMidi.length);
                     this.Module.HEAPU8.set(dummyMidi, dummyMidiPtr);
-                    
+
                     const streamPtr = this.c.openMemoryStream(dummyMidiPtr, dummyMidi.length);
                     const patchListString = this.c.getRequiredPatches(streamPtr);
                     this.c.closeStream(streamPtr);
@@ -636,7 +636,7 @@
             freeBtn.onclick = () => player.stop();
             exitBtn.onclick = () => player.shutdown();
 
-            noteOnBtn.onclick = () => player.noteOn(0, 30, 60);
+            noteOnBtn.onclick = () => player.noteOn(0, 30, 60, 127, { bank: 0 });
             noteOffBtn.onclick = () => player.noteOff(0, 60);
         });
 
