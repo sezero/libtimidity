@@ -109,16 +109,22 @@
             height: 100px;
             width: 20px;
             margin-bottom: 15px;
-            border: 1px solid #111;
-            background: #000;
+            border: 1px solid #000;
+            /* The gradient is now the static background of the container */
+            background: linear-gradient(to top, #0f0 50%, #ff0 85%, #f00 100%);
             padding: 2px;
+            position: relative; /* Needed for the overlay bar */
+            overflow: hidden; /* Hide the part of the bar that is "off" */
         }
         .vu-bar {
             width: 50%;
-            background: linear-gradient(to top, #0f0, #ff0, #f00);
-            transform-origin: bottom;
-            transform: scaleY(0);
-            transition: transform 0.05s linear;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Dark overlay to hide the gradient */
+            position: absolute;
+            bottom: 0;
+            transform-origin: top; /* The bar will "shrink" from the top down */
+            transform: scaleY(1); /* Start fully scaled (volume at 0) */
+            transition: transform 0.02s linear;
         }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
@@ -743,8 +749,6 @@
         let pbControls = {};
         let vuLeftControls = {};
         let vuRightControls = {};
-        let channelVelocities = new Array(16).fill(0); // Store last velocity for each channel
-        let player; // Declare player in a higher scope
 
         // --- Main Application Logic ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -767,7 +771,7 @@
             mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
 
 
-            player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
+            const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
             // Set initial sync state from the checkbox
             player.isSyncEnabled = mixerSyncToggle.checked;
 
@@ -898,8 +902,8 @@
                     <div class="ch-label">${chName}</div>
 
                     <div class="vu-meter-container">
-                        <div class="vu-bar" id="vu-l-${i}"></div>
-                        <div class="vu-bar" id="vu-r-${i}"></div>
+                        <div class="vu-bar" id="vu-l-${i}" style="left: 0px;"></div>
+                        <div class="vu-bar" id="vu-r-${i}" style="right: 0px;"></div>
                     </div>
                     
                     <div class="knob-track">
@@ -963,11 +967,17 @@
                 
                 // Control Change events (volume/pan sync)
                 if (player.isSyncEnabled) {
-                    if (event.eventType === player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
+                    // Check for internal event types for Volume and Pan
+                     
+                    if (event.eventType == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
                         if (volumeControls[event.channel]) {
                             const value = event.a;
                             volumeControls[event.channel].value = value;
-                            updateVUMeter(event.channel); // Update VU on volume change
+                        }
+                    } else if (event.eventType == player.ME_PAN) { // ME_PAN is 5
+                        if (panControls[event.channel]) {
+                            const value = event.a;
+                            panControls[event.channel].value = value;
                         }
                     } else if (event.eventType == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
                         if (pbControls[event.channel]) {
@@ -975,17 +985,18 @@
                             pbControls[event.channel].value = value;
                         }
                     }
-                    else if (event.eventType === player.ME_PAN) { // ME_PAN is 5
-                        if (panControls[event.channel]) {
-                            const value = event.a;
-                            panControls[event.channel].value = value;
-                            updateVUMeter(event.channel); // Update VU on pan change
-                        }
-                    } else if (event.eventType === player.ME_EXPRESSION) { // ME_EXPRESSION is 7
-                        // Expression doesn't have a slider in this UI, but we still need to update the VU meter
-                        updateVUMeter(event.channel);
+                }
+                /*
+                if (event.channel == selectedChannel) {
+                    if ((event.status & 0xF0) === 0x90 && event.b > 0) { // Note On on any channel
+                        const key = keys[event.a];
+                        if (key) key.classList.add('active');
+                    } else if ((event.status & 0xF0) === 0x80 || ((event.status & 0xF0) === 0x90 && event.b === 0)) { // Note Off on any channel
+                        const key = keys[event.a];
+                        if (key) key.classList.remove('active');
                     }
                 }
+                */
             });
 
             player.on('onNoteOn', (event) => {
@@ -995,9 +1006,36 @@
                     if (key) key.classList.add('active');
                 }
 
-                // Store velocity and update VU meter
-                channelVelocities[event.channel] = event.velocity;
-                updateVUMeter(event.channel, event.tick);
+                // --- VU Meter Logic ---
+                const channel = event.channel;
+                const vuL = vuLeftControls[channel];
+                const vuR = vuRightControls[channel];
+
+                if (vuL && vuR) {
+                    // Get controller values at the exact tick of the noteOn event
+                    const volume = player.getControllerValueAtTick(channel, 7, event.tick);
+                    const expression = player.getControllerValueAtTick(channel, 11, event.tick);
+                    const pan = player.getControllerValueAtTick(channel, 10, event.tick);
+
+                    // Calculate base volume (0.0 to 1.0)
+                    const baseVolume = (event.velocity / 127) * (volume / 127) * (expression / 127);
+
+                    // Apply panning law
+                    let leftGain = 1.0;
+                    let rightGain = 1.0;
+
+                    if (pan < 64) { // Pan left
+                        rightGain = pan / 64.0;
+                    } else if (pan > 64) { // Pan right
+                        leftGain = (127 - pan) / 63.0;
+                    }
+
+                    // Set VU meter height
+                    // A scale of 1 means 0 volume (bar is fully visible, hiding the gradient)
+                    // A scale of 0 means max volume (bar is invisible, revealing the whole gradient)
+                    vuL.style.transform = `scaleY(${1.0 - (baseVolume * leftGain)})`;
+                    vuR.style.transform = `scaleY(${1.0 - (baseVolume * rightGain)})`;
+                }
             });
 
              player.on('onNoteOff', (event) => {
@@ -1007,10 +1045,18 @@
                     if (key) key.classList.remove('active');
                 }
 
-                // Set stored velocity to 0. A more advanced implementation would check for other active notes.
-                channelVelocities[event.channel] = 0;
-                if (vuLeftControls[event.channel]) {
-                    startVUMeterDecay(event.channel);
+                // --- VU Meter Release Logic ---
+                const channel = event.channel;
+                const vuL = vuLeftControls[channel];
+                const vuR = vuRightControls[channel];
+
+                if (vuL && vuR) {
+                    // Set a transition for a smooth decay
+                    vuL.style.transition = 'transform 0.5s ease-out';
+                    vuR.style.transition = 'transform 0.5s ease-out';
+                    // Set the target scale to 0
+                    vuL.style.transform = 'scaleY(1)';
+                    vuR.style.transform = 'scaleY(1)';
                 }
             });
 
@@ -1067,50 +1113,13 @@
 
         // Mixer Sync Toggle
         document.getElementById("mixerSyncToggle").addEventListener('change', (e) => {
-            player.isSyncEnabled = e.target.checked;
-            document.getElementById("status").textContent = `Mixer Sync: ${player.isSyncEnabled ? 'ON' : 'OFF'}`;
+            const player = window.player; // Assuming player is globally accessible or passed differently
+            if (player) {
+                player.isSyncEnabled = e.target.checked;
+                document.getElementById("status").textContent = `Mixer Sync: ${player.isSyncEnabled ? 'ON' : 'OFF'}`;
+            }
         });
 
-        function updateVUMeter(channel, tick) {
-            const vuL = vuLeftControls[channel];
-            const vuR = vuRightControls[channel];
-            const velocity = channelVelocities[channel];
-
-            if (!vuL || !vuR || velocity === 0) {
-                return;
-            }
-
-            // Use the provided tick, or get the current song tick if not provided
-            const currentTick = (tick !== undefined) ? tick : player.c.getCurrentTick(player.songPtr);
-
-            const volume = player.getControllerValueAtTick(channel, 7, currentTick);
-            const expression = player.getControllerValueAtTick(channel, 11, currentTick);
-            const pan = player.getControllerValueAtTick(channel, 10, currentTick);
-
-            const baseVolume = (velocity / 127) * (volume / 127) * (expression / 127);
-
-            let leftGain = 1.0;
-            let rightGain = 1.0;
-
-            if (pan < 64) {
-                rightGain = pan / 64.0;
-            } else if (pan > 64) {
-                leftGain = (127 - pan) / 63.0;
-            }
-
-            // Remove transition for instant peak, then re-apply for decay later
-            vuL.style.transition = 'none';
-            vuR.style.transition = 'none';
-            vuL.style.transform = `scaleY(${baseVolume * leftGain})`;
-            vuR.style.transform = `scaleY(${baseVolume * rightGain})`;
-        }
-
-        function startVUMeterDecay(channel) {
-            vuLeftControls[channel].style.transition = 'transform 0.5s ease-out';
-            vuRightControls[channel].style.transition = 'transform 0.5s ease-out';
-            vuLeftControls[channel].style.transform = 'scaleY(0)';
-            vuRightControls[channel].style.transform = 'scaleY(0)';
-        }
         
 
 
