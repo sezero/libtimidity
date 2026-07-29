@@ -305,9 +305,9 @@
         }
 
         async noteOn(channel, program, pitch, velocity = 100, {pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0} = {}) {
-            console.log('noteOn')
+            console.log('noteOn, songPtr:', this.songPtr, 'state:', this.audioContext ? this.audioContext.state : 'null');
             if (!this.songPtr || this.audioContext.state !== 'running') {
-                console.warn("Player not ready for real-time events.");
+                console.warn(`Player not ready for real-time events. songPtr: ${this.songPtr}, state: ${this.audioContext ? this.audioContext.state : 'null'}`);
                 return;
             }
 
@@ -464,7 +464,7 @@
 
         player.on('onPlay', () => {
             playPauseBtn.textContent = 'Pause';
-            statusEl.textContent = `Playing: ${midiFileEl.files[0].name}`;
+            //statusEl.textContent = `Playing: ${midiFileEl.files[0].name}`;
         });
 
         player.on('onResume', () => { // Playback resumed

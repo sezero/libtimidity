@@ -584,6 +584,16 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   if (!skip_midi_read) {
     song->events = read_midi_file(stream, song, &(song->groomed_event_count),
                                   &song->samples);
+  } else {
+    song->events = (MidEvent *) timi_calloc(2, sizeof(MidEvent));
+    if (song->events) {
+      song->events[0].type = ME_EOT;
+      song->events[0].time = 0x7FFFFFFF;
+      song->events[1].type = ME_EOT;
+      song->events[1].time = 0x7FFFFFFF;
+      song->groomed_event_count = 2;
+      song->samples = 0x7FFFFFFF;
+    }
   }
 
   /* Make sure everything is okay */
@@ -607,14 +617,14 @@ fail: mid_song_free (song);
 
 MidSong *mid_song_load(MidIStream *stream, MidSongOptions *options)
 {
-  MidSong *song;
+  MidSong *song = NULL;
   do_song_load(stream, options, &song, 0);
   return song;
 }
 
 MidSong *mid_song_create(MidSongOptions *options)
 {
-  MidSong *song;
+  MidSong *song = NULL;
   /* Create a dummy stream that does nothing.
    * do_song_load expects a stream, but it will not be read
    * because we will not call read_midi_file.
