@@ -809,6 +809,26 @@ uint32 mid_song_get_current_tick(MidSong *song)
     if (!song || !song->current_event) return 0;
     return song->current_event->time;
 }
+
+/* Dynamically load a specific program into a song */
+int mid_song_load_program(MidSong *song, int bank, int program, int is_drum)
+{
+    MidToneBankElement *tone;
+    MidInstrument **out;
+    if (!song) return -1;
+    if (is_drum) {
+        if (!song->drumset[bank]) return -1;
+        tone = &song->drumset[bank]->tone[program];
+        out = &song->drumset[bank]->instrument[program];
+    } else {
+        if (!song->tonebank[bank]) return -1;
+        tone = &song->tonebank[bank]->tone[program];
+        out = &song->tonebank[bank]->instrument[program];
+    }
+    if (!tone->name) return -1; /* Patch not defined in timidity.cfg */
+    
+    return load_instrument(song, tone->name, out, is_drum, tone->pan, tone->amp, tone->note, tone->strip_loop, tone->strip_envelope, tone->strip_tail);
+}
 /* ====== for libtimidity <= 0.2.1 compatibility ======
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)

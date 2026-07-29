@@ -83,8 +83,9 @@
                     getTime: cwrap('mid_song_get_time', 'number', ['number']),
                     getTotalTime: cwrap('mid_song_get_total_time', 'number', ['number']),
                     getCurrentTick: cwrap('mid_song_get_current_tick', 'number', ['number']),
-                    noteOn: cwrap('mid_note_on', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number']),
+                    noteOn: cwrap('mid_note_on', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number']),
                     noteOff: cwrap('mid_note_off', null, ['number', 'number', 'number']),
+                    loadProgram: cwrap('mid_song_load_program', 'number', ['number', 'number', 'number', 'number']),
                 };
 
                 this.emit('runtimeInitialized');
@@ -351,39 +352,64 @@
                 }
             }
 
-            async noteOn(channel, program, pitch, velocity = 100, { pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
-                console.log('noteOn, songPtr:', this.songPtr, 'state:', this.audioContext ? this.audioContext.state : 'null');
-                if (!this.songPtr || this.audioContext.state !== 'running') {
-                    console.warn(`Player not ready for real-time events. songPtr: ${this.songPtr}, state: ${this.audioContext ? this.audioContext.state : 'null'}`);
-                    return;
-                }
-                
-                // Disabled saat render offline agar tidak merusak hasil render
-                if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
-                    console.warn('Real-time events are disabled during offline rendering.');
-                    return;
+            async noteOn(channel, program, pitch, velocity = 100, { bank = 0, pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
+                if (this.audioContext && this.audioContext instanceof OfflineAudioContext) {
+                    console.warn("Real-time events are disabled during normal MIDI playback / offline rendering.");
+                    return; // Prevent real-time interaction during normal playback (which would mess up offline render buffer)
                 }
 
-                const missingProgram = this.c.noteOn(this.songPtr, channel, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+                if (this.songPtr === 0) return;
+
+                if(this.audioContext?.state == 'suspended') {
+                    this.audioContext.resume();
+                }
+
+                // missingProgram could be the missing program number or drum key
+                const missingProgram = this.c.noteOn(this.songPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+                console.log("noteOn, songPtr:", this.songPtr, "state:", this.audioContext.state);
                 console.log("missingProgram:", missingProgram);
 
                 if (missingProgram > 0) {
-                    console.warn(`Instrument for program ${missingProgram} is missing. Attempting to load...`);
+                    console.warn(`Instrument for program ${missingProgram} (bank ${bank}) is missing. Dynamically loading...`);
 
                     if (!this.requestedPrograms) this.requestedPrograms = new Set();
                     this.requestedPrograms.add(missingProgram);
 
-                    if (this.isRealtime) {
-                        // Recreate the real-time song. The new dummy MIDI will include a Program Change
-                        // that forces libTiMidity to parse timidity.cfg, find the correct .pat file, 
-                        // download it via getRequiredPatches, and load it into memory.
-                        await this._createRealtimeSong();
+                    // 1. Create a tiny dummy MIDI to discover which patch file corresponds to this program
+                    const isDrum = channel === 9 ? 1 : 0;
+                    const testProgram = isDrum ? 0 : missingProgram;
+                    const testNote = isDrum ? missingProgram : 60;
 
-                        // Retry playing the note after the patch is loaded into memory
-                        console.log(`Retrying noteOn for program ${missingProgram}`);
-                        this.c.noteOn(this.songPtr, channel, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+                    const midiBytes = [
+                        0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd
+                        0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x16, // MTrk (length 22)
+                        0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF, // Tempo
+                        0x00, (0xB0 | (isDrum ? 9 : 0)), 0x00, bank & 0x7F, // Bank Select MSB (Control Change 0)
+                        0x00, (0xC0 | (isDrum ? 9 : 0)), testProgram & 0x7F, // Program Change
+                        0x00, (0x90 | (isDrum ? 9 : 0)), testNote & 0x7F, 0x64, // Note On
+                        0x00, 0xFF, 0x2F, 0x00 // End of Track
+                    ];
+                    const dummyMidi = new Uint8Array(midiBytes);
+                    const dummyMidiPtr = this.Module._malloc(dummyMidi.length);
+                    this.Module.HEAPU8.set(dummyMidi, dummyMidiPtr);
+                    
+                    const streamPtr = this.c.openMemoryStream(dummyMidiPtr, dummyMidi.length);
+                    const patchListString = this.c.getRequiredPatches(streamPtr);
+                    this.c.closeStream(streamPtr);
+                    this.Module._free(dummyMidiPtr);
+
+                    // 2. Download the patch file if not already downloaded
+                    if (patchListString) {
+                        await this._loadRequiredPatches(patchListString);
+                    }
+
+                    // 3. Command C to dynamically load the patch into the active song
+                    if (this.c.loadProgram(this.songPtr, bank, missingProgram, isDrum) === 0) {
+                        console.log(`Successfully dynamically loaded program ${missingProgram} (bank ${bank})`);
+                        // 4. Retry playing the note
+                        this.c.noteOn(this.songPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
                     } else {
-                        console.warn(`Cannot dynamically load missing program ${missingProgram} while a normal MIDI file is playing. Playback continues.`);
+                        console.warn(`Failed to dynamically load program ${missingProgram} (bank ${bank}) into MidSong.`);
                     }
                 }
             }

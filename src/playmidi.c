@@ -847,13 +847,23 @@ void mid_song_set_volume(MidSong *song, int volume)
       }
 }
 
-int mid_note_on(MidSong *song, int channel, int program, int note, int velocity)
+int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain)
 {
   MidEvent e;
   MidInstrument *ip;
   int i;
 
   if (!song || !song->playing) return -1;
+
+  if (channel == 9) {
+    song->drumchannels |= (1 << 9);
+  }
+
+  song->channel[channel].panning = pan;
+  song->channel[channel].pitchbend = bend;
+  song->channel[channel].sustain = sustain;
+  song->channel[channel].pitchfactor = 0; /* force recompute */
+  song->channel[channel].bank = bank; /* Apply bank */
 
   if (ISDRUMCHANNEL(song, channel))
   {

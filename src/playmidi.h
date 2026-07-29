@@ -73,7 +73,7 @@
 #define ISDRUMCHANNEL(s, c) (((s)->drumchannels & (1<<(c))))
 
 /* Real-time event functions */
-extern int mid_note_on(MidSong *song, int channel, int program, int note, int velocity);
+extern int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain);
 extern void mid_note_off(MidSong *song, int channel, int note);
 extern void mid_set_channel_panning(MidSong *song, int channel, int pan);
 extern void mid_set_channel_pitch_bend(MidSong *song, int channel, int bend);
