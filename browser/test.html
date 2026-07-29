@@ -126,6 +126,13 @@
             transform: scaleY(1); /* Start fully scaled (volume at 0) */
             transition: transform 0.015s linear;
         }
+
+        .bar-left{
+            border-right: 1px solid transparent;
+        }
+        .bar-right{
+            border-left: 1px solid transparent;
+        }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
         .pitch-bend-track { margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -902,8 +909,8 @@
                     <div class="ch-label">${chName}</div>
 
                     <div class="vu-meter-container">
-                        <div class="vu-bar" id="vu-l-${i}" style="left: 0px;"></div>
-                        <div class="vu-bar" id="vu-r-${i}" style="right: 0px;"></div>
+                        <div class="vu-bar bar-left" id="vu-l-${i}" style="left: 0px;"></div>
+                        <div class="vu-bar bar-right" id="vu-r-${i}" style="right: 0px;"></div>
                     </div>
                     
                     <div class="knob-track">
