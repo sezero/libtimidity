@@ -267,13 +267,22 @@
                 this.c.setDebugCallback(callbackPtr);
             }
 
-            _handleMidiEvent(tick, time_ms, midiStatusByte, channel, type, a, b, textPtr) {
-                const time_s = time_ms / 1000.0; // Convert milliseconds to seconds
+            _handleMidiEvent(tick, timeMilisecond, eventStatus, channel, eventType, a, b, textPtr) {
+                const timeSecond = timeMilisecond / 1000.0; // Convert milliseconds to seconds
                 let text = '';
                 if (textPtr) {
                     text = this.Module.UTF8ToString(textPtr);
                 }
-                this.emit('onMIDIEvent', { tick, time_s, status: midiStatusByte, type, channel, a, b, text });
+                this.emit('onMIDIEvent', { tick:tick, timeSecond, status: eventStatus, eventType, channel, a, b, text });
+
+
+                if ((eventStatus & 0xF0) === 0x90 && b > 0) { // Note On on any channel
+                    this.emit('onNoteOn', { tick:tick, channel:channel, pitch:a, velocity:b });
+                } else if ((eventStatus & 0xF0) === 0x80 || ((eventStatus & 0xF0) === 0x90 && b === 0)) { // Note Off on any channel
+                    this.emit('onNoteOff', { tick:tick, channel:channel, pitch:a });
+                }
+                
+
             }
 
             async _loadRequiredPatches(patchListString) {
@@ -612,7 +621,7 @@
                 this.c.noteOff(this.realtimeSongPtr, channel, pitch);
             }
 
-            sendEvent(type, channel, a, b = 0) {
+            sendEvent(eventType, channel, a, b = 0) {
                 // Disabled saat render offline agar tidak merusak hasil render
                 if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
                     return;
@@ -620,10 +629,10 @@
                 
                 // Send event to BOTH realtime and main song so it affects any active voices on that channel
                 if (this.realtimeSongPtr !== 0) {
-                    this.c.sendEvent(this.realtimeSongPtr, type, channel, a, b);
+                    this.c.sendEvent(this.realtimeSongPtr, eventType, channel, a, b);
                 }
                 if (this.songPtr !== 0) {
-                    this.c.sendEvent(this.songPtr, type, channel, a, b);
+                    this.c.sendEvent(this.songPtr, eventType, channel, a, b);
                 }
             }
 
@@ -899,15 +908,15 @@
 
 
             player.on('onMIDIEvent', (event) => {
-                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05, type ME_LYRIC)
-                if (event.status === 0xFF && event.channel === 0x05 && event.type === player.ME_LYRIC) {
+                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05, eventType ME_LYRIC)
+                if (event.status === 0xFF && event.channel === 0x05 && event.eventType === player.ME_LYRIC) {
                     if (event.text) {
                         // replace \r or \n with space
                         subtitleBox.textContent += event.text.replace(/[\r\n]+/g, ' '); // Use event.text directly
                     }
                 }
                 // Lyrics reset hack on seek
-                if (event.type === player.ME_ALL_NOTES_OFF || event.type === player.ME_RESET_CONTROLLERS) {
+                if (event.eventType === player.ME_ALL_NOTES_OFF || event.eventType === player.ME_RESET_CONTROLLERS) {
                      // subtitleBox.textContent = ''; 
                 }
 
@@ -919,27 +928,24 @@
                 if (player.isSyncEnabled) {
                     // Check for internal event types for Volume and Pan
                      
-                    if (event.type == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
+                    if (event.eventType == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
                         if (volumeControls[event.channel]) {
                             const value = event.a;
                             volumeControls[event.channel].value = value;
                         }
-                    } else if (event.type == player.ME_PAN) { // ME_PAN is 5
+                    } else if (event.eventType == player.ME_PAN) { // ME_PAN is 5
                         if (panControls[event.channel]) {
                             const value = event.a;
                             panControls[event.channel].value = value;
                         }
-                    } else if (event.type == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
+                    } else if (event.eventType == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
                         if (pbControls[event.channel]) {
                             const value = event.a | (event.b << 7);
                             pbControls[event.channel].value = value;
                         }
                     }
                 }
-
-                console.log(`${event.channel} == ${selectedChannel}`);
-                    console.log({"event.status":event.status, "event.a":event.a, "event.b":event.b})
-                
+                /*
                 if (event.channel == selectedChannel) {
                     if ((event.status & 0xF0) === 0x90 && event.b > 0) { // Note On on any channel
                         const key = keys[event.a];
@@ -949,7 +955,28 @@
                         if (key) key.classList.remove('active');
                     }
                 }
+                */
             });
+
+            player.on('onNoteOn', (event) => {
+                
+                const selectedChannel = parseInt(pianoChannelSelect.value);
+                if (event.channel == selectedChannel) {
+                    const key = keys[event.pitch];
+                    if (key) key.classList.add('active');
+                }
+            });
+
+             player.on('onNoteOff', (event) => {
+                const selectedChannel = parseInt(pianoChannelSelect.value);
+                if (event.channel == selectedChannel) {
+                    const key = keys[event.pitch];
+                    if (key) key.classList.remove('active');
+                }
+            });
+
+
+            
 
             // Mixer Sync Toggle
             mixerSyncToggle.addEventListener('change', (e) => {
