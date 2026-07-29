@@ -1239,9 +1239,9 @@
 
         function handleMIDIMessage(event) {
             if (!player || !player.realtimeSongPtr) return;
-const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
-                const program = document.getElementById('realtimeProgram').valueAsNumber;
-                const bank = document.getElementById('realtimeBank').valueAsNumber;
+            const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
+            const program = parseInt(document.getElementById('realtimeProgram').value, 10);
+            const bank = document.getElementById('realtimeBank').valueAsNumber;
             player.sendMessage(selectedChannel, bank, program, event);
         }
 
