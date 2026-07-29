@@ -726,6 +726,22 @@
                     case 8: // Note Off
                         player.noteOff(channel, note);
                         break;
+                    case 14: // Pitch Bend
+                        player.sendEvent(player.ME_PITCHWHEEL, channel, event.data[1], event.data[2]);
+                        break;
+                    case 11: // Control Change
+                        const cc = event.data[1];
+                        const val = event.data[2];
+                        if (cc === 7) { // Volume
+                            player.sendEvent(player.ME_MAINVOLUME, channel, val);
+                        } else if (cc === 10) { // Pan
+                            player.sendEvent(player.ME_PAN, channel, val);
+                        } else if (cc === 64) { // Sustain
+                            player.sendEvent(player.ME_SUSTAIN, channel, val);
+                        } else if (cc === 11) { // Expression
+                            player.sendEvent(player.ME_EXPRESSION, channel, val);
+                        }
+                        break;
                 }
             }
 
