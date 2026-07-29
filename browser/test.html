@@ -128,10 +128,10 @@
         }
 
         .bar-left{
-            border-right: 1px solid transparent;
+            margin-right: 1px;
         }
         .bar-right{
-            border-left: 1px solid transparent;
+            margin-left: 1px;
         }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
@@ -209,6 +209,7 @@
             FS.mkdir('/gus-patch');
             FS.createPreloadedFile('/gus-patch', 'timidity.cfg', patchUrlBase + '/timidity.cfg', true, true);
         }];
+        
 
         class TimidityPlayer {
             constructor(options = {}) {
@@ -305,15 +306,15 @@
                 if (textPtr) {
                     text = this.Module.UTF8ToString(textPtr);
                 }
-                this.emit('onMIDIEvent', { tick:tick, timeSecond, status: eventStatus, eventType, channel, a, b, text });
 
-
+                // Must before onMIDIEvent
                 if ((eventStatus & 0xF0) === 0x90 && b > 0) { // Note On on any channel
                     this.emit('onNoteOn', { tick:tick, channel:channel, pitch:a, velocity:b });
                 } else if ((eventStatus & 0xF0) === 0x80 || ((eventStatus & 0xF0) === 0x90 && b === 0)) { // Note Off on any channel
                     this.emit('onNoteOff', { tick:tick, channel:channel, pitch:a });
                 }
                 
+                this.emit('onMIDIEvent', { tick:tick, timeSecond, status: eventStatus, eventType, channel, a, b, text });
 
             }
 
@@ -756,6 +757,9 @@
         let pbControls = {};
         let vuLeftControls = {};
         let vuRightControls = {};
+        let channelVelocity = {};
+
+        let player;
 
         // --- Main Application Logic ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -778,7 +782,7 @@
             mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
 
 
-            const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
+            player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
             // Set initial sync state from the checkbox
             player.isSyncEnabled = mixerSyncToggle.checked;
 
@@ -1004,64 +1008,32 @@
                     }
                 }
                 */
+                vuMeter(event.channel, event.tick)
             });
 
             player.on('onNoteOn', (event) => {
+                // Channel velocity
+                channelVelocity[event.channel] = event.velocity;
                 const selectedChannel = parseInt(pianoChannelSelect.value);
                 if (event.channel == selectedChannel) {
                     const key = keys[event.pitch];
                     if (key) key.classList.add('active');
                 }
 
-                // --- VU Meter Logic ---
-                const channel = event.channel;
-                const vuL = vuLeftControls[channel];
-                const vuR = vuRightControls[channel];
-
-                if (vuL && vuR) {
-                    // Get controller values at the exact tick of the noteOn event
-                    const volume = player.getControllerValueAtTick(channel, 7, event.tick);
-                    const expression = player.getControllerValueAtTick(channel, 11, event.tick);
-                    const pan = player.getControllerValueAtTick(channel, 10, event.tick);
-
-                    // Calculate base volume (0.0 to 1.0)
-                    const baseVolume = (event.velocity / 127) * (volume / 127) * (expression / 127);
-
-                    // Apply panning law
-                    let leftGain = 1.0;
-                    let rightGain = 1.0;
-
-                    if (pan < 64) { // Pan left
-                        rightGain = pan / 64.0;
-                    } else if (pan > 64) { // Pan right
-                        leftGain = (127 - pan) / 63.0;
-                    }
-
-                    // Set VU meter height
-                    // A scale of 1 means 0 volume (bar is fully visible, hiding the gradient)
-                    // A scale of 0 means max volume (bar is invisible, revealing the whole gradient)
-                    vuL.style.transform = `scaleY(${1.0 - (baseVolume * leftGain)})`;
-                    vuR.style.transform = `scaleY(${1.0 - (baseVolume * rightGain)})`;
-                }
+                
             });
 
              player.on('onNoteOff', (event) => {
+                channelVelocity[event.channel] = 0;
                 const selectedChannel = parseInt(pianoChannelSelect.value);
                 if (event.channel == selectedChannel) {
                     const key = keys[event.pitch];
                     if (key) key.classList.remove('active');
                 }
 
-                // --- VU Meter Release Logic ---
-                const channel = event.channel;
-                const vuL = vuLeftControls[channel];
-                const vuR = vuRightControls[channel];
+                
 
-                if (vuL && vuR) {
-                    // Set the target scale to 0
-                    vuL.style.transform = 'scaleY(1)';
-                    vuR.style.transform = 'scaleY(1)';
-                }
+                
             });
 
 
@@ -1124,12 +1096,77 @@
             }
         });
 
+        function vuMeter(channel, tick)
+        {
+            // --- VU Meter Logic ---
+            const vuL = vuLeftControls[channel];
+            const vuR = vuRightControls[channel];
+
+            let velocity = channelVelocity[channel];
+            if(velocity > 0)
+            {
+                vuMeterOn(channel, tick, velocity);
+            }
+            else
+            {
+                vueMeterOff(channel);
+            }
+        }
+
         
+        function vuMeterOn(channel, tick, velocity)
+        {
+            // --- VU Meter Logic ---
+            const vuL = vuLeftControls[channel];
+            const vuR = vuRightControls[channel];
+
+            
+
+            
+
+            if (vuL && vuR) {
+                // Get controller values at the exact tick of the noteOn event
+                const volume = player.getControllerValueAtTick(channel, 7, tick);
+                const expression = player.getControllerValueAtTick(channel, 11, tick);
+                const pan = player.getControllerValueAtTick(channel, 10, tick);
+
+                // Calculate base volume (0.0 to 1.0)
+                const baseVolume = (velocity / 127) * (volume / 127) * (expression / 127);
+
+                // Apply panning law
+                let leftGain = 1.0;
+                let rightGain = 1.0;
+
+                if (pan < 64) { // Pan left
+                    rightGain = pan / 64.0;
+                } else if (pan > 64) { // Pan right
+                    leftGain = (127 - pan) / 63.0;
+                }
+
+                // Set VU meter height
+                // A scale of 1 means 0 volume (bar is fully visible, hiding the gradient)
+                // A scale of 0 means max volume (bar is invisible, revealing the whole gradient)
+                vuL.style.transform = `scaleY(${1.0 - (baseVolume * leftGain)})`;
+                vuR.style.transform = `scaleY(${1.0 - (baseVolume * rightGain)})`;
+            }
+        }
+
+        function vueMeterOff(channel)
+        {
+            // --- VU Meter Release Logic ---
+            const vuL = vuLeftControls[channel];
+            const vuR = vuRightControls[channel];
+
+            if (vuL && vuR) {
+                // Set the target scale to 0
+                vuL.style.transform = 'scaleY(1)';
+                vuR.style.transform = 'scaleY(1)';
+            }
+        }
 
 
         
         function updateMixerSlider(channel, controllerNumber, value) {
-            console.log(`updateMixerSlider - Channel: ${channel}, Controller: ${controllerNumber}, Value: ${value}`);
             if (controllerNumber === 7) { // Main Volume
                 const volSlider = document.getElementById(`vol-${channel}`);
                 if (volSlider) {
