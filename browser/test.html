@@ -322,16 +322,8 @@
             pause() {
                 if (!this.audioContext || this.songPtr === 0) return;
                 
-                const onPaused = () => {
-                    this.isPaused = true;
-                    this.emit('onPause');
-                };
-
-                if (this.audioContext.state === 'running') {
-                    this.audioContext.suspend().then(onPaused);
-                } else {
-                    onPaused();
-                }
+                this.isPaused = true;
+                this.emit('onPause');
             }
 
             stop() {
