@@ -1016,3 +1016,81 @@ void mid_song_resend_active_notes(MidSong *song)
     }
   }
 }
+
+/*
+ * Simulates playback up to a certain tick and returns the value of a specific
+ * controller for a given channel. This does not affect the actual playback state.
+ * Returns the controller value, or -1 if not found or invalid.
+ */
+sint32 mid_song_get_controller_value_at_tick(MidSong *song, int channel, int cc, sint32 tick)
+{
+    if (!song || !song->events || channel < 0 || channel > 15)
+    {
+        return -1;
+    }
+
+    MidEvent *e = song->events;
+    MidChannel temp_channel_state;
+
+    /* Initialize a temporary channel state with defaults */
+    temp_channel_state.volume = 90;
+    temp_channel_state.expression = 127;
+    temp_channel_state.sustain = 0;
+    temp_channel_state.pitchbend = 0x2000;
+    temp_channel_state.panning = 64; /* Center panning */
+    /* We don't have dedicated fields for other CCs, so we can't track them yet.
+       This would require extending the MidChannel struct.
+       For now, we will handle the ones that are tracked. */
+
+    /* Iterate through events up to the specified tick */
+    while (e->type != ME_EOT && e->time <= tick)
+    {
+        if (e->channel == channel)
+        {
+            switch (e->type)
+            {
+            case ME_MAINVOLUME:
+                temp_channel_state.volume = e->a;
+                break;
+            case ME_PAN:
+                temp_channel_state.panning = e->a;
+                break;
+            case ME_PITCHWHEEL:
+                temp_channel_state.pitchbend = e->a + e->b * 128;
+                break;
+            case ME_EXPRESSION:
+                temp_channel_state.expression = e->a;
+                break;
+            case ME_SUSTAIN:
+                temp_channel_state.sustain = e->a;
+                break;
+            case ME_RESET_CONTROLLERS:
+                temp_channel_state.volume = 90;
+                temp_channel_state.expression = 127;
+                temp_channel_state.sustain = 0;
+                temp_channel_state.pitchbend = 0x2000;
+                break;
+            /* Other events like modulation, reverb, etc. are not stored in MidChannel struct yet */
+            }
+        }
+        e++;
+    }
+
+    /* Return the requested value */
+    switch (cc)
+    {
+    case 7: /* Volume */
+        return temp_channel_state.volume;
+    case 10: /* Pan */
+        return temp_channel_state.panning;
+    case 11: /* Expression */
+        return temp_channel_state.expression;
+    case 64: /* Sustain Pedal */
+        return temp_channel_state.sustain;
+    case 256: /* Pitch Bend - Using a custom CC number for this special case */
+        return temp_channel_state.pitchbend;
+    default:
+        /* For other CCs, we would need to extend MidChannel struct */
+        return -1; /* Not tracked / supported yet */
+    }
+}

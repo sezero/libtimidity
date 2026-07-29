@@ -102,6 +102,24 @@
             flex-shrink: 0;
         }
         .mixer-channel .ch-label { font-size: 0.9em; font-weight: bold; color: #aaa; margin-bottom: 15px; text-transform: uppercase; }
+
+        .vu-meter-container {
+            display: flex;
+            gap: 4px;
+            height: 100px;
+            width: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #111;
+            background: #000;
+            padding: 2px;
+        }
+        .vu-bar {
+            width: 50%;
+            background: linear-gradient(to top, #0f0, #ff0, #f00);
+            transform-origin: bottom;
+            transform: scaleY(0);
+            transition: transform 0.05s linear;
+        }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
         .pitch-bend-track { margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -254,6 +272,7 @@
                     sendEvent: cwrap('mid_send_event', null, ['number', 'number', 'number', 'number', 'number']),
                 };
                 this.c.resendActiveNotes = this.Module.cwrap('mid_song_resend_active_notes', null, ['number']);
+                this.c.getControllerValueAtTick = this.Module.cwrap('mid_song_get_controller_value_at_tick', 'number', ['number', 'number', 'number', 'number']);
 
                 this.emit('runtimeInitialized');
             }
@@ -418,6 +437,13 @@
                 if (this.songPtr !== 0) {
                     this.c.resendActiveNotes(this.songPtr);
                 }
+            }
+
+            getControllerValueAtTick(channel, cc, tick) {
+                if (this.songPtr !== 0) {
+                    return this.c.getControllerValueAtTick(this.songPtr, channel, cc, tick);
+                }
+                return -1;
             }
 
             async load(midi) {
@@ -715,6 +741,8 @@
         let volumeControls = {};
         let panControls = {};
         let pbControls = {};
+        let vuLeftControls = {};
+        let vuRightControls = {};
 
         // --- Main Application Logic ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -866,6 +894,11 @@
                 
                 strip.innerHTML = `
                     <div class="ch-label">${chName}</div>
+
+                    <div class="vu-meter-container">
+                        <div class="vu-bar" id="vu-l-${i}"></div>
+                        <div class="vu-bar" id="vu-r-${i}"></div>
+                    </div>
                     
                     <div class="knob-track">
                         <div class="knob-label">PAN</div>
@@ -904,6 +937,8 @@
                 volumeControls[i] = mixerContainer.querySelector(`#vol-${i}`);
                 panControls[i] = mixerContainer.querySelector(`#pan-${i}`);
                 pbControls[i] = mixerContainer.querySelector(`#pb-${i}`);
+                vuLeftControls[i] = mixerContainer.querySelector(`#vu-l-${i}`);
+                vuRightControls[i] = mixerContainer.querySelector(`#vu-r-${i}`);
             }
 
 
@@ -959,11 +994,39 @@
             });
 
             player.on('onNoteOn', (event) => {
-                
                 const selectedChannel = parseInt(pianoChannelSelect.value);
                 if (event.channel == selectedChannel) {
                     const key = keys[event.pitch];
                     if (key) key.classList.add('active');
+                }
+
+                // --- VU Meter Logic ---
+                const channel = event.channel;
+                const vuL = vuLeftControls[channel];
+                const vuR = vuRightControls[channel];
+
+                if (vuL && vuR) {
+                    // Get controller values at the exact tick of the noteOn event
+                    const volume = player.getControllerValueAtTick(channel, 7, event.tick);
+                    const expression = player.getControllerValueAtTick(channel, 11, event.tick);
+                    const pan = player.getControllerValueAtTick(channel, 10, event.tick);
+
+                    // Calculate base volume (0.0 to 1.0)
+                    const baseVolume = (event.velocity / 127) * (volume / 127) * (expression / 127);
+
+                    // Apply panning law
+                    let leftGain = 1.0;
+                    let rightGain = 1.0;
+
+                    if (pan < 64) { // Pan left
+                        rightGain = pan / 64.0;
+                    } else if (pan > 64) { // Pan right
+                        leftGain = (127 - pan) / 63.0;
+                    }
+
+                    // Set VU meter height
+                    vuL.style.transform = `scaleY(${baseVolume * leftGain})`;
+                    vuR.style.transform = `scaleY(${baseVolume * rightGain})`;
                 }
             });
 
@@ -972,6 +1035,20 @@
                 if (event.channel == selectedChannel) {
                     const key = keys[event.pitch];
                     if (key) key.classList.remove('active');
+                }
+
+                // --- VU Meter Release Logic ---
+                const channel = event.channel;
+                const vuL = vuLeftControls[channel];
+                const vuR = vuRightControls[channel];
+
+                if (vuL && vuR) {
+                    // Set a transition for a smooth decay
+                    vuL.style.transition = 'transform 0.5s ease-out';
+                    vuR.style.transition = 'transform 0.5s ease-out';
+                    // Set the target scale to 0
+                    vuL.style.transform = 'scaleY(0)';
+                    vuR.style.transform = 'scaleY(0)';
                 }
             });
 

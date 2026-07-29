@@ -301,6 +301,10 @@ TIMI_EXPORT extern void mid_set_debug_msg_callback(MidDebugMsgCallback callback)
  */
   TIMI_EXPORT extern void mid_song_resend_active_notes(MidSong *song);
 
+/* Get the value of a specific MIDI controller for a channel at a given tick.
+ */
+  TIMI_EXPORT extern sint32 mid_song_get_controller_value_at_tick(MidSong *song, int channel, int cc, sint32 tick);
+
 #ifdef __cplusplus
 }
 #endif

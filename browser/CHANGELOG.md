@@ -2,6 +2,11 @@
 
 All changes in this release were specifically made to meet the requirements for integrating the **MIDI Player into a Digital Audio Workstation (DAW)**.
 
+### Added
+- **C API**: Added `mid_song_get_controller_value_at_tick` function. This allows querying the state of a specific controller (e.g., volume, pan, pitch bend) for any channel at a specific MIDI tick. This is crucial for UI elements like VU meters or automation lanes that need to display controller values at arbitrary points in the song.
+- **JavaScript API**: Exposed the new C function as `player.getControllerValueAtTick(channel, cc, tick)`.
+
+
 ## [Unreleased]
 
 ### 1. Added Methods
