@@ -158,6 +158,11 @@
 
     <div class="panel">
         <h3>Mixing Console</h3>
+        <div style="margin-bottom: 15px;">
+            <label>
+                <input type="checkbox" id="mixerSyncToggle"> Sync with MIDI Events
+            </label>
+        </div>
         <div id="mixer" class="mixer-container"></div>
     </div>
 
@@ -183,6 +188,7 @@
                 this.eventListeners = {};
                 this.playingInterval = null;
                 this.isPlaying = false;
+                this.isSyncEnabled = false; // New flag for mixer sync
                 this.isPaused = false;
                 this.isSeeking = false; // New flag to control seeker updates
                 this.totalDuration = 0; // Total duration in seconds
@@ -690,6 +696,7 @@
             const stopBtn = document.getElementById("stop");
             const freeBtn = document.getElementById("free");
             const exitBtn = document.getElementById("exit");
+            const mixerSyncToggle = document.getElementById("mixerSyncToggle");
             const initBtn = document.getElementById("init");
             const midiFileEl = document.getElementById("midiFile");
             const seekerEl = document.getElementById("seeker");
@@ -869,6 +876,55 @@
                 }
             });
 
+            // Mixer Sync Toggle
+            mixerSyncToggle.addEventListener('change', (e) => {
+                player.isSyncEnabled = e.target.checked;
+                statusEl.textContent = `Mixer Sync: ${player.isSyncEnabled ? 'ON' : 'OFF'}`;
+            });
+
+            player.on('onMIDIEvent', (event) => {
+                if (player.isSyncEnabled) {
+                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
+                    if ((event.type & 0xF0) === 0xB0) { // Control Change
+                        const channel = event.channel;
+                        const controllerNumber = event.a; // Controller number (e.g., 7 for volume, 10 for pan)
+                        const value = event.b; // Controller value
+
+                        updateMixerSlider(channel, controllerNumber, value);
+                    }
+                }
+
+                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05)
+                if (event.type === 0xFF && event.channel === 0x05) {
+                    if (event.text) {
+                        // replace \r or \n with space
+                        subtitleBox.textContent += event.text.replace(/[\r\n]+/g, ' ');
+                    }
+                }
+                // Lyrics reset hack on seek
+                if (event.type === player.ME_ALL_NOTES_OFF || event.type === player.ME_RESET_CONTROLLERS) {
+                     // subtitleBox.textContent = ''; 
+                }
+
+                // Note On / Off for Piano Highlight
+                const selectedChannel = parseInt(pianoChannelSelect.value);
+                
+                // Debug log to trace what events are actually coming through for the selected channel
+                if (event.channel === selectedChannel && (event.type === 0x90 || event.type === 0x80)) {
+                    console.log(`MIDI Event - Channel: ${event.channel}, Type: 0x${event.type.toString(16).toUpperCase()}, Note: ${event.a}, Velocity: ${event.b}`);
+                }
+
+                if (event.channel === selectedChannel) {
+                    if (event.type === 0x90 && event.b > 0) { // 0x90 is Note On
+                        const key = keys[event.a];
+                        if (key) key.classList.add('active');
+                    } else if (event.type === 0x80 || (event.type === 0x90 && event.b === 0)) { // 0x80 is Note Off
+                        const key = keys[event.a];
+                        if (key) key.classList.remove('active');
+                    }
+                }
+            });
+
             player.on('error', (message) => {
                 statusEl.textContent = `Error: ${message}`;
                 playPauseBtn.disabled = true;
@@ -905,6 +961,20 @@
                 document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
             });
         });
+        
+        function updateMixerSlider(channel, controllerNumber, value) {
+            if (controllerNumber === 7) { // Main Volume
+                const volSlider = document.getElementById(`vol-${channel}`);
+                if (volSlider) {
+                    volSlider.value = value;
+                }
+            } else if (controllerNumber === 10) { // Pan
+                const panSlider = document.getElementById(`pan-${channel}`);
+                if (panSlider) {
+                    panSlider.value = value;
+                }
+            }
+        }
 
     </script>
     <script src="libtimidity.js"></script>
