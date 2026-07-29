@@ -120,7 +120,7 @@ class TimidityPlayer {
             const message = this.Module.UTF8ToString(messagePtr);
             console.log("libTiMidity DEBUG:", message.trim()); // trim() to remove trailing newlines
         };
-        const callbackPtr = this.Module.addFunction(debugCallback, 'vi');
+        const callbackPtr = this.Module.addFunction(debugCallback, 'vp');
         this.c.setDebugCallback(callbackPtr);
     }
 
@@ -241,7 +241,7 @@ class TimidityPlayer {
                 console.log("Default real-time instrument (Piano) preloaded.");
             });
 
-            const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiiiii');
+            const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiippp');
             this.c.setEventCallback(0, callbackPtr);
             this.emit('onInit');
             return true;
