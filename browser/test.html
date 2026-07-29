@@ -937,10 +937,11 @@
                     }
                 }
 
+                console.log(`${event.channel} == ${selectedChannel}`);
+                    console.log({"event.status":event.status, "event.a":event.a, "event.b":event.b})
                 
                 if (event.channel == selectedChannel) {
-                    console.log({"event.status":event.status, "event.a":event.a, "event.b":event.b})
-                    if (event.status === 0x90 && event.b > 0) { // 0x90 is Note On
+                    if (event.status === 0x90) { // 0x90 is Note On
                         const key = keys[event.a];
                         if (key) key.classList.add('active');
                     } else if (event.status === 0x80 || (event.status === 0x90 && event.b === 0)) { // 0x80 is Note Off
