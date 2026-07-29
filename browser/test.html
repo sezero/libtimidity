@@ -151,15 +151,16 @@
         async _createRealtimeSong() {
             if (this.songPtr !== 0) return; // A song is already loaded
 
-            const optionsPtr = this.Module._malloc(12);
-            this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
-            this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB
-            this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
-            this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+            // Create a dummy MIDI file with a single track and a very long delay before End of Track.
+            // This prevents the player from stopping and allows real-time note events.
+            const emptyMidi = new Uint8Array([
+                0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd format 0, 1 track, 120 ticks/qnote
+                0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x0E, // MTrk, 14 bytes length
+                0x00, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20, // Tempo: 500000 (120 BPM)
+                0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0x2F, 0x00 // Delta max, EOT
+            ]);
 
-            this.songPtr = this.c.createSong(optionsPtr);
-            this.Module._free(optionsPtr);
-            if (this.songPtr !== 0) {
+            if (await this.load(emptyMidi)) {
                 await this.play(); // Start playback for the empty song
             }
         }
