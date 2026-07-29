@@ -263,13 +263,13 @@
                 this.c.setDebugCallback(callbackPtr);
             }
 
-            _handleMidiEvent(tick, time_ms, type, channel, a, b, textPtr) {
+            _handleMidiEvent(tick, time_ms, midiStatusByte, channel, type, a, b, textPtr) {
                 const time_s = time_ms / 1000.0; // Convert milliseconds to seconds
                 let text = '';
                 if (textPtr) {
                     text = this.Module.UTF8ToString(textPtr);
                 }
-                this.emit('onMIDIEvent', { tick, time_s, type, channel, a, b, text });
+                this.emit('onMIDIEvent', { tick, time_s, status: midiStatusByte, type, channel, a, b, text });
             }
 
             async _loadRequiredPatches(patchListString) {
@@ -689,6 +689,9 @@
 
         }
 
+        let volumeControls = {};
+        let panControls = {};
+
         // --- Main Application Logic ---
         document.addEventListener('DOMContentLoaded', () => {
             const statusEl = document.getElementById("status");
@@ -704,6 +707,12 @@
             const totalTimeEl = document.getElementById("totalTime");
             const noteOnBtn = document.getElementById("noteOn");
             const noteOffBtn = document.getElementById("noteOff");
+
+            for(let i = 0; i<16; i++)
+            {
+                volumeControls[i] = document.getElementById(`vol-${i}`);
+                panControls[i] = document.getElementById(`pan-${i}`);
+            }
 
 
             const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
@@ -722,6 +731,8 @@
                 seekerEl.value = 0;
                 currentTimeEl.textContent = player.formatTime(0);
                 totalTimeEl.textContent = player.formatTime(player.totalDuration);
+
+
             });
 
             player.on('onInstrumentLoading', (loaded, total, pathToLoad) => { // Update status during patch loading
@@ -845,11 +856,11 @@
             }
 
             player.on('onMIDIEvent', (event) => {
-                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05)
-                if (event.type === 0xFF && event.channel === 0x05) {
+                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05, type ME_LYRIC)
+                if (event.status === 0xFF && event.channel === 0x05 && event.type === player.ME_LYRIC) {
                     if (event.text) {
                         // replace \r or \n with space
-                        subtitleBox.textContent += event.text.replace(/[\r\n]+/g, ' ');
+                        subtitleBox.textContent += event.text.replace(/[\r\n]+/g, ' '); // Use event.text directly
                     }
                 }
                 // Lyrics reset hack on seek
@@ -859,17 +870,30 @@
 
                 // Note On / Off for Piano Highlight
                 const selectedChannel = parseInt(pianoChannelSelect.value);
+
                 
-                // Debug log to trace what events are actually coming through for the selected channel
-                if (event.channel === selectedChannel && (event.type === 0x90 || event.type === 0x80)) {
-                    console.log(`MIDI Event - Channel: ${event.channel}, Type: 0x${event.type.toString(16).toUpperCase()}, Note: ${event.a}, Velocity: ${event.b}`);
+                // Control Change events (volume/pan sync)
+                //if (this.isSyncEnabled) 
+                {
+                    
+                    if (event.status === 0xB0) { // Control Change
+                        console.log(event)
+                        if (event.type === 7 && volumeControls[event.channel]) { // CC7 = Main Volume
+                            volumeControls[event.channel].value = event.b;
+                        }
+                        if (event.type === 10 && panControls[event.channel]) { // CC10 = Pan
+                            panControls[event.channel].value = event.b;
+                        }
+                    }
                 }
 
+                
+
                 if (event.channel === selectedChannel) {
-                    if (event.type === 0x90 && event.b > 0) { // 0x90 is Note On
+                    if (event.status === 0x90 && event.b > 0) { // 0x90 is Note On
                         const key = keys[event.a];
                         if (key) key.classList.add('active');
-                    } else if (event.type === 0x80 || (event.type === 0x90 && event.b === 0)) { // 0x80 is Note Off
+                    } else if (event.status === 0x80 || (event.status === 0x90 && event.b === 0)) { // 0x80 is Note Off
                         const key = keys[event.a];
                         if (key) key.classList.remove('active');
                     }
@@ -882,48 +906,6 @@
                 statusEl.textContent = `Mixer Sync: ${player.isSyncEnabled ? 'ON' : 'OFF'}`;
             });
 
-            player.on('onMIDIEvent', (event) => {
-                if (player.isSyncEnabled) {
-                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
-                    if ((event.type & 0xF0) === 0xB0) { // Control Change
-                        const channel = event.channel;
-                        const controllerNumber = event.a; // Controller number (e.g., 7 for volume, 10 for pan)
-                        const value = event.b; // Controller value
-
-                        updateMixerSlider(channel, controllerNumber, value);
-                    }
-                }
-
-                // Subtitles / Lyrics (Meta Event 0xFF, channel 0x05)
-                if (event.type === 0xFF && event.channel === 0x05) {
-                    if (event.text) {
-                        // replace \r or \n with space
-                        subtitleBox.textContent += event.text.replace(/[\r\n]+/g, ' ');
-                    }
-                }
-                // Lyrics reset hack on seek
-                if (event.type === player.ME_ALL_NOTES_OFF || event.type === player.ME_RESET_CONTROLLERS) {
-                     // subtitleBox.textContent = ''; 
-                }
-
-                // Note On / Off for Piano Highlight
-                const selectedChannel = parseInt(pianoChannelSelect.value);
-                
-                // Debug log to trace what events are actually coming through for the selected channel
-                if (event.channel === selectedChannel && (event.type === 0x90 || event.type === 0x80)) {
-                    console.log(`MIDI Event - Channel: ${event.channel}, Type: 0x${event.type.toString(16).toUpperCase()}, Note: ${event.a}, Velocity: ${event.b}`);
-                }
-
-                if (event.channel === selectedChannel) {
-                    if (event.type === 0x90 && event.b > 0) { // 0x90 is Note On
-                        const key = keys[event.a];
-                        if (key) key.classList.add('active');
-                    } else if (event.type === 0x80 || (event.type === 0x90 && event.b === 0)) { // 0x80 is Note Off
-                        const key = keys[event.a];
-                        if (key) key.classList.remove('active');
-                    }
-                }
-            });
 
             player.on('error', (message) => {
                 statusEl.textContent = `Error: ${message}`;
@@ -960,9 +942,68 @@
                 subtitleBox.textContent = "";
                 document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
             });
+
+            /*
+
+            // Single, combined MIDI event handler
+            player.on('onMIDIEvent', (event) => {
+                const player = window.player;
+                cosnole.log(event)
+
+                // 1. Mixer Sync Logic
+                if (player.isSyncEnabled) {
+                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
+                    if ((event.type & 0xF0) === 0xB0) {
+                        const channel = event.channel;
+                        const controllerNumber = event.a; // Controller number
+                        const value = event.b; // Controller value
+                        updateMixerSlider(channel, controllerNumber, value);
+                    }
+                }
+
+                // 2. Subtitles / Lyrics Logic
+                if (event.type === 0xFF && event.channel === 0x05) {
+                    if (event.text) {
+                        document.getElementById('subtitleBox').textContent += event.text.replace(/[\r\n]+/g, ' ');
+                    }
+                }
+                if (event.type === player.ME_ALL_NOTES_OFF || event.type === player.ME_RESET_CONTROLLERS) {
+                    // subtitleBox.textContent = ''; // Optional: reset on seek/stop
+                }
+
+                // 3. Piano Roll Highlight Logic
+                const selectedChannel = parseInt(document.getElementById('pianoChannel').value);
+                if (event.channel === selectedChannel) {
+                    const keys = window.pianoKeys; // Assuming keys are globally accessible
+                    if (event.type === 0x90 && event.b > 0) { // Note On
+                        const key = keys[event.a];
+                        if (key) key.classList.add('active');
+                    } else if (event.type === 0x80 || (event.type === 0x90 && event.b === 0)) { // Note Off
+                        const key = keys[event.a];
+                        if (key) key.classList.remove('active');
+                    }
+                }
+            });
+            */
+
+
         });
+
+        // Mixer Sync Toggle
+        document.getElementById("mixerSyncToggle").addEventListener('change', (e) => {
+            const player = window.player; // Assuming player is globally accessible or passed differently
+            if (player) {
+                player.isSyncEnabled = e.target.checked;
+                document.getElementById("status").textContent = `Mixer Sync: ${player.isSyncEnabled ? 'ON' : 'OFF'}`;
+            }
+        });
+
+        
+
+
         
         function updateMixerSlider(channel, controllerNumber, value) {
+            console.log(`updateMixerSlider - Channel: ${channel}, Controller: ${controllerNumber}, Value: ${value}`);
             if (controllerNumber === 7) { // Main Volume
                 const volSlider = document.getElementById(`vol-${channel}`);
                 if (volSlider) {

@@ -275,7 +275,7 @@ extern "C" {
   TIMI_EXPORT extern uint32 mid_song_get_current_tick(MidSong *song);
 
 /* Callback for MIDI events during playback */
-typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 type, uint8 channel, uintptr_t a, uintptr_t b, const char *text);
+typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 status, uint8 channel, uint8 type, uintptr_t a, uintptr_t b, const char *text);
 
 
 /* Set a callback function to be called for each MIDI event */
