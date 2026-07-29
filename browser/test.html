@@ -139,7 +139,57 @@
                 if (rc === 0) {
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                     this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass();
-                    if (!offline) this.audioContext.suspend();
+                    if (!offline) {
+                        this.audioContext.suspend();
+                        
+                        this.initRealtimeSong();
+
+                        const bufferSize = 4096;
+                        this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
+                        
+                        this.scriptNode.onaudioprocess = (e) => {
+                            const outL = e.outputBuffer.getChannelData(0);
+                            const outR = e.outputBuffer.getChannelData(1);
+                            outL.fill(0);
+                            outR.fill(0);
+
+                            const pcmBytes = bufferSize * 2 * 2;
+                            let bytesReadMain = 0;
+
+                            if (this.songPtr !== 0 && !this.isPaused && this.isPlaying) {
+                                const pcmBufferPtr = this.Module._malloc(pcmBytes);
+                                bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes);
+                                if (bytesReadMain > 0) {
+                                    const samplesRead = bytesReadMain / 4;
+                                    for (let i = 0; i < samplesRead; i++) {
+                                        outL[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)] / 32768.0;
+                                        outR[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
+                                    }
+                                }
+                                this.Module._free(pcmBufferPtr);
+                                
+                                if (bytesReadMain <= 0) {
+                                    this.stop();
+                                    this.emit('onEnded');
+                                }
+                            }
+
+                            if (this.realtimeSongPtr) {
+                                const rtBufferPtr = this.Module._malloc(pcmBytes);
+                                const rtBytes = this.c.readWave(this.realtimeSongPtr, rtBufferPtr, pcmBytes);
+                                if (rtBytes > 0) {
+                                    const samplesRead = rtBytes / 4;
+                                    for (let i = 0; i < samplesRead; i++) {
+                                        outL[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2)] / 32768.0;
+                                        outR[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
+                                    }
+                                }
+                                this.Module._free(rtBufferPtr);
+                            }
+                        };
+                        
+                        this.scriptNode.connect(this.audioContext.destination);
+                    }
 
                     const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiii');
                     this.c.setEventCallback(0, callbackPtr);
@@ -151,60 +201,40 @@
                 }
             }
 
-            async _createRealtimeSong() {
-                if (this.songPtr !== 0) {
-                    this.stop();
-                }
+            async initRealtimeSong() {
+                if (this.realtimeSongPtr) return;
 
-                // Create a dummy MIDI file with a single track and a very slow tempo to create a ~1.1 hour delay before End of Track.
-                // We use 30000 ticks to ensure no sample_correction math overflow at 48kHz.
-                // We also inject Program Change and Note On events to force libTiMidity to load required patches.
                 const midiBytes = [
-                    0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd format 0, 1 track, 120 ticks/qnote
-                    0x4D, 0x54, 0x72, 0x6B // MTrk
+                    0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78,
+                    0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x0C,
+                    0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF,
+                    0x81, 0xEA, 0x30, 0x80, 0x00, 0x00,
+                    0x00, 0xFF, 0x2F, 0x00
                 ];
 
-                const trackLengthIdx = midiBytes.length;
-                midiBytes.push(0x00, 0x00, 0x00, 0x00); // Placeholder for length
-
-                // Tempo: 16777215 us/qnote
-                midiBytes.push(0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF);
-
-                // Requested programs (always include 0)
-                const programsToLoad = new Set([0]);
-                if (this.requestedPrograms) {
-                    for (const prog of this.requestedPrograms) {
-                        programsToLoad.add(prog);
-                    }
-                } else {
-                    this.requestedPrograms = new Set();
-                }
-
-                for (const prog of programsToLoad) {
-                    midiBytes.push(0x00, 0xC0, prog & 0x7F); // Delta 0, Program Change ch0 prog
-                    midiBytes.push(0x00, 0x90, 0x00, 0x00); // Delta 0, Note On ch0 key0 vel0
-                }
-
-                midiBytes.push(0x81, 0xEA, 0x30, 0x80, 0x00, 0x00); // Delta 30000 ticks, Note Off ch0 key0 vel0
-                midiBytes.push(0x00, 0xFF, 0x2F, 0x00); // Delta 0, EOT
-
-                // Calculate and set track length
-                const trackLength = midiBytes.length - trackLengthIdx - 4;
-                midiBytes[trackLengthIdx] = (trackLength >> 24) & 0xFF;
-                midiBytes[trackLengthIdx + 1] = (trackLength >> 16) & 0xFF;
-                midiBytes[trackLengthIdx + 2] = (trackLength >> 8) & 0xFF;
-                midiBytes[trackLengthIdx + 3] = trackLength & 0xFF;
-
                 const emptyMidi = new Uint8Array(midiBytes);
+                const midiDataPtr = this.Module._malloc(emptyMidi.length);
+                this.Module.HEAPU8.set(emptyMidi, midiDataPtr);
 
-                const loadResult = await this.load(emptyMidi, true);
-                this.isRealtime = true;
-                if (loadResult) {
-                    await this.play(); // Start playback for the empty song
+                const optionsPtr = this.Module._malloc(12);
+                this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+                this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+                this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
+                this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+                const streamPtr = this.c.openMemoryStream(midiDataPtr, emptyMidi.length);
+                this.realtimeSongPtr = this.c.loadSong(streamPtr, optionsPtr);
+                
+                this.c.closeStream(streamPtr);
+                this.Module._free(midiDataPtr);
+                this.Module._free(optionsPtr);
+
+                if (this.realtimeSongPtr !== 0) {
+                    this.c.startSong(this.realtimeSongPtr);
                 }
             }
 
-            async load(midi, isRealtime = false) {
+            async load(midi) {
                 if (!this.audioContext) {
                     this.emit('error', "Player not initialized. Call init() first.");
                     return false;
@@ -213,8 +243,7 @@
                     this.stop();
                 }
 
-                this.isRealtime = isRealtime;
-                if (!this.isRealtime) this.emit('onMidiLoading', midi);
+                this.emit('onMidiLoading', midi);
 
                 const midiData = (midi instanceof Uint8Array) ? midi : new Uint8Array(await midi.arrayBuffer()); // Handle File object or Uint8Array
                 const midiDataPtr = this.Module._malloc(midiData.length);
@@ -236,10 +265,10 @@
 
                 if (this.songPtr !== 0) {
                     this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
-                    if (!this.isRealtime) this.emit('onMidiLoaded', midi);
+                    this.emit('onMidiLoaded', midi);
                     return true;
                 } else {
-                    if (!this.isRealtime) this.emit('error', "Failed to load MIDI file.");
+                    this.emit('error', "Failed to load MIDI file.");
                     return false;
                 }
 
@@ -254,13 +283,8 @@
                 this.c.startSong(this.songPtr); // Prepare song for playback
                 if (offset > 0) this.seek(offset); // Seek if offset is provided
 
-                const bufferSize = 4096;
-                this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
-
                 this.playingInterval = setInterval(() => {
-                    // Only emit onPlaying if not currently seeking to prevent UI jumps
-                    // Do not emit if playing a realtime dummy MIDI
-                    if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking && !this.isRealtime) {
+                    if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) {
                         this.emit('onPlaying', this.c.getCurrentTick(this.songPtr), this.c.getTime(this.songPtr));
                     }
                 }, 1000); // Update every 1 second
@@ -269,29 +293,6 @@
                 this.isPaused = false;
                 this.emit('onPlay');
 
-                this.scriptNode.onaudioprocess = (e) => {
-                    const outL = e.outputBuffer.getChannelData(0);
-                    const outR = e.outputBuffer.getChannelData(1);
-                    const pcmBytes = bufferSize * 2 * 2;
-                    const pcmBufferPtr = this.Module._malloc(pcmBytes);
-                    const bytesRead = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes); // Read audio from libTiMidity
-                    const samplesRead = bytesRead / 4; // 2 channels * 2 bytes/sample = 4 bytes per stereo sample
-
-                    if (bytesRead > 0) {
-                        for (let i = 0; i < samplesRead; i++) {
-                            outL[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)] / 32768.0; // De-interleave and normalize left channel
-                            outR[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1] / 32768.0; // De-interleave and normalize right channel
-                        }
-                    }
-                    this.Module._free(pcmBufferPtr);
-
-                    if (bytesRead <= 0) {
-                        console.log("STOPPING because bytesRead <= 0. bytesRead:", bytesRead, "songPtr:", this.songPtr);
-                        this.stop();
-                        this.emit('onEnded');
-                    }
-                };
-                this.scriptNode.connect(this.audioContext.destination);
                 this.resume();
             }
 
@@ -303,23 +304,33 @@
 
             resume() {
                 if (!this.audioContext || this.songPtr === 0) return;
+                
+                const onResumed = () => {
+                    if (!this.isPlaying) this.emit('onPlay');
+                    else this.emit('onResume');
+                    this.isPlaying = true;
+                    this.isPaused = false;
+                };
+
                 if (this.audioContext.state === 'suspended') {
-                    this.audioContext.resume().then(() => { // AudioContext.resume() is async
-                        if (!this.isPlaying) this.emit('onPlay');
-                        else this.emit('onResume');
-                        this.isPlaying = true;
-                        this.isPaused = false;
-                    });
+                    this.audioContext.resume().then(onResumed);
+                } else {
+                    onResumed();
                 }
             }
 
             pause() {
                 if (!this.audioContext || this.songPtr === 0) return;
+                
+                const onPaused = () => {
+                    this.isPaused = true;
+                    this.emit('onPause');
+                };
+
                 if (this.audioContext.state === 'running') {
-                    this.audioContext.suspend().then(() => { // AudioContext.suspend() is async
-                        this.isPaused = true;
-                        this.emit('onPause');
-                    });
+                    this.audioContext.suspend().then(onPaused);
+                } else {
+                    onPaused();
                 }
             }
 
@@ -327,8 +338,6 @@
                 if (this.songPtr !== 0) {
                     if (this.playingInterval) clearInterval(this.playingInterval);
                     this.playingInterval = null;
-                    if (this.scriptNode) this.scriptNode.disconnect();
-                    this.scriptNode = null;
                     this.c.freeSong(this.songPtr);
                     this.songPtr = 0;
                     this.emit('onStop');
@@ -358,15 +367,15 @@
                     return; // Prevent real-time interaction during normal playback (which would mess up offline render buffer)
                 }
 
-                if (this.songPtr === 0) return;
+                if (!this.realtimeSongPtr) return;
 
                 if (this.audioContext?.state == 'suspended') {
                     this.audioContext.resume();
                 }
 
                 // missingProgram could be the missing program number or drum key
-                const missingProgram = this.c.noteOn(this.songPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
-                console.log("noteOn, songPtr:", this.songPtr, "state:", this.audioContext.state);
+                const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+                console.log("noteOn, realtimeSongPtr:", this.realtimeSongPtr, "state:", this.audioContext.state);
                 console.log("missingProgram:", missingProgram);
 
                 if (missingProgram > 0) {
@@ -403,11 +412,11 @@
                         await this._loadRequiredPatches(patchListString);
                     }
 
-                    // 3. Command C to dynamically load the patch into the active song
-                    if (this.c.loadProgram(this.songPtr, bank, missingProgram, isDrum) === 0) {
+                    // 3. Command C to dynamically load the patch into the active realtimeSongPtr
+                    if (this.c.loadProgram(this.realtimeSongPtr, bank, missingProgram, isDrum) === 0) {
                         console.log(`Successfully dynamically loaded program ${missingProgram} (bank ${bank})`);
                         // 4. Retry playing the note
-                        this.c.noteOn(this.songPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+                        this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
                     } else {
                         console.warn(`Failed to dynamically load program ${missingProgram} (bank ${bank}) into MidSong.`);
                     }
@@ -415,14 +424,14 @@
             }
 
             noteOff(channel, pitch) {
-                if (!this.songPtr || this.audioContext.state !== 'running') {
+                if (!this.realtimeSongPtr || this.audioContext.state !== 'running') {
                     return;
                 }
                 // Disabled saat render offline agar tidak merusak hasil render
                 if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
                     return;
                 }
-                this.c.noteOff(this.songPtr, channel, pitch);
+                this.c.noteOff(this.realtimeSongPtr, channel, pitch);
             }
 
             goTo(ticks) {
@@ -617,7 +626,6 @@
             initBtn.onclick = () => {
                 if (player.init()) {
                     initBtn.disabled = true; // Disable init button after successful init
-                    player._createRealtimeSong(); // Create and start the empty song for real-time events
                 }
             };
             midiFileEl.onchange = (event) => {
@@ -625,7 +633,7 @@
                 if (file) player.loadAndPlay(file); // Load and play selected MIDI file
             };
             playPauseBtn.onclick = () => {
-                if (player.audioContext && player.audioContext.state === 'running') player.pause();
+                if (player.isPlaying && !player.isPaused) player.pause();
                 else player.resume();
             };
             seekerEl.onchange = (event) => {
