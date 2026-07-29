@@ -149,23 +149,52 @@
         }
 
         async _createRealtimeSong() {
-            if (this.songPtr !== 0) return; // A song is already loaded
+            if (this.songPtr !== 0) {
+                this.stop();
+            }
 
             // Create a dummy MIDI file with a single track and a very slow tempo to create a ~1.1 hour delay before End of Track.
             // We use 30000 ticks to ensure no sample_correction math overflow at 48kHz.
-            // We also inject a Program Change and Note On for Program 0 to force libTiMidity to load the patch.
-            const emptyMidi = new Uint8Array([
+            // We also inject Program Change and Note On events to force libTiMidity to load required patches.
+            const midiBytes = [
                 0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x78, // MThd format 0, 1 track, 120 ticks/qnote
-                0x4D, 0x54, 0x72, 0x6B, 0x00, 0x00, 0x00, 0x18, // MTrk, 24 bytes length
-                0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF, // Tempo: 16777215 us/qnote
-                0x00, 0xC0, 0x00, // Delta 0, Program Change ch0 prog0
-                0x00, 0x90, 0x00, 0x00, // Delta 0, Note On ch0 key0 vel0 (marks program 0 for loading)
-                0x81, 0xEA, 0x30, 0x80, 0x00, 0x00, // Delta 30000 ticks, Note Off ch0 key0 vel0
-                0x00, 0xFF, 0x2F, 0x00 // Delta 0, EOT
-            ]);
+                0x4D, 0x54, 0x72, 0x6B // MTrk
+            ];
+            
+            const trackLengthIdx = midiBytes.length;
+            midiBytes.push(0x00, 0x00, 0x00, 0x00); // Placeholder for length
+            
+            // Tempo: 16777215 us/qnote
+            midiBytes.push(0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF);
+            
+            // Requested programs (always include 0)
+            const programsToLoad = new Set([0]);
+            if (this.requestedPrograms) {
+                for (const prog of this.requestedPrograms) {
+                    programsToLoad.add(prog);
+                }
+            } else {
+                this.requestedPrograms = new Set();
+            }
+
+            for (const prog of programsToLoad) {
+                midiBytes.push(0x00, 0xC0, prog & 0x7F); // Delta 0, Program Change ch0 prog
+                midiBytes.push(0x00, 0x90, 0x00, 0x00); // Delta 0, Note On ch0 key0 vel0
+            }
+            
+            midiBytes.push(0x81, 0xEA, 0x30, 0x80, 0x00, 0x00); // Delta 30000 ticks, Note Off ch0 key0 vel0
+            midiBytes.push(0x00, 0xFF, 0x2F, 0x00); // Delta 0, EOT
+            
+            // Calculate and set track length
+            const trackLength = midiBytes.length - trackLengthIdx - 4;
+            midiBytes[trackLengthIdx] = (trackLength >> 24) & 0xFF;
+            midiBytes[trackLengthIdx + 1] = (trackLength >> 16) & 0xFF;
+            midiBytes[trackLengthIdx + 2] = (trackLength >> 8) & 0xFF;
+            midiBytes[trackLengthIdx + 3] = trackLength & 0xFF;
+
+            const emptyMidi = new Uint8Array(midiBytes);
 
             const loadResult = await this.load(emptyMidi);
-            console.log("Dummy MIDI load result:", loadResult, "songPtr:", this.songPtr);
             if (loadResult) {
                 await this.play(); // Start playback for the empty song
             }
@@ -324,18 +353,20 @@
             }
 
             const missingProgram = this.c.noteOn(this.songPtr, channel, program, pitch, velocity);
-            console.log(missingProgram);
+            console.log("missingProgram:", missingProgram);
 
             if (missingProgram > 0) {
                 console.warn(`Instrument for program ${missingProgram} is missing. Attempting to load...`);
-                // We need to find the patch file name for the missing program.
-                // This requires a new C function or a pre-built map. For now, we'll simulate it.
-                // This is a simplified example. A real implementation would need a map from program number to patch file name.
-                const patchName = `${missingProgram}.pat`; // This is a guess, might not be correct for all patch sets.
                 
-                await this._loadRequiredPatches(patchName);
+                if (!this.requestedPrograms) this.requestedPrograms = new Set();
+                this.requestedPrograms.add(missingProgram);
+                
+                // Recreate the real-time song. The new dummy MIDI will include a Program Change
+                // that forces libTiMidity to parse timidity.cfg, find the correct .pat file, 
+                // download it via getRequiredPatches, and load it into memory.
+                await this._createRealtimeSong();
 
-                // Retry playing the note after loading
+                // Retry playing the note after the patch is loaded into memory
                 console.log(`Retrying noteOn for program ${missingProgram}`);
                 this.c.noteOn(this.songPtr, channel, program, pitch, velocity);
             }
@@ -562,8 +593,8 @@
         freeBtn.onclick = () => player.stop();
         exitBtn.onclick = () => player.shutdown();
 
-        noteOnBtn.onclick = () => player.noteOn(0,0,60);
-        noteOffBtn.onclick = () => player.noteOff(0,0);
+        noteOnBtn.onclick = () => player.noteOn(0,30,60);
+        noteOffBtn.onclick = () => player.noteOff(0,30);
     });
 
   </script>
