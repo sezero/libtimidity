@@ -427,7 +427,7 @@ class TimidityPlayer {
             // After stopping a song, the real-time synth might also be affected.
             // We re-initialize it to ensure it's ready for the next input.
             // This is a crucial step to ensure MIDI controller remains responsive.
-            this._reinitRealtimeSong();
+            this.initRealtimeSong();
         }
     }
 
@@ -465,7 +465,7 @@ class TimidityPlayer {
 
         // If realtime synth was freed (e.g. after a stop()), re-initialize it.
         if (!this.realtimeSongPtr) {
-            await this._reinitRealtimeSong();
+            await this.initRealtimeSong();
         }
 
         if (this.audioContext?.state == 'suspended') {

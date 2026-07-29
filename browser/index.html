@@ -398,7 +398,7 @@
             const midiStatusEl = document.getElementById('midiStatus');
 
 
-            mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
+
 
 
             player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
@@ -668,18 +668,23 @@
             };
             midiFileEl.onchange = (event) => {
                 const file = event.target.files[0];
-                if (file) player.loadAndPlay(file); // Load and play selected MIDI file
+                if (file) player.load(file); // Load selected MIDI file
             };
             playPauseBtn.onclick = () => {
-                if (player.isPlaying && !player.isPaused) player.pause();
-                else player.resume();
+                if (player.isPlaying && !player.isPaused) {
+                    player.pause();
+                } else if (!player.isPlaying) {
+                    player.play();
+                } else {
+                    player.resume();
+                }
             };
             seekerEl.onchange = (event) => {
                 player.seek(event.target.value);
             };
 
             stopBtn.onclick = () => player.stop();
-            freeBtn.onclick = () => player.stop();
+            freeBtn.onclick = () => player.free();
             exitBtn.onclick = () => player.shutdown();
             // Test Note On/Off buttons are removed from UI in DAW mode, but you could re-add them if needed.
             // noteOnBtn.onclick = () => player.noteOn(5, 30, 60, 127, { bank: 0 });
