@@ -277,6 +277,7 @@ extern "C" {
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 type, uint8 channel, uintptr_t a, uintptr_t b, const char *text);
 
+
 /* Set a callback function to be called for each MIDI event */
 TIMI_EXPORT extern void mid_song_set_event_callback(MidSong *song, MidEventCallback callback);
 

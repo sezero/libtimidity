@@ -68,6 +68,7 @@
                 getVersion: cwrap('mid_get_version', 'number', []),
                 loadSong: cwrap('mid_song_load', 'number', ['number', 'number']),
                 freeSong: cwrap('mid_song_free', null, ['number']),
+                createSong: cwrap('mid_song_create', 'number', ['number']),
                 getRequiredPatches: cwrap('mid_song_get_required_patches', 'string', ['number']),
                 startSong: cwrap('mid_song_start', null, ['number']),
                 setEventCallback: cwrap('mid_song_set_event_callback', null, ['number', 'number']),
@@ -144,6 +145,22 @@
             } else {
                 this.emit('error', "Initialization failed. Check patch files.");
                 return false;
+            }
+        }
+
+        async _createRealtimeSong() {
+            if (this.songPtr !== 0) return; // A song is already loaded
+
+            const optionsPtr = this.Module._malloc(12);
+            this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+            this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB
+            this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo
+            this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+            this.songPtr = this.c.createSong(optionsPtr);
+            this.Module._free(optionsPtr);
+            if (this.songPtr !== 0) {
+                await this.play(); // Start playback for the empty song
             }
         }
 
@@ -514,6 +531,7 @@
         initBtn.onclick = () => {
             if (player.init()) {
                 initBtn.disabled = true; // Disable init button after successful init
+                player._createRealtimeSong(); // Create and start the empty song for real-time events
             }
         };
         midiFileEl.onchange = (event) => {

@@ -481,8 +481,8 @@ int mid_init(const char *config_file)
   }
   return init_with_config(config_file);
 }
-
-static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **out)
+static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **out, int skip_midi_read);
+static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **out, int skip_midi_read)
 {
   MidSong *song;
   int i;
@@ -581,8 +581,10 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   song->lost_notes = 0;
   song->cut_notes = 0;
 
-  song->events = read_midi_file(stream, song, &(song->groomed_event_count),
-				&song->samples);
+  if (!skip_midi_read) {
+    song->events = read_midi_file(stream, song, &(song->groomed_event_count),
+                                  &song->samples);
+  }
 
   /* Make sure everything is okay */
   if (!song->events)
@@ -606,7 +608,18 @@ fail: mid_song_free (song);
 MidSong *mid_song_load(MidIStream *stream, MidSongOptions *options)
 {
   MidSong *song;
-  do_song_load(stream, options, &song);
+  do_song_load(stream, options, &song, 0);
+  return song;
+}
+
+MidSong *mid_song_create(MidSongOptions *options)
+{
+  MidSong *song;
+  /* Create a dummy stream that does nothing.
+   * do_song_load expects a stream, but it will not be read
+   * because we will not call read_midi_file.
+   */
+  do_song_load(NULL, options, &song, 1); /* Pass 1 to skip reading MIDI file */
   return song;
 }
 
