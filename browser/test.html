@@ -199,6 +199,18 @@
         <div id="mixer" class="mixer-container"></div>
     </div>
 
+    <div class="panel">
+        <h3>MIDI Controller Input</h3>
+        <div class="transport" style="gap: 20px;">
+            <button id="connectMidi">Connect to MIDI Device</button>
+            <label>Device: <select id="midiInDevices" disabled></select></label>
+            <label>Instrument: <select id="realtimeProgram"></select></label>
+            <label>Bank: <input type="number" id="realtimeBank" value="0" min="0" max="127" style="width: 50px;"></label>
+            <label>Channel: <input type="number" id="realtimeChannel" value="0" min="0" max="15" style="width: 50px;"></label>
+        </div>
+        <div style="margin-top: 10px;" id="midiStatus">Waiting for connection...</div>
+    </div>
+
     <script>
         var Module = {};
 
@@ -568,6 +580,10 @@
                     this.c.freeSong(this.songPtr);
                     this.songPtr = 0;
                     this.emit('onStop');
+                    // After stopping a song, the real-time synth might also be affected.
+                    // We re-initialize it to ensure it's ready for the next input.
+                    // This is a crucial step to ensure MIDI controller remains responsive.
+                    this._reinitRealtimeSong();
                 }
             }
 
@@ -589,12 +605,13 @@
             }
 
             async noteOn(channel, program, pitch, velocity = 100, { bank = 0, pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
-                if (this.audioContext && this.audioContext instanceof OfflineAudioContext) {
-                    console.warn("Real-time events are disabled during normal MIDI playback / offline rendering.");
-                    return; // Prevent real-time interaction during normal playback (which would mess up offline render buffer)
+                if (!this.audioContext || this.audioContext.state === 'closed') return;
+
+                // If realtime synth was freed (e.g. after a stop()), re-initialize it.
+                if (!this.realtimeSongPtr) {
+                    await this._reinitRealtimeSong();
                 }
 
-                if (!this.realtimeSongPtr) return;
 
                 if (this.audioContext?.state == 'suspended') {
                     this.audioContext.resume();
@@ -602,8 +619,6 @@
 
                 // missingProgram could be the missing program number or drum key
                 const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
-                console.log("noteOn, realtimeSongPtr:", this.realtimeSongPtr, "state:", this.audioContext.state);
-                console.log("missingProgram:", missingProgram);
 
                 if (missingProgram > 0) {
                     console.warn(`Instrument for program ${missingProgram} (bank ${bank}) is missing. Dynamically loading...`);
@@ -651,11 +666,7 @@
             }
 
             noteOff(channel, pitch) {
-                if (!this.realtimeSongPtr || this.audioContext.state !== 'running') {
-                    return;
-                }
-                // Disabled saat render offline agar tidak merusak hasil render
-                if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
+                if (!this.realtimeSongPtr || !this.audioContext || this.audioContext.state !== 'running') {
                     return;
                 }
                 this.c.noteOff(this.realtimeSongPtr, channel, pitch);
@@ -777,6 +788,9 @@
             const totalTimeEl = document.getElementById("totalTime");
             const noteOnBtn = document.getElementById("noteOn");
             const noteOffBtn = document.getElementById("noteOff");
+            const connectMidiBtn = document.getElementById('connectMidi');
+            const midiInDevicesSelect = document.getElementById('midiInDevices');
+            const midiStatusEl = document.getElementById('midiStatus');
 
             
             mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
@@ -785,6 +799,9 @@
             player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
             // Set initial sync state from the checkbox
             player.isSyncEnabled = mixerSyncToggle.checked;
+
+            // Populate real-time instrument selector
+            populateRealtimeProgramSelector();
 
 
             player.on('runtimeInitialized', () => {
@@ -1076,6 +1093,9 @@
             // noteOnBtn.onclick = () => player.noteOn(5, 30, 60, 127, { bank: 0 });
             // noteOffBtn.onclick = () => player.noteOff(5, 60);
 
+            // MIDI Controller Integration
+            connectMidiBtn.onclick = initMidiController;
+
             // Optional: bind stop event to clear subtitles and piano
             player.on('onStop', () => {
                 subtitleBox.textContent = "";
@@ -1096,11 +1116,128 @@
             }
         });
 
+        function populateRealtimeProgramSelector() {
+            const select = document.getElementById('realtimeProgram');
+            const programs = [
+                "Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honky-tonk Piano", "Electric Piano 1", "Electric Piano 2", "Harpsichord", "Clavinet",
+                "Celesta", "Glockenspiel", "Music Box", "Vibraphone", "Marimba", "Xylophone", "Tubular Bells", "Dulcimer",
+                "Drawbar Organ", "Percussive Organ", "Rock Organ", "Church Organ", "Reed Organ", "Accordion", "Harmonica", "Tango Accordion",
+                "Acoustic Guitar (nylon)", "Acoustic Guitar (steel)", "Electric Guitar (jazz)", "Electric Guitar (clean)", "Electric Guitar (muted)", "Overdriven Guitar", "Distortion Guitar", "Guitar Harmonics",
+                "Acoustic Bass", "Electric Bass (finger)", "Electric Bass (pick)", "Fretless Bass", "Slap Bass 1", "Slap Bass 2", "Synth Bass 1", "Synth Bass 2",
+                "Violin", "Viola", "Cello", "Contrabass", "Tremolo Strings", "Pizzicato Strings", "Orchestral Harp", "Timpani",
+                "String Ensemble 1", "String Ensemble 2", "Synth Strings 1", "Synth Strings 2", "Choir Aahs", "Voice Oohs", "Synth Voice", "Orchestra Hit",
+                "Trumpet", "Trombone", "Tuba", "Muted Trumpet", "French Horn", "Brass Section", "Synth Brass 1", "Synth Brass 2",
+                "Soprano Sax", "Alto Sax", "Tenor Sax", "Baritone Sax", "Oboe", "English Horn", "Bassoon", "Clarinet",
+                "Piccolo", "Flute", "Recorder", "Pan Flute", "Blown Bottle", "Shakuhachi", "Whistle", "Ocarina",
+                "Lead 1 (square)", "Lead 2 (sawtooth)", "Lead 3 (calliope)", "Lead 4 (chiff)", "Lead 5 (charang)", "Lead 6 (voice)", "Lead 7 (fifths)", "Lead 8 (bass + lead)",
+                "Pad 1 (new age)", "Pad 2 (warm)", "Pad 3 (polysynth)", "Pad 4 (choir)", "Pad 5 (bowed)", "Pad 6 (metallic)", "Pad 7 (halo)", "Pad 8 (sweep)",
+                "FX 1 (rain)", "FX 2 (soundtrack)", "FX 3 (crystal)", "FX 4 (atmosphere)", "FX 5 (brightness)", "FX 6 (goblins)", "FX 7 (echoes)", "FX 8 (sci-fi)",
+                "Sitar", "Banjo", "Shamisen", "Koto", "Kalimba", "Bag pipe", "Fiddle", "Shanai",
+                "Tinkle Bell", "Agogo", "Steel Drums", "Woodblock", "Taiko Drum", "Melodic Tom", "Synth Drum", "Reverse Cymbal",
+                "Guitar Fret Noise", "Breath Noise", "Seashore", "Bird Tweet", "Telephone Ring", "Helicopter", "Applause", "Gunshot"
+            ];
+            programs.forEach((name, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = `${index}: ${name}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function initMidiController() {
+            const midiStatusEl = document.getElementById('midiStatus');
+            const midiInDevicesSelect = document.getElementById('midiInDevices');
+            let currentInput = null;
+
+            if (navigator.requestMIDIAccess) {
+                midiStatusEl.textContent = "Requesting MIDI access...";
+                navigator.requestMIDIAccess({ sysex: false })
+                    .then(onMIDISuccess, onMIDIFailure);
+            } else {
+                midiStatusEl.textContent = "Web MIDI API is not supported in this browser.";
+                alert("Web MIDI API is not supported in this browser.");
+            }
+
+            function onMIDISuccess(midiAccess) {
+                midiStatusEl.textContent = "MIDI access granted. Select a device.";
+                midiInDevicesSelect.innerHTML = '<option value="">-- Select Device --</option>';
+                const inputs = midiAccess.inputs.values();
+                let deviceCount = 0;
+                for (let input = inputs.next(); input && !input.done; input = inputs.next()) {
+                    const opt = document.createElement('option');
+                    opt.value = input.value.id;
+                    opt.textContent = input.value.name;
+                    midiInDevicesSelect.appendChild(opt);
+                    deviceCount++;
+                }
+
+                if (deviceCount > 0) {
+                    midiInDevicesSelect.disabled = false;
+                    midiInDevicesSelect.onchange = () => {
+                        if (currentInput) {
+                            currentInput.onmidimessage = null; // Remove listener from old device
+                        }
+                        const selectedId = midiInDevicesSelect.value;
+                        if (selectedId) {
+                            currentInput = midiAccess.inputs.get(selectedId);
+                            currentInput.onmidimessage = handleMIDIMessage;
+                            midiStatusEl.textContent = `Connected to: ${currentInput.name}`;
+                        } else {
+                            midiStatusEl.textContent = "Disconnected. Select a device.";
+                        }
+                    };
+                } else {
+                    midiStatusEl.textContent = "No MIDI input devices found.";
+                }
+            }
+
+            function onMIDIFailure(msg) {
+                midiStatusEl.textContent = `Failed to get MIDI access - ${msg}`;
+                console.error(`Failed to get MIDI access - ${msg}`);
+            }
+        }
+
+        function handleMIDIMessage(event) {
+            if (!player || !player.realtimeSongPtr) return;
+
+            // Ekstrak command dan channel dari byte status MIDI
+            const command = event.data[0] >> 4;
+            const channel = event.data[0] & 0x0f;
+
+            // Ambil channel yang dipilih di UI untuk filtering
+            const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
+
+            // Hanya proses event jika channel-nya cocok dengan yang dipilih di UI
+            if (channel !== selectedChannel) return;
+
+            const note = event.data[1];
+            const velocity = (event.data.length > 2) ? event.data[2] : 0;
+
+            const program = document.getElementById('realtimeProgram').valueAsNumber;
+            const bank = document.getElementById('realtimeBank').valueAsNumber;
+            switch (command) {
+                case 9: // Note On
+                    if (velocity > 0) {
+                        player.noteOn(channel, program, note, velocity, { bank: bank });
+                    } else {
+                        player.noteOff(channel, note); // Some controllers send Note On with velocity 0 for Note Off
+                    }
+                    break;
+                case 8: // Note Off
+                    player.noteOff(channel, note);
+                    break;
+            }
+        }
+
         function vuMeter(channel, tick)
         {
             // --- VU Meter Logic ---
+
+            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
+
 
             let velocity = channelVelocity[channel];
             if(velocity > 0)
@@ -1117,6 +1254,8 @@
         function vuMeterOn(channel, tick, velocity)
         {
             // --- VU Meter Logic ---
+            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
 
@@ -1154,6 +1293,8 @@
         function vueMeterOff(channel)
         {
             // --- VU Meter Release Logic ---
+            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
 
