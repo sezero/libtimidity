@@ -23,8 +23,8 @@ The standard libTiMidity engine has been heavily modified and extended to meet t
 Include the scripts in your HTML:
 
 ```html
-<script src="libtimidity.js"></script>
 <script src="timidity-player.js"></script>
+<script src="libtimidity.js"></script>
 ```
 
 Initialize the player:

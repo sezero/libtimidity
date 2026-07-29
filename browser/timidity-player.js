@@ -241,7 +241,7 @@ class TimidityPlayer {
                 console.log("Default real-time instrument (Piano) preloaded.");
             });
 
-            const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiii');
+            const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiiiii');
             this.c.setEventCallback(0, callbackPtr);
             this.emit('onInit');
             return true;

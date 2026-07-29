@@ -29,7 +29,7 @@ The changes in this release were specifically made to meet the requirements for 
 ### Changed
 
 **Behavior & Audio Management**
-- **Drum Channel Adjustment**: Modified `DEFAULT_DRUMCHANNELS` in `options.h`. Channel 15 (1-based) is no longer hardcoded as a drum channel and is reverted to a standard melodic instrument channel. The engine now strictly adheres to the General MIDI standard (only 0-indexed Channel 9 is the Drum Channel).
+- **Drum Channel Adjustment**: Modified `DEFAULT_DRUMCHANNELS` in `options.h`. Channel 15 (0-based) is no longer hardcoded as a drum channel and is reverted to a standard melodic instrument channel. The engine now strictly adheres to the General MIDI standard (only 0-indexed Channel 9 is the Drum Channel).
 - **Removal of Silence Trimming**: Modified `readmidi.c` so the engine no longer forcibly discards seconds of silence at the beginning of the song, maintaining strict time alignment with other DAW tracks.
 - **Instrument Loading Signature**: Modified `load_instrument` in `instrum.c` to return an integer status (`0` for success, `-1` for failure) instead of `void`, allowing error handling when dynamically loading missing patches.
 - **AudioContext Suspend Separation**: Modified `pause()` in JS so it does **not** disable (`suspend`) the Web Audio API. This allows real-time `noteOn` and Control Change events to operate smoothly even when the main MIDI file is paused.
