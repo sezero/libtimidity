@@ -13,6 +13,7 @@
             --text-color: #e0e0e0;
             --slider-bg: #222;
         }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
@@ -23,16 +24,22 @@
             flex-direction: column;
             gap: 20px;
         }
-        h1, h3 { margin: 0 0 15px 0; color: #fff; font-weight: 400; }
-        
+
+        h1,
+        h3 {
+            margin: 0 0 15px 0;
+            color: #fff;
+            font-weight: 400;
+        }
+
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
-        
+
         /* Transport Bar */
         .transport {
             display: flex;
@@ -40,7 +47,9 @@
             gap: 15px;
             flex-wrap: wrap;
         }
-        button, input[type=file]::file-selector-button {
+
+        button,
+        input[type=file]::file-selector-button {
             background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
             border: 1px solid #000;
             color: #fff;
@@ -50,17 +59,53 @@
             font-weight: bold;
             transition: all 0.2s;
         }
-        button:hover:not(:disabled), input[type=file]::file-selector-button:hover {
+
+        button:hover:not(:disabled),
+        input[type=file]::file-selector-button:hover {
             background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
         }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        button:active:not(:disabled) { box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-        
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button:active:not(:disabled) {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
         /* Seeker */
-        .seeker-container { display: flex; align-items: center; gap: 10px; flex-grow: 1; }
-        #seeker { flex-grow: 1; height: 8px; -webkit-appearance: none; background: var(--slider-bg); border-radius: 4px; outline: none; }
-        #seeker::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; }
-        .time-display { font-family: monospace; font-size: 1.1em; color: var(--accent-color); text-shadow: 0 0 5px rgba(0,255,136,0.5); }
+        .seeker-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        #seeker {
+            flex-grow: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: var(--slider-bg);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        #seeker::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .time-display {
+            font-family: monospace;
+            font-size: 1.1em;
+            color: var(--accent-color);
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+        }
 
         /* Subtitle */
         #subtitleBox {
@@ -71,25 +116,82 @@
             align-items: center;
             justify-content: center;
             color: #fff;
-            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
             letter-spacing: 1px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             border-radius: 4px;
         }
 
         /* Piano */
-        .piano-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; }
-        .piano-container { display: flex; position: relative; overflow-x: auto; padding-bottom: 5px; }
-        .key { border: 1px solid #111; box-sizing: border-box; border-radius: 0 0 4px 4px; cursor: default; }
-        .key.white { width: 32px; height: 140px; background: linear-gradient(180deg, #eee 0%, #fff 100%); z-index: 1; flex-shrink: 0; box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-        .key.black { width: 22px; height: 90px; background: linear-gradient(180deg, #333 0%, #000 100%); z-index: 2; margin-left: -11px; margin-right: -11px; flex-shrink: 0; box-shadow: inset 0 0 4px rgba(255,255,255,0.2); }
-        .key.active.white { background: linear-gradient(180deg, #aaffcc 0%, var(--accent-color) 100%); box-shadow: 0 0 10px var(--accent-color); }
-        .key.active.black { background: linear-gradient(180deg, #008844 0%, #00aa55 100%); box-shadow: 0 0 10px var(--accent-color); z-index: 3;}
+        .piano-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        select {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .piano-container {
+            display: flex;
+            position: relative;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .key {
+            border: 1px solid #111;
+            box-sizing: border-box;
+            border-radius: 0 0 4px 4px;
+            cursor: default;
+        }
+
+        .key.white {
+            width: 32px;
+            height: 140px;
+            background: linear-gradient(180deg, #eee 0%, #fff 100%);
+            z-index: 1;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .key.black {
+            width: 22px;
+            height: 90px;
+            background: linear-gradient(180deg, #333 0%, #000 100%);
+            z-index: 2;
+            margin-left: -11px;
+            margin-right: -11px;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.2);
+        }
+
+        .key.active.white {
+            background: linear-gradient(180deg, #aaffcc 0%, var(--accent-color) 100%);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .key.active.black {
+            background: linear-gradient(180deg, #008844 0%, #00aa55 100%);
+            box-shadow: 0 0 10px var(--accent-color);
+            z-index: 3;
+        }
 
         /* Mixer */
-        .mixer-container { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 10px; }
-        .mixer-channel { 
+        .mixer-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding-bottom: 10px;
+        }
+
+        .mixer-channel {
             background: #252525;
             border: 1px solid #444;
             border-radius: 6px;
@@ -98,10 +200,17 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
             flex-shrink: 0;
         }
-        .mixer-channel .ch-label { font-size: 0.9em; font-weight: bold; color: #aaa; margin-bottom: 15px; text-transform: uppercase; }
+
+        .mixer-channel .ch-label {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #aaa;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
 
         .vu-meter-container {
             display: flex;
@@ -113,33 +222,57 @@
             /* The gradient is now the static background of the container */
             background: linear-gradient(to top, #0f0 50%, #ff0 85%, #f00 100%);
             padding: 2px;
-            position: relative; /* Needed for the overlay bar */
-            overflow: hidden; /* Hide the part of the bar that is "off" */
+            position: relative;
+            /* Needed for the overlay bar */
+            overflow: hidden;
+            /* Hide the part of the bar that is "off" */
         }
+
         .vu-bar {
             width: 50%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Dark overlay to hide the gradient */
+            background-color: rgba(0, 0, 0, 0.7);
+            /* Dark overlay to hide the gradient */
             position: absolute;
             bottom: 0;
-            transform-origin: top; /* The bar will "shrink" from the top down */
-            transform: scaleY(1); /* Start fully scaled (volume at 0) */
+            transform-origin: top;
+            /* The bar will "shrink" from the top down */
+            transform: scaleY(1);
+            /* Start fully scaled (volume at 0) */
             transition: transform 0.015s linear;
         }
 
-        .bar-left{
+        .bar-left {
             margin-right: 1px;
         }
-        .bar-right{
+
+        .bar-right {
             margin-left: 1px;
         }
-        
-        .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
-        .pitch-bend-track { margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+        .fader-track {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .pitch-bend-track {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
         input[type=range].fader {
-            writing-mode: bt-lr; /* IE */
-            -webkit-appearance: slider-vertical; /* WebKit */
-            appearance: slider-vertical; /* Modern */
+            writing-mode: bt-lr;
+            /* IE */
+            -webkit-appearance: slider-vertical;
+            /* WebKit */
+            appearance: slider-vertical;
+            /* Modern */
             width: 24px;
             height: 120px;
             background: #111;
@@ -147,13 +280,33 @@
             outline: none;
             box-shadow: inset 0 0 5px #000;
         }
-        
-        .knob-track { margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; }
-        .knob-label { font-size: 0.7em; color: #888; margin-bottom: 5px; }
-        input[type=range].knob { width: 50px; }
-        input[type=range].pitch-bend { width: 60px; }
-        
-        #status { font-style: italic; color: #aaa; font-size: 0.9em; }
+
+        .knob-track {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .knob-label {
+            font-size: 0.7em;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        input[type=range].knob {
+            width: 50px;
+        }
+
+        input[type=range].pitch-bend {
+            width: 60px;
+        }
+
+        #status {
+            font-style: italic;
+            color: #aaa;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 
@@ -167,7 +320,7 @@
             <button id="stop" disabled>Stop</button>
             <button id="free">Free Memory</button>
             <button id="exit">Shutdown</button>
-            
+
             <div class="seeker-container">
                 <span class="time-display" id="currentTime">00:00.000</span>
                 <input type="range" id="seeker" min="0" value="0" disabled>
@@ -182,7 +335,7 @@
     <div class="panel">
         <div class="piano-header">
             <h3>Piano Roll</h3>
-            <label>Monitor Track: 
+            <label>Monitor Track:
                 <select id="pianoChannel"></select>
             </label>
         </div>
@@ -205,8 +358,10 @@
             <button id="connectMidi">Connect to MIDI Device</button>
             <label>Device: <select id="midiInDevices" disabled></select></label>
             <label>Instrument: <select id="realtimeProgram"></select></label>
-            <label>Bank: <input type="number" id="realtimeBank" value="0" min="0" max="127" style="width: 50px;"></label>
-            <label>Channel: <input type="number" id="realtimeChannel" value="0" min="0" max="15" style="width: 50px;"></label>
+            <label>Bank: <input type="number" id="realtimeBank" value="0" min="0" max="127"
+                    style="width: 50px;"></label>
+            <label>Channel: <input type="number" id="realtimeChannel" value="0" min="0" max="15"
+                    style="width: 50px;"></label>
         </div>
         <div style="margin-top: 10px;" id="midiStatus">Waiting for connection...</div>
     </div>
@@ -221,7 +376,7 @@
             FS.mkdir('/gus-patch');
             FS.createPreloadedFile('/gus-patch', 'timidity.cfg', patchUrlBase + '/timidity.cfg', true, true);
         }];
-        
+
 
         class TimidityPlayer {
             constructor(options = {}) {
@@ -237,7 +392,7 @@
                 this.isSyncEnabled = false; // New flag for mixer sync
                 this.isPaused = false;
                 this.isSeeking = false; // New flag to control seeker updates
-                
+
                 // MIDI Event Constants (re-added as they are used in the handler)
                 this.ME_NOTEON = 1;
                 this.ME_NOTEOFF = 2;
@@ -321,12 +476,12 @@
 
                 // Must before onMIDIEvent
                 if ((eventStatus & 0xF0) === 0x90 && b > 0) { // Note On on any channel
-                    this.emit('onNoteOn', { tick:tick, channel:channel, pitch:a, velocity:b });
+                    this.emit('onNoteOn', { tick: tick, channel: channel, pitch: a, velocity: b });
                 } else if ((eventStatus & 0xF0) === 0x80 || ((eventStatus & 0xF0) === 0x90 && b === 0)) { // Note Off on any channel
-                    this.emit('onNoteOff', { tick:tick, channel:channel, pitch:a });
+                    this.emit('onNoteOff', { tick: tick, channel: channel, pitch: a });
                 }
-                
-                this.emit('onMIDIEvent', { tick:tick, timeSecond, status: eventStatus, eventType, channel, a, b, text });
+
+                this.emit('onMIDIEvent', { tick: tick, timeSecond, status: eventStatus, eventType, channel, a, b, text });
 
             }
 
@@ -366,12 +521,12 @@
                     this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass({ sampleRate: 44100 });
                     if (!offline) {
                         this.audioContext.suspend();
-                        
+
                         await this.initRealtimeSong();
 
                         const bufferSize = 4096;
                         this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
-                        
+
                         this.scriptNode.onaudioprocess = (e) => {
                             const outL = e.outputBuffer.getChannelData(0);
                             const outR = e.outputBuffer.getChannelData(1);
@@ -392,7 +547,7 @@
                                     }
                                 }
                                 this.Module._free(pcmBufferPtr);
-                                
+
                                 if (bytesReadMain <= 0) {
                                     this.stop();
                                     this.emit('onEnded');
@@ -412,7 +567,7 @@
                                 this.Module._free(rtBufferPtr);
                             }
                         };
-                        
+
                         this.scriptNode.connect(this.audioContext.destination);
                     }
 
@@ -455,7 +610,7 @@
 
                 const streamPtr = this.c.openMemoryStream(midiDataPtr, emptyMidi.length);
                 this.realtimeSongPtr = this.c.loadSong(streamPtr, optionsPtr);
-                
+
                 this.c.closeStream(streamPtr);
                 this.Module._free(midiDataPtr);
                 this.Module._free(optionsPtr);
@@ -557,7 +712,7 @@
 
             resume() {
                 if (!this.audioContext || this.songPtr === 0) return;
-                
+
                 const onResumed = () => {
                     if (!this.isPlaying) this.emit('onPlay');
                     else this.emit('onResume');
@@ -574,7 +729,7 @@
 
             pause() {
                 if (!this.audioContext || this.songPtr === 0) return;
-                
+
                 this.isPaused = true;
                 this.emit('onPause');
             }
@@ -627,7 +782,7 @@
 
                 if (missingProgram > 0) {
                     console.warn(`Instrument for program ${program} (bank ${bank}) is missing. Dynamically loading...`);
-                    
+
                     // Load the instrument and then retry playing the note.
                     const loaded = await this.setRealtimeInstrument(channel, program, bank);
                     if (loaded) {
@@ -687,7 +842,7 @@
                 if (typeof OfflineAudioContext !== 'undefined' && this.audioContext instanceof OfflineAudioContext) {
                     return;
                 }
-                
+
                 // Send event to BOTH realtime and main song so it affects any active voices on that channel
                 if (this.realtimeSongPtr !== 0) {
                     this.c.sendEvent(this.realtimeSongPtr, eventType, channel, a, b);
@@ -700,13 +855,13 @@
             /**
              * Send MIDI event from MIDI Controller
              **/
-            sendMessage(selectedChannel, bank, program, event) {
+            sendMessage(selectedChannel, bank, program, event, sendBack = false) {
                 // Ekstrak command dan channel dari byte status MIDI
                 const command = event.data[0] >> 4;
                 const channel = event.data[0] & 0x0f;
 
                 // Ambil channel yang dipilih di UI untuk filtering
-                
+
 
                 // Hanya proses event jika channel-nya cocok dengan yang dipilih di UI
                 if (channel !== selectedChannel) return;
@@ -714,7 +869,7 @@
                 const note = event.data[1];
                 const velocity = (event.data.length > 2) ? event.data[2] : 0;
 
-                
+
                 switch (command) {
                     case 9: // Note On
                         if (velocity > 0) {
@@ -742,6 +897,17 @@
                             player.sendEvent(player.ME_EXPRESSION, channel, val);
                         }
                         break;
+                }
+                if (sendBack) {
+                    if (command === 9) { // Note On
+                        if (velocity > 0) {
+                            this.emit('onNoteOn', { tick: 0, channel: channel, pitch: note, velocity: velocity });
+                        } else {
+                            this.emit('onNoteOff', { tick: 0, channel: channel, pitch: note });
+                        }
+                    } else if (command === 8) { // Note Off
+                        this.emit('onNoteOff', { tick: 0, channel: channel, pitch: note });
+                    }
                 }
             }
 
@@ -850,7 +1016,7 @@
             const midiInDevicesSelect = document.getElementById('midiInDevices');
             const midiStatusEl = document.getElementById('midiStatus');
 
-            
+
             mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
 
 
@@ -952,11 +1118,11 @@
                 if (i === 0) opt.selected = true; // default channel 0
                 pianoChannelSelect.appendChild(opt);
             }
-            
+
             pianoChannelSelect.addEventListener('change', () => {
                 // Clear all currently highlighted keys
                 document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
-                
+
                 // Ask the synth to resend the state of all active notes
                 player.resendActiveNotes();
             });
@@ -980,10 +1146,10 @@
             for (let i = 0; i < 16; i++) {
                 const strip = document.createElement('div');
                 strip.className = 'mixer-channel';
-                
+
                 // Set channel 9 (0-indexed 9 is standard drum channel)
                 const chName = (i === 9) ? 'DRUM' : `CH ${i + 1}`;
-                
+
                 strip.innerHTML = `
                     <div class="ch-label">${chName}</div>
 
@@ -1024,8 +1190,7 @@
                 });
             }
 
-            for(let i = 0; i<16; i++)
-            {
+            for (let i = 0; i < 16; i++) {
                 volumeControls[i] = mixerContainer.querySelector(`#vol-${i}`);
                 panControls[i] = mixerContainer.querySelector(`#pan-${i}`);
                 pbControls[i] = mixerContainer.querySelector(`#pb-${i}`);
@@ -1044,17 +1209,17 @@
                 }
                 // Lyrics reset hack on seek
                 if (event.eventType === player.ME_ALL_NOTES_OFF || event.eventType === player.ME_RESET_CONTROLLERS) {
-                     // subtitleBox.textContent = ''; 
+                    // subtitleBox.textContent = ''; 
                 }
 
                 // Note On / Off for Piano Highlight
                 const selectedChannel = parseInt(pianoChannelSelect.value);
 
-                
+
                 // Control Change events (volume/pan sync)
                 if (player.isSyncEnabled) {
                     // Check for internal event types for Volume and Pan
-                     
+
                     if (event.eventType == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
                         if (volumeControls[event.channel]) {
                             const value = event.a;
@@ -1095,10 +1260,10 @@
                     if (key) key.classList.add('active');
                 }
 
-                
+
             });
 
-             player.on('onNoteOff', (event) => {
+            player.on('onNoteOff', (event) => {
                 channelVelocity[event.channel] = 0;
                 const selectedChannel = parseInt(pianoChannelSelect.value);
                 if (event.channel == selectedChannel) {
@@ -1106,13 +1271,13 @@
                     if (key) key.classList.remove('active');
                 }
 
-                
 
-                
+
+
             });
 
 
-            
+
 
             // Mixer Sync Toggle
             mixerSyncToggle.addEventListener('change', (e) => {
@@ -1158,7 +1323,7 @@
                 document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
             });
 
-            
+
 
 
         });
@@ -1258,42 +1423,38 @@
             const selectedChannel = document.getElementById('realtimeChannel').valueAsNumber;
             const program = parseInt(document.getElementById('realtimeProgram').value, 10);
             const bank = document.getElementById('realtimeBank').valueAsNumber;
-            player.sendMessage(selectedChannel, bank, program, event);
+            player.sendMessage(selectedChannel, bank, program, event, true);
         }
 
-        function vuMeter(channel, tick)
-        {
+        function vuMeter(channel, tick) {
             // --- VU Meter Logic ---
 
-            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+            if (!vuLeftControls[channel] || !vuRightControls[channel]) return;
 
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
 
 
             let velocity = channelVelocity[channel];
-            if(velocity > 0)
-            {
+            if (velocity > 0) {
                 vuMeterOn(channel, tick, velocity);
             }
-            else
-            {
+            else {
                 vueMeterOff(channel);
             }
         }
 
-        
-        function vuMeterOn(channel, tick, velocity)
-        {
+
+        function vuMeterOn(channel, tick, velocity) {
             // --- VU Meter Logic ---
-            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+            if (!vuLeftControls[channel] || !vuRightControls[channel]) return;
 
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
 
-            
 
-            
+
+
 
             if (vuL && vuR) {
                 // Get controller values at the exact tick of the noteOn event
@@ -1322,10 +1483,9 @@
             }
         }
 
-        function vueMeterOff(channel)
-        {
+        function vueMeterOff(channel) {
             // --- VU Meter Release Logic ---
-            if(!vuLeftControls[channel] || !vuRightControls[channel]) return;
+            if (!vuLeftControls[channel] || !vuRightControls[channel]) return;
 
             const vuL = vuLeftControls[channel];
             const vuR = vuRightControls[channel];
@@ -1338,7 +1498,7 @@
         }
 
 
-        
+
         function updateMixerSlider(channel, controllerNumber, value) {
             if (controllerNumber === 7) { // Main Volume
                 const volSlider = document.getElementById(`vol-${channel}`);
