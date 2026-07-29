@@ -104,6 +104,7 @@
         .mixer-channel .ch-label { font-size: 0.9em; font-weight: bold; color: #aaa; margin-bottom: 15px; text-transform: uppercase; }
         
         .fader-track { height: 120px; display: flex; align-items: center; position: relative; margin-bottom: 15px; }
+        .pitch-bend-track { margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; }
         input[type=range].fader {
             writing-mode: bt-lr; /* IE */
             -webkit-appearance: slider-vertical; /* WebKit */
@@ -119,6 +120,7 @@
         .knob-track { margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; }
         .knob-label { font-size: 0.7em; color: #888; margin-bottom: 5px; }
         input[type=range].knob { width: 50px; }
+        input[type=range].pitch-bend { width: 60px; }
         
         #status { font-style: italic; color: #aaa; font-size: 0.9em; }
     </style>
@@ -696,6 +698,7 @@
 
         let volumeControls = {};
         let panControls = {};
+        let pbControls = {};
 
         // --- Main Application Logic ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -844,6 +847,11 @@
                         <div class="knob-label">PAN</div>
                         <input type="range" class="knob" id="pan-${i}" min="0" max="127" value="64">
                     </div>
+
+                    <div class="knob-track">
+                        <div class="knob-label">BEND</div>
+                        <input type="range" class="knob" id="pb-${i}" min="0" max="16383" value="8192">
+                    </div>
                     
                     <div class="fader-track">
                         <input type="range" class="fader" id="vol-${i}" min="0" max="127" value="100" orient="vertical">
@@ -858,12 +866,20 @@
                 document.getElementById(`pan-${i}`).addEventListener('input', (e) => {
                     player.sendEvent(player.ME_PAN, i, parseInt(e.target.value));
                 });
+                document.getElementById(`pb-${i}`).addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    // Split 14-bit value into LSB and MSB for MIDI
+                    const lsb = value & 0x7F;
+                    const msb = (value >> 7) & 0x7F;
+                    player.sendEvent(player.ME_PITCHWHEEL, i, lsb, msb);
+                });
             }
 
             for(let i = 0; i<16; i++)
             {
                 volumeControls[i] = mixerContainer.querySelector(`#vol-${i}`);
                 panControls[i] = mixerContainer.querySelector(`#pan-${i}`);
+                pbControls[i] = mixerContainer.querySelector(`#pb-${i}`);
             }
 
 
@@ -887,21 +903,22 @@
                 // Control Change events (volume/pan sync)
                 if (player.isSyncEnabled) {
                     // Check for internal event types for Volume and Pan
-                     const value = event.a;
-                    console.log("event.type", event.type);
-                    console.log("value", value);
+                     
                     console.log(parseInt(event.type) + ' == ' + player.ME_MAINVOLUME)
                     if (parseInt(event.type) == player.ME_MAINVOLUME) { // ME_MAINVOLUME is 4
-                       console.log(volumeControls[event.channel])
                         if (volumeControls[event.channel]) {
+                            const value = event.a;
                             volumeControls[event.channel].value = value;
-                            console.log(`New Value volumeControls[${event.channel}] = ${volumeControls[event.channel].value}`)
                         }
                     } else if (parseInt(event.type) == player.ME_PAN) { // ME_PAN is 5
-                        console.log(panControls[event.channel])
                         if (panControls[event.channel]) {
+                            const value = event.a;
                             panControls[event.channel].value = value;
-                            console.log(`New Value panControls[${event.channel}] = ${panControls[event.channel].value}`)
+                        }
+                    } else if (parseInt(event.type) == player.ME_PITCHWHEEL) { // ME_PITCHWHEEL is 6
+                        if (pbControls[event.channel]) {
+                            const value = event.a | (event.b << 7);
+                            pbControls[event.channel].value = value;
                         }
                     }
                 }
