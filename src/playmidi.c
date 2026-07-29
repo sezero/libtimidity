@@ -995,3 +995,24 @@ void mid_send_event(MidSong *song, int type, int channel, int a, int b)
 
   song->current_event = original_event;
 }
+
+/* Resend all active notes to the event callback.
+ * This is useful for UIs that need to refresh their state. */
+void mid_song_resend_active_notes(MidSong *song)
+{
+  int i;
+  if (!song || !global_event_callback) return;
+
+  for (i = 0; i < song->voices; i++)
+  {
+    if (song->voice[i].status == VOICE_ON)
+    {
+      uint32 current_ms = (uint32)(((uint64)song->current_sample * 1000) / song->rate);
+      uint8 midi_status_byte = 0x90; // Status for Note On, channel is separate
+
+      global_event_callback(song->current_sample, current_ms,
+                            midi_status_byte, song->voice[i].channel, ME_NOTEON,
+                            song->voice[i].note, song->voice[i].velocity, NULL);
+    }
+  }
+}

@@ -297,6 +297,10 @@ TIMI_EXPORT extern void mid_set_debug_msg_callback(MidDebugMsgCallback callback)
  * The caller is responsible for freeing the returned string. */
   TIMI_EXPORT extern char *mid_song_get_required_patches(MidIStream *stream);
 
+/* Resend all active notes to the event callback.
+ */
+  TIMI_EXPORT extern void mid_song_resend_active_notes(MidSong *song);
+
 #ifdef __cplusplus
 }
 #endif

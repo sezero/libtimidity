@@ -253,6 +253,7 @@
                     loadProgram: cwrap('mid_song_load_program', 'number', ['number', 'number', 'number', 'number']),
                     sendEvent: cwrap('mid_send_event', null, ['number', 'number', 'number', 'number', 'number']),
                 };
+                this.c.resendActiveNotes = this.Module.cwrap('mid_song_resend_active_notes', null, ['number']);
 
                 this.emit('runtimeInitialized');
             }
@@ -401,6 +402,12 @@
 
                 if (this.realtimeSongPtr !== 0) {
                     this.c.startSong(this.realtimeSongPtr);
+                }
+            }
+
+            resendActiveNotes() {
+                if (this.songPtr !== 0) {
+                    this.c.resendActiveNotes(this.songPtr);
                 }
             }
 
@@ -816,6 +823,14 @@
                 if (i === 0) opt.selected = true; // default channel 0
                 pianoChannelSelect.appendChild(opt);
             }
+            
+            pianoChannelSelect.addEventListener('change', () => {
+                // Clear all currently highlighted keys
+                document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
+                
+                // Ask the synth to resend the state of all active notes
+                player.resendActiveNotes();
+            });
 
             // 2. Build Piano Roll (88 keys: MIDI 21 to 108)
             const keys = {};
@@ -923,8 +938,8 @@
                 }
 
                 
-
-                if (event.channel === selectedChannel) {
+                if (event.channel == selectedChannel) {
+                    console.log({"event.status":event.status, "event.a":event.a, "event.b":event.b})
                     if (event.status === 0x90 && event.b > 0) { // 0x90 is Note On
                         const key = keys[event.a];
                         if (key) key.classList.add('active');
@@ -978,48 +993,7 @@
                 document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
             });
 
-            /*
-
-            // Single, combined MIDI event handler
-            player.on('onMIDIEvent', (event) => {
-                const player = window.player;
-                cosnole.log(event)
-
-                // 1. Mixer Sync Logic
-                if (player.isSyncEnabled) {
-                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
-                    if ((event.type & 0xF0) === 0xB0) {
-                        const channel = event.channel;
-                        const controllerNumber = event.a; // Controller number
-                        const value = event.b; // Controller value
-                        updateMixerSlider(channel, controllerNumber, value);
-                    }
-                }
-
-                // 2. Subtitles / Lyrics Logic
-                if (event.type === 0xFF && event.channel === 0x05) {
-                    if (event.text) {
-                        document.getElementById('subtitleBox').textContent += event.text.replace(/[\r\n]+/g, ' ');
-                    }
-                }
-                if (event.type === player.ME_ALL_NOTES_OFF || event.type === player.ME_RESET_CONTROLLERS) {
-                    // subtitleBox.textContent = ''; // Optional: reset on seek/stop
-                }
-
-                // 3. Piano Roll Highlight Logic
-                const selectedChannel = parseInt(document.getElementById('pianoChannel').value);
-                if (event.channel === selectedChannel) {
-                    const keys = window.pianoKeys; // Assuming keys are globally accessible
-                    if (event.type === 0x90 && event.b > 0) { // Note On
-                        const key = keys[event.a];
-                        if (key) key.classList.add('active');
-                    } else if (event.type === 0x80 || (event.type === 0x90 && event.b === 0)) { // Note Off
-                        const key = keys[event.a];
-                        if (key) key.classList.remove('active');
-                    }
-                }
-            });
-            */
+            
 
 
         });
