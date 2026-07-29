@@ -714,6 +714,8 @@
                 panControls[i] = document.getElementById(`pan-${i}`);
             }
 
+            mixer.isSyncEnabled = document.getElementById('mixerSyncToggle').checked;
+
 
             const player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
 
@@ -873,17 +875,17 @@
 
                 
                 // Control Change events (volume/pan sync)
-                //if (player.isSyncEnabled) 
-                {
+                if (player.isSyncEnabled) {
                     
                     // Check for Control Change events (MIDI status byte 0xB0-0xBF)
-                    if (event.status === 0xB0) {
-                        
-                        if (event.type === 7 && volumeControls[event.channel]) { // CC7 = Main Volume
-                            volumeControls[event.channel].value = event.a;
+                    if ((event.status & 0xF0) === 0xB0) {
+                        const controllerNumber = event.a;
+                        const value = event.b;
+                        if (controllerNumber === 7 && volumeControls[event.channel]) { // CC7 = Main Volume
+                            volumeControls[event.channel].value = value;
                         }
-                        if (event.type === 10 && panControls[event.channel]) { // CC10 = Pan
-                            panControls[event.channel].value = event.a;
+                        if (controllerNumber === 10 && panControls[event.channel]) { // CC10 = Pan
+                            panControls[event.channel].value = value;
                         }
                     }
                 }
