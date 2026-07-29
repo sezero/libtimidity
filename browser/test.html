@@ -873,16 +873,17 @@
 
                 
                 // Control Change events (volume/pan sync)
-                //if (this.isSyncEnabled) 
+                //if (player.isSyncEnabled) 
                 {
                     
-                    if (event.status === 0xB0) { // Control Change
-                        console.log(event)
+                    // Check for Control Change events (MIDI status byte 0xB0-0xBF)
+                    if (event.status === 0xB0) {
+                        
                         if (event.type === 7 && volumeControls[event.channel]) { // CC7 = Main Volume
-                            volumeControls[event.channel].value = event.b;
+                            volumeControls[event.channel].value = event.a;
                         }
                         if (event.type === 10 && panControls[event.channel]) { // CC10 = Pan
-                            panControls[event.channel].value = event.b;
+                            panControls[event.channel].value = event.a;
                         }
                     }
                 }
