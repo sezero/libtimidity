@@ -98,6 +98,7 @@ class TimidityPlayer {
             setTranspose: cwrap('mid_song_set_transpose', null, ['number', 'number']),
             setChannelMute: cwrap('mid_song_set_channel_mute', null, ['number', 'number', 'number']),
             setTrackMute: cwrap('mid_song_set_track_mute', null, ['number', 'number', 'number']),
+            panic: cwrap('mid_song_panic', null, ['number']),
             readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number', 'number']),
             openMemoryStream: cwrap('mid_istream_open_mem', 'number', ['number', 'number']),
             seekStream: cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']),
@@ -111,9 +112,11 @@ class TimidityPlayer {
             noteOff: cwrap('mid_note_off', null, ['number', 'number', 'number']),
             loadProgram: cwrap('mid_song_load_program', 'number', ['number', 'number', 'number', 'number']),
             sendEvent: cwrap('mid_send_event', null, ['number', 'number', 'number', 'number', 'number']),
+            resendActiveNotes: cwrap('mid_song_resend_active_notes', null, ['number']),
+            getControllerValueAtTick: cwrap('mid_song_get_controller_value_at_tick', 'number', ['number', 'number', 'number', 'number']),
+            getInfoJson: cwrap('mid_song_get_info_json', 'string', ['number']),
+            malloc: cwrap('malloc', 'number', ['number']),
         };
-        this.c.resendActiveNotes = this.Module.cwrap('mid_song_resend_active_notes', null, ['number']);
-        this.c.getControllerValueAtTick = this.Module.cwrap('mid_song_get_controller_value_at_tick', 'number', ['number', 'number', 'number', 'number']);
 
         this.emit('runtimeInitialized');
     }
@@ -425,6 +428,35 @@ class TimidityPlayer {
         if (this.realtimeSongPtr !== 0) {
             this.c.setTrackMute(this.realtimeSongPtr, track, mute ? 1 : 0);
         }
+    }
+
+    /**
+     * Instantly kill all currently sounding notes (Panic button).
+     */
+    panic() {
+        if (this.songPtr !== 0) {
+            this.c.panic(this.songPtr);
+        }
+        if (this.realtimeSongPtr !== 0) {
+            this.c.panic(this.realtimeSongPtr);
+        }
+    }
+
+    /**
+     * Get metadata and information about the currently loaded song.
+     * @returns {Object|null} The parsed JSON object with song info, or null if no song is loaded.
+     */
+    getInfo() {
+        if (this.songPtr !== 0) {
+            try {
+                const jsonStr = this.c.getInfoJson(this.songPtr);
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                console.error("Failed to parse song info:", e);
+                return null;
+            }
+        }
+        return null;
     }
 
     /**

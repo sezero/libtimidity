@@ -904,6 +904,18 @@ void mid_song_set_track_mute(MidSong *song, int track, int mute)
   }
 }
 
+void mid_song_panic(MidSong *song)
+{
+  if (song) {
+    int i = song->voices;
+    while (i--) {
+      if (song->voice[i].status != VOICE_FREE) {
+        song->voice[i].status = VOICE_DIE;
+      }
+    }
+  }
+}
+
 int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain)
 {
   MidEvent e;

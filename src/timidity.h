@@ -270,9 +270,11 @@ extern "C" {
  */
   TIMI_EXPORT extern void mid_song_set_volume (MidSong *song, int volume);
 
-/* Get current song tick
- */
+/* Get current song tick (absolute samples from start) */
   TIMI_EXPORT extern uint32 mid_song_get_current_tick(MidSong *song);
+
+/* Get song information as a JSON string */
+  TIMI_EXPORT extern const char* mid_song_get_info_json(MidSong *song);
 
 /* Set global transpose in semitones
  */
@@ -285,6 +287,10 @@ extern "C" {
 /* Mute or unmute a specific track (0-255)
  */
   TIMI_EXPORT extern void mid_song_set_track_mute(MidSong *song, int track, int mute);
+
+/* Panic: instantly kill all sounding voices
+ */
+  TIMI_EXPORT extern void mid_song_panic(MidSong *song);
 
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 status, uint8 channel, uint8 type, uintptr_t a, uintptr_t b, const char *text);

@@ -300,6 +300,26 @@
             font-weight: bold;
         }
 
+        .solo-btn {
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 10px;
+            padding: 4px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            width: 80%;
+            text-align: center;
+        }
+        
+        .solo-btn.active {
+            background-color: #f1c40f;
+            border-color: #f39c12;
+            color: black;
+            font-weight: bold;
+        }
+
         .knob-track {
             margin-bottom: 10px;
             display: flex;
@@ -326,6 +346,64 @@
             color: #aaa;
             font-size: 0.9em;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.6); 
+        }
+
+        .modal-content {
+            background-color: #222;
+            margin: 15% auto; 
+            padding: 20px;
+            border: 1px solid #444;
+            width: 400px;
+            border-radius: 8px;
+            color: #eee;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #fff;
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .info-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .info-table td:first-child {
+            font-weight: bold;
+            color: #aaa;
+            width: 60%;
+        }
     </style>
 </head>
 
@@ -338,6 +416,8 @@
             <button id="playPause" disabled>Play</button>
             <button id="stop" disabled>Stop</button>
             <button id="renderWav" disabled>Render WAV</button>
+            <button id="songInfoBtn" disabled>Song Info</button>
+            <button id="panic" style="background-color:#e74c3c; color:white;">Panic</button>
             <button id="free">Free Memory</button>
             <button id="exit">Shutdown</button>
 
@@ -378,6 +458,25 @@
         <div id="mixer" class="mixer-container"></div>
     </div>
 
+    <!-- Song Info Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>Song Information</h2>
+            <table class="info-table">
+                <tr><td>Note Tracks</td><td id="infoTracks">-</td></tr>
+                <tr><td>Active Channels</td><td id="infoChannels">-</td></tr>
+                <tr><td>Max Tick (Samples)</td><td id="infoMaxTick">-</td></tr>
+                <tr><td>Duration</td><td id="infoDuration">-</td></tr>
+                <tr><td>Sample Rate</td><td id="infoSampleRate">-</td></tr>
+                <tr><td>Bit Depth</td><td id="infoBitDepth">-</td></tr>
+                <tr><td>Estimated PCM Size</td><td id="infoPcmSize">-</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="timidity-player.js"></script>
+
     <div class="panel">
         <h3>MIDI Controller Input</h3>
         <div class="transport" style="gap: 20px;">
@@ -409,12 +508,57 @@
             const playPauseBtn = document.getElementById("playPause");
             const stopBtn = document.getElementById("stop");
             const renderWavBtn = document.getElementById("renderWav");
+            const songInfoBtn = document.getElementById("songInfoBtn");
+            const seekerEl = document.getElementById("seeker");
+            const currentTimeEl = document.getElementById("currentTime");
+            const totalTimeEl = document.getElementById("totalTime");
             const renderProgress = document.getElementById("renderProgress");
             const freeBtn = document.getElementById("free");
             const exitBtn = document.getElementById("exit");
+            const panicBtn = document.getElementById("panic");
             const mixerSyncToggle = document.getElementById("mixerSyncToggle");
             const transposeEl = document.getElementById("transpose");
             const transposeValueEl = document.getElementById("transposeValue");
+            
+            // Modal Elements
+            const infoModal = document.getElementById("infoModal");
+            const closeModal = document.getElementById("closeModal");
+            
+            songInfoBtn.onclick = () => {
+                if (!player) return;
+                const info = player.getInfo();
+                if (info) {
+                    document.getElementById("infoTracks").textContent = info.tracks;
+                    document.getElementById("infoChannels").textContent = info.channels;
+                    document.getElementById("infoMaxTick").textContent = info.max_tick;
+                    document.getElementById("infoDuration").textContent = player.formatTime(info.duration_sec);
+                    document.getElementById("infoSampleRate").textContent = info.sample_rate + " Hz";
+                    document.getElementById("infoBitDepth").textContent = info.bit_depth + "-bit";
+                    document.getElementById("infoPcmSize").textContent = (info.pcm_size / 1024 / 1024).toFixed(2) + " MB";
+                    infoModal.style.display = "block";
+                }
+            };
+            
+            closeModal.onclick = () => infoModal.style.display = "none";
+            window.onclick = (e) => {
+                if (e.target == infoModal) infoModal.style.display = "none";
+            };
+            
+            // Solo logic state
+            const soloState = new Array(16).fill(false);
+            const muteState = new Array(16).fill(false);
+
+            function updateMutesFromSolo() {
+                const anySolo = soloState.some(s => s);
+                for (let i = 0; i < 16; i++) {
+                    const shouldMute = anySolo ? !soloState[i] : muteState[i];
+                    if (player) player.setChannelMute(i, shouldMute);
+                }
+            }
+
+            panicBtn.onclick = () => {
+                if (player) player.panic();
+            };
 
             transposeEl.oninput = (e) => {
                 const val = parseInt(e.target.value, 10);
@@ -426,9 +570,6 @@
             const initBtn = document.getElementById("init");
             const midiFileEl = document.getElementById("midiFile");
             const pianoChannelSelect = document.getElementById('pianoChannel');
-            const seekerEl = document.getElementById("seeker");
-            const currentTimeEl = document.getElementById("currentTime");
-            const totalTimeEl = document.getElementById("totalTime");
             const noteOnBtn = document.getElementById("noteOn");
             const noteOffBtn = document.getElementById("noteOff");
             const connectMidiBtn = document.getElementById('connectMidi');
@@ -457,6 +598,7 @@
                 playPauseBtn.disabled = false;
                 stopBtn.disabled = false;
                 renderWavBtn.disabled = false;
+                songInfoBtn.disabled = false;
                 seekerEl.disabled = false;
                 seekerEl.max = player.totalDuration;
                 seekerEl.value = 0;
@@ -498,6 +640,7 @@
                 statusEl.textContent = "Song freed.";
                 playPauseBtn.textContent = "Play";
                 playPauseBtn.disabled = true; // Disable buttons after stop
+                songInfoBtn.disabled = true;
                 seekerEl.disabled = true;
                 seekerEl.value = 0;
                 stopBtn.disabled = true;
@@ -589,6 +732,7 @@
                         <input type="range" class="knob" id="pb-${i}" min="0" max="16383" value="8192">
                     </div>
                     
+                    <button class="solo-btn" id="solo-btn-${i}">SOLO</button>
                     <button class="mute-btn" id="mute-btn-${i}">MUTE</button>
 
                     <div class="fader-track">
@@ -598,11 +742,19 @@
                 mixerContainer.appendChild(strip);
 
                 // Bind mixer events
+                const soloBtn = document.getElementById(`solo-btn-${i}`);
                 const muteBtn = document.getElementById(`mute-btn-${i}`);
-                muteBtn.addEventListener('click', () => {
-                    const isMuted = muteBtn.classList.toggle('active');
-                    if (player) player.setChannelMute(i, isMuted);
+                
+                soloBtn.addEventListener('click', () => {
+                    soloState[i] = soloBtn.classList.toggle('active');
+                    updateMutesFromSolo();
                 });
+                
+                muteBtn.addEventListener('click', () => {
+                    muteState[i] = muteBtn.classList.toggle('active');
+                    updateMutesFromSolo();
+                });
+                
                 document.getElementById(`vol-${i}`).addEventListener('input', (e) => {
                     player.sendEvent(player.ME_MAINVOLUME, i, parseInt(e.target.value));
                 });

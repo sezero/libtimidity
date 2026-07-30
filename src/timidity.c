@@ -829,6 +829,48 @@ int mid_song_load_program(MidSong *song, int bank, int program, int is_drum)
     
     return load_instrument(song, tone->name, out, is_drum, tone->pan, tone->amp, tone->note, tone->strip_loop, tone->strip_envelope, tone->strip_tail);
 }
+
+const char* mid_song_get_info_json(MidSong *song)
+{
+    static char buf[256];
+    if (!song) return "{}";
+    
+    int tracks = 0;
+    int channels_used = 0;
+    uint16 channel_mask = 0;
+    
+    for (int i = 0; i < song->groomed_event_count; i++) {
+        MidEvent *e = &song->events[i];
+        if (e->type == ME_NOTEON || e->type == ME_NOTEOFF) {
+            if (e->track >= tracks) tracks = e->track + 1;
+            channel_mask |= (1 << e->channel);
+        }
+    }
+    
+    for (int i = 0; i < 16; i++) {
+        if (channel_mask & (1 << i)) channels_used++;
+    }
+    
+    uint32 max_tick = 0;
+    if (song->groomed_event_count > 0) {
+        max_tick = song->events[song->groomed_event_count - 1].time;
+    }
+    
+    uint32 duration_sec = 0;
+    if (song->rate > 0) {
+        duration_sec = max_tick / song->rate;
+    }
+    
+    int bit_depth = (song->encoding & PE_16BIT) ? 16 : 8;
+    uint32 pcm_size = max_tick * song->bytes_per_sample;
+    
+    snprintf(buf, sizeof(buf), 
+        "{\"tracks\":%d,\"channels\":%d,\"max_tick\":%u,\"duration_sec\":%u,\"sample_rate\":%d,\"bit_depth\":%d,\"pcm_size\":%u}",
+        tracks, channels_used, max_tick, duration_sec, song->rate, bit_depth, pcm_size);
+        
+    return buf;
+}
+
 /* ====== for libtimidity <= 0.2.1 compatibility ======
  */
 MidDLSPatches *mid_dlspatches_load (MidIStream *stream)
