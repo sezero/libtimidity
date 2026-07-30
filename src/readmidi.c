@@ -139,6 +139,7 @@ static MidEventList *read_midi_event(MidIStream *stream, MidSong *song)
   newlist->event.time = at;					\
   newlist->event.type = t;					\
   newlist->event.channel = ch;					\
+  newlist->event.track = (uint16)song->current_track;		\
   newlist->event.a = pa;					\
   newlist->event.midi_event_type = me; /* Original MIDI status byte */ \
   newlist->event.b = pb;					\
@@ -676,6 +677,7 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
   switch(format)
     {
     case 0:
+      song->current_track = 0;
       if (read_track(stream, song, 0))
 	{
 	  free_midi_list(song);
@@ -684,21 +686,25 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
       break;
 
     case 1:
-      for (i=0; i<tracks; i++)
+      for (i=0; i<tracks; i++) {
+        song->current_track = i;
 	if (read_track(stream, song, 0))
 	  {
 	    free_midi_list(song);
 	    return NULL;
 	  }
+      }
       break;
 
     case 2: /* We simply play the tracks sequentially */
-      for (i=0; i<tracks; i++)
+      for (i=0; i<tracks; i++) {
+        song->current_track = i;
 	if (read_track(stream, song, 1))
 	  {
 	    free_midi_list(song);
 	    return NULL;
 	  }
+      }
       break;
     }
 

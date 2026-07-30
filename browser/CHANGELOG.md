@@ -19,13 +19,17 @@ The changes in this release were specifically made to meet the requirements for 
 - Added `mid_song_set_volume` to adjust global song amplification dynamically.
 - Added `mid_song_resend_active_notes` to forcefully trigger the callback for all currently playing notes, allowing the UI to refresh its state.
 - Added `mid_song_set_transpose` to instantly transpose all incoming notes (except drum channels) up or down by a specified number of semitones. Useful for quickly changing the key of the playback without modifying the original MIDI data.
+- Added `mid_song_set_channel_mute` to independently mute or unmute any of the 16 MIDI channels. Muting a channel instantly kills any active notes on that channel to save CPU and polyphony, making it perfect for DAW 'Solo/Mute' track features.
+- Added `mid_song_set_track_mute` to mute or unmute specific tracks (0-255) for MIDI Type 1 files. This allows true per-track muting in a multi-track MIDI file.
 - Added **Event Callback** hook (`mid_song_set_event_callback`) to forward specific MIDI events (Note On/Off, Control Changes, lyric changes, tempo, meta-events) back to the JavaScript layer during the audio rendering loop.
 - Added **Debug Callback** hook (`mid_set_debug_msg_callback`) and `timi_debug_msg` in `common.c` to bridge internal libTiMidity debug output to the web browser console instead of `stderr`.
 
 **JavaScript API / TimidityPlayer**
-- Exposed all newly added C functions (`mid_song_create`, `mid_note_on`, `mid_song_set_transpose`, etc.) via Emscripten `cwrap`.
+- Exposed all newly added C functions (`mid_song_create`, `mid_note_on`, `mid_song_set_transpose`, `mid_song_set_channel_mute`, `mid_song_set_track_mute`, etc.) via Emscripten `cwrap`.
 - Added the `sendEvent()` method to forward DAW slider/control interactions simultaneously to `songPtr` (main song) and `realtimeSongPtr` (real-time synth).
 - Added `setTranspose(semitones)` method to globally adjust the pitch of the playback using the new C API.
+- Added `setChannelMute(channel, mute)` method to toggle the mute state of any MIDI channel.
+- Added `setTrackMute(track, mute)` method to toggle the mute state of any MIDI track.
 - Added the `initRealtimeSong()` method to create a persistent background *synthesizer* (`realtimeSongPtr`) utilizing the new `mid_song_create` C API.
 
 ### Changed

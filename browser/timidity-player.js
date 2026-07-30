@@ -96,6 +96,8 @@ class TimidityPlayer {
             startSong: cwrap('mid_song_start', null, ['number']),
             setEventCallback: cwrap('mid_song_set_event_callback', null, ['number', 'number']),
             setTranspose: cwrap('mid_song_set_transpose', null, ['number', 'number']),
+            setChannelMute: cwrap('mid_song_set_channel_mute', null, ['number', 'number', 'number']),
+            setTrackMute: cwrap('mid_song_set_track_mute', null, ['number', 'number', 'number']),
             readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number', 'number']),
             openMemoryStream: cwrap('mid_istream_open_mem', 'number', ['number', 'number']),
             seekStream: cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']),
@@ -133,9 +135,9 @@ class TimidityPlayer {
         }
 
         // Must before onMIDIEvent
-        if ((eventStatus & 0xF0) === 0x90 && b > 0) { // Note On on any channel
+        if (eventType === this.ME_NOTEON && b > 0) { // Note On on any channel
             this.emit('onNoteOn', { tick: tick, channel: channel, pitch: a, velocity: b });
-        } else if ((eventStatus & 0xF0) === 0x80 || ((eventStatus & 0xF0) === 0x90 && b === 0)) { // Note Off on any channel
+        } else if (eventType === this.ME_NOTEOFF || (eventType === this.ME_NOTEON && b === 0)) { // Note Off on any channel
             this.emit('onNoteOff', { tick: tick, channel: channel, pitch: a });
         }
 
@@ -394,6 +396,34 @@ class TimidityPlayer {
         }
         if (this.realtimeSongPtr !== 0) {
             this.c.setTranspose(this.realtimeSongPtr, semitones);
+        }
+    }
+
+    /**
+     * Mute or unmute a specific MIDI channel (0-15).
+     * @param {number} channel The MIDI channel (0-15)
+     * @param {boolean} mute True to mute, false to unmute
+     */
+    setChannelMute(channel, mute) {
+        if (this.songPtr !== 0) {
+            this.c.setChannelMute(this.songPtr, channel, mute ? 1 : 0);
+        }
+        if (this.realtimeSongPtr !== 0) {
+            this.c.setChannelMute(this.realtimeSongPtr, channel, mute ? 1 : 0);
+        }
+    }
+
+    /**
+     * Mute or unmute a specific MIDI track (0-255).
+     * @param {number} track The MIDI track (0-255)
+     * @param {boolean} mute True to mute, false to unmute
+     */
+    setTrackMute(track, mute) {
+        if (this.songPtr !== 0) {
+            this.c.setTrackMute(this.songPtr, track, mute ? 1 : 0);
+        }
+        if (this.realtimeSongPtr !== 0) {
+            this.c.setTrackMute(this.realtimeSongPtr, track, mute ? 1 : 0);
         }
     }
 

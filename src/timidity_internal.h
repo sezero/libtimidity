@@ -171,6 +171,7 @@ typedef struct _MidVoice MidVoice;
 struct _MidVoice
 {
   uint8 status, channel, note, velocity;
+  uint16 track;
   MidSample *sample;
   sint32
     orig_frequency, frequency,
@@ -216,6 +217,7 @@ struct _MidEvent
   sint32 time;
   /* Using uintptr_t for a and b to allow storing pointers for meta events like lyrics. */
   uintptr_t a, b;
+  uint16 track;
   uint8 channel, type, midi_event_type;
 };
 
@@ -265,6 +267,9 @@ struct _MidSong
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];
   sint32 transpose_semitones;
+  uint16 channel_mute;
+  uint8 track_mute[256];
+  int current_track;
 };
 
 /* The global callback, shared between modules */

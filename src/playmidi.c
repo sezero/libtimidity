@@ -317,6 +317,7 @@ static void start_note(MidSong *song, MidEvent *e, int i)
 
   song->voice[i].status = VOICE_ON;
   song->voice[i].channel = e->channel;
+  song->voice[i].track = e->track;
   song->voice[i].note = e->a;
   song->voice[i].velocity = e->b;
   song->voice[i].sample_offset = 0;
@@ -368,6 +369,12 @@ static void note_on(MidSong *song)
   int i = song->voices, lowest=-1;
   sint32 lv=0x7FFFFFFF, v;
   MidEvent *e = song->current_event;
+
+  if (song->channel_mute & (1 << e->channel))
+    return;
+
+  if (e->track < 256 && song->track_mute[e->track])
+    return;
 
   while (i--)
     {
@@ -861,6 +868,42 @@ void mid_song_set_transpose(MidSong *song, int semitones)
   }
 }
 
+void mid_song_set_channel_mute(MidSong *song, int channel, int mute)
+{
+  if (song && channel >= 0 && channel < 16) {
+    if (mute) {
+      song->channel_mute |= (1 << channel);
+      /* Kill all active notes on this channel immediately */
+      int i = song->voices;
+      while (i--) {
+        if (song->voice[i].status != VOICE_FREE && song->voice[i].channel == channel) {
+          song->voice[i].status = VOICE_DIE;
+        }
+      }
+    } else {
+      song->channel_mute &= ~(1 << channel);
+    }
+  }
+}
+
+void mid_song_set_track_mute(MidSong *song, int track, int mute)
+{
+  if (song && track >= 0 && track < 256) {
+    if (mute) {
+      song->track_mute[track] = 1;
+      /* Kill all active notes on this track immediately */
+      int i = song->voices;
+      while (i--) {
+        if (song->voice[i].status != VOICE_FREE && song->voice[i].track == track) {
+          song->voice[i].status = VOICE_DIE;
+        }
+      }
+    } else {
+      song->track_mute[track] = 0;
+    }
+  }
+}
+
 int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain)
 {
   MidEvent e;
@@ -868,6 +911,7 @@ int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int
   int i;
 
   if (!song || !song->playing) return -1;
+  if (song->channel_mute & (1 << channel)) return -1;
 
   if (channel == 9) {
     song->drumchannels |= (1 << 9);

@@ -278,6 +278,14 @@ extern "C" {
  */
   TIMI_EXPORT extern void mid_song_set_transpose(MidSong *song, int semitones);
 
+/* Mute or unmute a specific channel (0-15)
+ */
+  TIMI_EXPORT extern void mid_song_set_channel_mute(MidSong *song, int channel, int mute);
+
+/* Mute or unmute a specific track (0-255)
+ */
+  TIMI_EXPORT extern void mid_song_set_track_mute(MidSong *song, int track, int mute);
+
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 status, uint8 channel, uint8 type, uintptr_t a, uintptr_t b, const char *text);
 
