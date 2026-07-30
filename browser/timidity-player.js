@@ -369,6 +369,13 @@ class TimidityPlayer {
 
         this.c.seekStream(streamPtr, 0, 0); // Rewind stream to beginning
         this.songPtr = this.c.loadSong(streamPtr, optionsPtr); // Load song
+        
+        // Build tempo map for accurate goTo(ticks)
+        try {
+            this.tempoMap = this._buildTempoMap(this.lastMidiData);
+        } catch (e) {
+            console.warn("Failed to parse tempo map:", e);
+        }
 
         if (this.songPtr !== 0) {
             const callbackPtr = this.Module.addFunction(this._handleMidiEvent.bind(this), 'viiiiiii');
@@ -1073,14 +1080,230 @@ class TimidityPlayer {
 
     /**
      * Attempts to seek playback to a specific tick position.
-     * Note: This function is currently a simplified stub and is not accurately implemented,
-     * as calculating precise millisecond offsets from ticks requires parsing all preceding tempo changes.
+     * Uses the parsed tempo map to convert ticks to absolute time in seconds.
      * @param {number} ticks - The target tick position.
      */
     goTo(ticks) {
-        // This is a simplified implementation. A more accurate one would need
-        // to parse tempo changes to convert ticks to milliseconds.
-        this.emit('error', 'goTo(ticks) is not accurately implemented yet.');
+        if (!this.tempoMap || !this.lastMidiData) {
+            this.emit('error', 'Cannot seek to ticks. Tempo map is not available.');
+            return;
+        }
+
+        let lastEvent = this.tempoMap.timeMap[0];
+        for (const ev of this.tempoMap.timeMap) {
+            if (ev.tick > ticks) break;
+            lastEvent = ev;
+        }
+
+        const deltaTicks = ticks - lastEvent.tick;
+        const deltaTimeSec = (deltaTicks / this.tempoMap.division) * (lastEvent.mpqn / 1000000);
+        const targetTimeSec = lastEvent.timeSec + deltaTimeSec;
+
+        this.seek(targetTimeSec);
+    }
+
+    /**
+     * Parses the raw MIDI data to extract the division and all tempo changes.
+     * @param {Uint8Array} midiData 
+     * @returns {Object} { division, timeMap: [{tick, timeSec, mpqn}] }
+     * @private
+     */
+    _buildTempoMap(midiData) {
+        let offset = 0;
+        
+        const readString = (len) => {
+            let str = '';
+            for (let i = 0; i < len; i++) str += String.fromCharCode(midiData[offset++]);
+            return str;
+        };
+        const readUint16 = () => (midiData[offset++] << 8) | midiData[offset++];
+        const readUint32 = () => (midiData[offset++] << 24) | (midiData[offset++] << 16) | (midiData[offset++] << 8) | midiData[offset++];
+        const readVLQ = () => {
+            let val = 0; let byte;
+            do { byte = midiData[offset++]; val = (val << 7) | (byte & 0x7F); } while (byte & 0x80);
+            return val;
+        };
+        
+        if (readString(4) !== 'MThd') throw new Error("Not a valid MIDI file");
+        readUint32(); // length
+        const format = readUint16();
+        const tracksCount = readUint16();
+        const division = readUint16();
+        
+        const tempoEvents = [];
+        const timeSigEvents = [];
+        
+        for (let t = 0; t < tracksCount; t++) {
+            if (readString(4) !== 'MTrk') break;
+            const trackLen = readUint32();
+            const trackEnd = offset + trackLen;
+            
+            let absTick = 0;
+            let runningStatus = 0;
+            
+            while (offset < trackEnd) {
+                absTick += readVLQ();
+                let status = midiData[offset];
+                if (status >= 0x80) { runningStatus = status; offset++; } else { status = runningStatus; }
+                
+                if (status === 0xFF) { // Meta
+                    const type = midiData[offset++];
+                    const len = readVLQ();
+                    if (type === 0x51 && len === 3) { // Set Tempo
+                        const mpqn = (midiData[offset] << 16) | (midiData[offset+1] << 8) | midiData[offset+2];
+                        tempoEvents.push({ tick: absTick, mpqn: mpqn });
+                    } else if (type === 0x58 && len === 4) { // Time Signature
+                        const num = midiData[offset];
+                        const denom = Math.pow(2, midiData[offset+1]);
+                        timeSigEvents.push({ tick: absTick, num: num, denom: denom });
+                    }
+                    offset += len;
+                } else if (status === 0xF0 || status === 0xF7) { // SysEx
+                    const len = readVLQ();
+                    offset += len;
+                } else { // Channel event
+                    const cmd = status >> 4;
+                    if (cmd === 0xC || cmd === 0xD) offset += 1;
+                    else offset += 2;
+                }
+            }
+        }
+        
+        tempoEvents.sort((a, b) => a.tick - b.tick);
+        if (tempoEvents.length === 0 || tempoEvents[0].tick !== 0) {
+            tempoEvents.unshift({ tick: 0, mpqn: 500000 }); // Default 120 BPM
+        }
+        
+        const timeMap = [];
+        let currentTime = 0;
+        let currentTick = 0;
+        let currentMpqn = 500000;
+        
+        for (const ev of tempoEvents) {
+            if (ev.tick > currentTick) {
+                const deltaTicks = ev.tick - currentTick;
+                const deltaTimeSec = (deltaTicks / division) * (currentMpqn / 1000000);
+                currentTime += deltaTimeSec;
+                currentTick = ev.tick;
+            }
+            currentMpqn = ev.mpqn;
+            timeMap.push({ tick: currentTick, timeSec: currentTime, mpqn: currentMpqn });
+        }
+        
+        // Build Time Signature Map
+        timeSigEvents.sort((a, b) => a.tick - b.tick);
+        if (timeSigEvents.length === 0 || timeSigEvents[0].tick !== 0) {
+            timeSigEvents.unshift({ tick: 0, num: 4, denom: 4 }); // Default 4/4
+        }
+        
+        const measureMap = [];
+        let currentAbsBeat = 0;
+        let currentMeasure = 1;
+        let lastSigTick = 0;
+        let currentNum = 4;
+        let currentDenom = 4;
+        
+        for (const ev of timeSigEvents) {
+            if (ev.tick > lastSigTick) {
+                const deltaTicks = ev.tick - lastSigTick;
+                const ticksPerBeat = division * (4 / currentDenom);
+                const elapsedBeats = deltaTicks / ticksPerBeat;
+                currentAbsBeat += elapsedBeats;
+                currentMeasure += elapsedBeats / currentNum;
+                lastSigTick = ev.tick;
+            }
+            currentNum = ev.num;
+            currentDenom = ev.denom;
+            measureMap.push({
+                tick: lastSigTick,
+                absBeat: currentAbsBeat,
+                measure: currentMeasure,
+                num: currentNum,
+                denom: currentDenom,
+                ticksPerBeat: division * (4 / currentDenom)
+            });
+        }
+        
+        return { division, timeMap, measureMap };
+    }
+
+    /**
+     * Converts a MIDI tick into an absolute beat number (e.g. for a metronome).
+     * @param {number} tick - The absolute tick position.
+     * @returns {number} The absolute beat number (e.g., 0.5, 1.0, 16.0).
+     */
+    tickToBeat(tick) {
+        if (!this.tempoMap || !this.tempoMap.measureMap) return 0;
+        let lastSig = this.tempoMap.measureMap[0];
+        for (const sig of this.tempoMap.measureMap) {
+            if (sig.tick > tick) break;
+            lastSig = sig;
+        }
+        const deltaTicks = tick - lastSig.tick;
+        const elapsedBeats = deltaTicks / lastSig.ticksPerBeat;
+        return lastSig.absBeat + elapsedBeats;
+    }
+
+    /**
+     * Converts a MIDI tick into a measure number (e.g. for vocal training sync).
+     * @param {number} tick - The absolute tick position.
+     * @returns {number} The absolute measure number (1-indexed).
+     */
+    tickToMeasure(tick) {
+        if (!this.tempoMap || !this.tempoMap.measureMap) return 1;
+        let lastSig = this.tempoMap.measureMap[0];
+        for (const sig of this.tempoMap.measureMap) {
+            if (sig.tick > tick) break;
+            lastSig = sig;
+        }
+        const deltaTicks = tick - lastSig.tick;
+        const elapsedBeats = deltaTicks / lastSig.ticksPerBeat;
+        const elapsedMeasures = elapsedBeats / lastSig.num;
+        return lastSig.measure + elapsedMeasures;
+    }
+
+    /**
+     * Checks if a specific MIDI tick aligns with a metronome click.
+     * @param {number} tick - The absolute tick position.
+     * @returns {Object|null} Metronome data { isClick, isDownbeat, beatNumber, measure } or null if invalid.
+     */
+    getMetronome(tick) {
+        if (!this.tempoMap || !this.tempoMap.measureMap) return null;
+        let lastSig = this.tempoMap.measureMap[0];
+        for (const sig of this.tempoMap.measureMap) {
+            if (sig.tick > tick) break;
+            lastSig = sig;
+        }
+        
+        const deltaTicks = tick - lastSig.tick;
+        const ticksPerBeat = lastSig.ticksPerBeat;
+        
+        // Use a small epsilon for floating point inaccuracies if ticksPerBeat is fractional
+        const beatOffset = deltaTicks % ticksPerBeat;
+        const isClick = (beatOffset === 0 || Math.abs(beatOffset - ticksPerBeat) < 0.001 || beatOffset < 0.001);
+        
+        if (!isClick) {
+            return { isClick: false };
+        }
+        
+        const elapsedBeats = Math.round(deltaTicks / ticksPerBeat);
+        const beatNumber = (elapsedBeats % lastSig.num) + 1;
+        const isDownbeat = (beatNumber === 1);
+        
+        return {
+            isClick: true,
+            isDownbeat: isDownbeat,
+            beatNumber: beatNumber,
+            measure: lastSig.measure + Math.floor(elapsedBeats / lastSig.num)
+        };
+    }
+
+    /**
+     * Gets the parsed tempo map of the currently loaded MIDI song.
+     * @returns {Object|null} The tempo map object containing { division, timeMap }, or null if no song is loaded.
+     */
+    getTempoMap() {
+        return this.tempoMap || null;
     }
 
     /**

@@ -43,6 +43,11 @@ The changes in this release were specifically made to meet the requirements for 
 - Added support for 3D spatial audio rendering using Web Audio API's `PannerNode`, automated by MIDI CC 20 (Y-axis) and CC 21 (Z-axis) events.
 - Added stereo widening effect (detune + delay via Haas effect) for stem exports using the `monoToStereo` option, compensating for mono GUS patches.
 - Added a native C function `mid_song_force_mono_pan` to efficiently center all pan events when rendering in Mono.
+- Added JavaScript-based MIDI parser to extract Tempo Map and Time Signatures upon loading.
+- Added `goTo(ticks)` for accurate seeking based on MIDI ticks by utilizing the extracted Tempo Map.
+- Added `tickToBeat(tick)` API to calculate the absolute beat (useful for metronomes).
+- Added `tickToMeasure(tick)` API to calculate the absolute measure/bar (useful for vocal training synchronization).
+- Added `getMetronome(tick)` API to accurately determine if a tick falls on a metronome click (including downbeat and measure info).
 
 ### Changed
 

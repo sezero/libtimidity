@@ -82,6 +82,11 @@ Seeks to a specific time position within the currently loaded MIDI song.
 - **Parameters:**
   - `timeInSeconds` *(number)*: The absolute target time in seconds.
 
+### `goTo(ticks)`
+Seeks to a specific MIDI tick position. This method parses the MIDI tempo map internally to accurately calculate the corresponding absolute time in seconds.
+- **Parameters:**
+  - `ticks` *(number)*: The absolute target tick position.
+
 ### `setVolume(volume)`
 Sets the master volume of the loaded song.
 - **Parameters:**
@@ -141,6 +146,28 @@ Broadcasts a general MIDI event to the active synthesizer.
 ### `getInfo()`
 Gets metadata and information about the currently loaded song.
 - **Returns:** `Object | null` - Parsed JSON object containing song info (title, copyright, text events, etc.).
+
+### `getTempoMap()`
+Gets the parsed tempo map of the currently loaded MIDI song.
+- **Returns:** `Object | null` - An object containing the MIDI `division` (ticks per beat) and a `timeMap` array (`[{tick, timeSec, mpqn}]`), or `null` if no song is loaded.
+
+### `tickToBeat(tick)`
+Converts a MIDI tick into an absolute beat number (useful for syncing metronomes).
+- **Parameters:**
+  - `tick` *(number)*: The absolute tick position.
+- **Returns:** `number` - The absolute beat count (e.g., `0.5`, `1.0`, `16.0`).
+
+### `tickToMeasure(tick)`
+Converts a MIDI tick into a measure/bar number (useful for vocal training or DAW measure sync).
+- **Parameters:**
+  - `tick` *(number)*: The absolute tick position.
+- **Returns:** `number` - The absolute measure count (1-indexed).
+
+### `getMetronome(tick)`
+Checks if a specific MIDI tick aligns exactly with a metronome click.
+- **Parameters:**
+  - `tick` *(number)*: The absolute tick position.
+- **Returns:** `Object | null` - Metronome state at this tick: `{ isClick: boolean, isDownbeat?: boolean, beatNumber?: number, measure?: number }`, or `null` if invalid.
 
 ### `getActiveVoices()`
 - **Returns:** `number` - The number of currently active polyphony voices.
