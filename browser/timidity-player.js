@@ -271,6 +271,11 @@ class TimidityPlayer {
         }
     }
 
+    /**
+     * Initializes the real-time synthesizer song instance if it hasn't been created yet.
+     * This prepares an empty song specifically used for real-time MIDI input.
+     * @returns {Promise<void>}
+     */
     async initRealtimeSong() {
         if (this.realtimeSongPtr) return;
 
@@ -304,12 +309,23 @@ class TimidityPlayer {
         }
     }
 
+    /**
+     * Resends active notes to the synthesizer. Useful when seeking or changing instruments
+     * to ensure sustained notes continue playing correctly.
+     */
     resendActiveNotes() {
         if (this.songPtr !== 0) {
             this.c.resendActiveNotes(this.songPtr);
         }
     }
 
+    /**
+     * Gets the current value of a specific MIDI controller at a given tick.
+     * @param {number} channel - The MIDI channel (0-15).
+     * @param {number} cc - The Control Change (CC) number (0-127).
+     * @param {number} tick - The absolute tick position.
+     * @returns {number} The controller value (0-127), or -1 if the song is not loaded.
+     */
     getControllerValueAtTick(channel, cc, tick) {
         if (this.songPtr !== 0) {
             return this.c.getControllerValueAtTick(this.songPtr, channel, cc, tick);
@@ -398,6 +414,13 @@ class TimidityPlayer {
         this.resume();
     }
 
+    /**
+     * Loads a MIDI file and automatically starts playing it.
+     * @param {File|Uint8Array} midi - The MIDI file data to load.
+     * @param {number} [offset=0] - The time offset in seconds to start playing from.
+     * @param {Object} [options={}] - Additional playback options.
+     * @returns {Promise<void>}
+     */
     async loadAndPlay(midi, offset = 0, options = {}) {
         if (await this.load(midi)) {
             await this.play(offset, options);
@@ -405,7 +428,8 @@ class TimidityPlayer {
     }
 
     /**
-     * Set the global pitch transpose in semitones (-12 to +12)
+     * Set the global pitch transpose in semitones (-12 to +12).
+     * @param {number} semitones - The number of semitones to transpose.
      */
     setTranspose(semitones) {
         if (this.songPtr !== 0) {
@@ -498,7 +522,7 @@ class TimidityPlayer {
             if (channel === 0) this.masterPeakL = 0;
             else this.masterPeakR = 0;
         }
-        
+
         let scaled = Math.round(peak * 127);
         if (scaled > 127) scaled = 127;
         return scaled;
@@ -540,7 +564,7 @@ class TimidityPlayer {
                         totalLength += chunk.length;
                     } else if (bytesReadMain <= 0) {
                         this.Module._free(pcmBufferPtr);
-                        
+
                         // Seek back to 0 so play button works cleanly
                         this.c.seekSong(this.songPtr, 0);
 
@@ -647,6 +671,10 @@ class TimidityPlayer {
         }
     }
 
+    /**
+     * Completely shuts down the player, stops playback, and releases the WebAudio context.
+     * @returns {void}
+     */
     shutdown() {
         this.stop();
         this.c.exit(); // Shutdown libTiMidity
@@ -843,12 +871,22 @@ class TimidityPlayer {
         }
     }
 
+    /**
+     * Attempts to seek playback to a specific tick position.
+     * Note: This function is currently a simplified stub and is not accurately implemented,
+     * as calculating precise millisecond offsets from ticks requires parsing all preceding tempo changes.
+     * @param {number} ticks - The target tick position.
+     */
     goTo(ticks) {
         // This is a simplified implementation. A more accurate one would need
         // to parse tempo changes to convert ticks to milliseconds.
         this.emit('error', 'goTo(ticks) is not accurately implemented yet.');
     }
 
+    /**
+     * Sets the master volume of the loaded song.
+     * @param {number} volume - The volume level (usually 0 to 100 or 0 to 127 depending on TiMidity internal scaling).
+     */
     setVolume(volume) {
         if (this.songPtr !== 0) {
             this.c.setVolume(this.songPtr, volume); // Set volume (0-100)
@@ -908,10 +946,19 @@ class TimidityPlayer {
         return new Blob([dataView], { type: 'audio/wav' });
     }
 
+    /**
+     * Formats a time in seconds into a human-readable string (e.g., M:SS or H:MM:SS).
+     * @param {number} seconds - The time in seconds to format.
+     * @param {boolean} [withMiliSecond=false] - Whether to include milliseconds in the output.
+     * @returns {string} The formatted time string.
+     */
     formatTime(seconds, withMiliSecond = false) {
-        if (isNaN(seconds) || seconds < 0) return "0:00";
+        if (isNaN(seconds) || seconds < 0) {
+            if (withMiliSecond) return "0:00.000";
+            else return "0:00";
+        }
 
-        let mills = seconds.toFixed(3).split('.')[1];
+        let mills = String(Math.floor((seconds % 1) * 1000)).padStart(3, '0');
 
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
@@ -924,10 +971,92 @@ class TimidityPlayer {
         } else {
             formatedTime = `${mins}:${secs.toString().padStart(2, '0')}`;
         }
-        if(withMiliSecond) {
+        if (withMiliSecond) {
             formatedTime += `.${mills}`;
         }
         return formatedTime;
     }
 
+    /**
+     * Loads and parses timidity.cfg to extract bank and drumset information.
+     */
+    async _loadTimidityCfg() {
+        if (this._cfgData) return this._cfgData;
+        try {
+            const response = await fetch(`${this.patchUrlBase}/timidity.cfg`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const text = await response.text();
+            
+            const banks = new Map();
+            const drums = new Map();
+            
+            let currentMode = 'bank';
+            let currentId = 0;
+            
+            const lines = text.split('\n');
+            for (let line of lines) {
+                line = line.replace(/#.*/, '').trim(); // Remove comments
+                if (!line) continue;
+                
+                const parts = line.split(/\s+/);
+                if (parts[0] === 'bank') {
+                    currentMode = 'bank';
+                    currentId = parseInt(parts[1], 10);
+                } else if (parts[0] === 'drumset') {
+                    currentMode = 'drumset';
+                    currentId = parseInt(parts[1], 10);
+                } else if (parts[0] === 'dir' || parts[0] === 'source') {
+                    // Ignore directory and source directives
+                } else if (!isNaN(parseInt(parts[0], 10))) {
+                    const id = parseInt(parts[0], 10);
+                    const file = parts.slice(1).join(' ');
+                    
+                    if (currentMode === 'bank') {
+                        if (!banks.has(currentId)) banks.set(currentId, []);
+                        banks.get(currentId).push({ id: id, file: file });
+                    } else if (currentMode === 'drumset') {
+                        if (!drums.has(currentId)) drums.set(currentId, []);
+                        drums.get(currentId).push({ id: id, file: file });
+                    }
+                }
+            }
+            
+            this._cfgData = { banks, drums };
+            return this._cfgData;
+        } catch (e) {
+            console.error("Failed to load timidity.cfg:", e);
+            return { banks: new Map(), drums: new Map() };
+        }
+    }
+
+    /**
+     * Returns a list of available bank numbers.
+     * @returns {Promise<number[]>} Array of bank IDs.
+     */
+    async getBankList() {
+        const data = await this._loadTimidityCfg();
+        return Array.from(data.banks.keys()).sort((a, b) => a - b);
+    }
+
+    /**
+     * Returns a list of instruments in the specified bank.
+     * @param {number} bank - The bank number.
+     * @returns {Promise<Array<{id: number, file: string}>>} List of instruments.
+     */
+    async getInstrumentList(bank) {
+        const data = await this._loadTimidityCfg();
+        const list = data.banks.get(bank) || [];
+        return list.sort((a, b) => a.id - b.id);
+    }
+
+    /**
+     * Returns a list of drum instruments in the specified drumset (bank).
+     * @param {number} bank - The drumset bank number.
+     * @returns {Promise<Array<{id: number, file: string}>>} List of drums.
+     */
+    async getDrumList(bank) {
+        const data = await this._loadTimidityCfg();
+        const list = data.drums.get(bank) || [];
+        return list.sort((a, b) => a.id - b.id);
+    }
 }

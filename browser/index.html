@@ -239,7 +239,7 @@
             /* The bar will "shrink" from the top down */
             transform: scaleY(1);
             /* Start fully scaled (volume at 0) */
-            transition: transform 0.015s linear;
+            /* Transition removed to let JS requestAnimationFrame render smooth jitter */
         }
 
         .bar-left {
@@ -699,8 +699,13 @@
                 splitter.connect(analyserR, 1);
             }
 
+            let isSeeking = false;
+            seekerEl.oninput = () => { isSeeking = true; };
+
             player.on('onPlaying', (tick, elapsedMs) => { // Update seeker and current time
-                seekerEl.value = elapsedMs / 1000;
+                if (!isSeeking) {
+                    seekerEl.value = elapsedMs / 1000;
+                }
                 currentTimeEl.textContent = player.formatTime(elapsedMs / 1000);
 
                 // Update DAW Meters
@@ -709,8 +714,8 @@
             });
             
             let vuRenderId = null;
-            function renderMasterVu() {
-                vuRenderId = requestAnimationFrame(renderMasterVu);
+            function renderMeters() {
+                vuRenderId = requestAnimationFrame(renderMeters);
                 
                 setupAnalysers();
 
@@ -754,10 +759,33 @@
                 let widthR = player._vuR;
                 if (widthR > 100) widthR = 100;
                 document.getElementById('masterVuR').style.transform = `scaleX(${1 - (widthR / 100)})`;
+                
+                // --- Channel VU Meter Animation ---
+                if (typeof player._chVuLTarget === 'undefined') {
+                    player._chVuLTarget = new Array(16).fill(1.0);
+                    player._chVuRTarget = new Array(16).fill(1.0);
+                }
+                
+                for (let i = 0; i < 16; i++) {
+                    if (vuLeftControls[i] && vuRightControls[i]) {
+                        let tL = player._chVuLTarget[i];
+                        let tR = player._chVuRTarget[i];
+                        
+                        // Add 0% to 5% jitter if channel is active (scale < 1)
+                        if (tL < 1) tL -= Math.random() * 0.02;
+                        if (tR < 1) tR -= Math.random() * 0.02;
+                        
+                        if (tL < 0) tL = 0;
+                        if (tR < 0) tR = 0;
+                        
+                        vuLeftControls[i].style.transform = `scaleY(${tL})`;
+                        vuRightControls[i].style.transform = `scaleY(${tR})`;
+                    }
+                }
             }
             
             // Start the render loop
-            renderMasterVu();
+            renderMeters();
             
             function resetMasterVu() {
                 player._vuL = 0;
@@ -1028,6 +1056,7 @@
             };
             seekerEl.onchange = (event) => {
                 player.seek(event.target.value);
+                isSeeking = false;
             };
 
             player.on('onRenderProgress', (progress) => {
@@ -1231,11 +1260,14 @@
                     leftGain = (127 - pan) / 63.0;
                 }
 
-                // Set VU meter height
-                // A scale of 1 means 0 volume (bar is fully visible, hiding the gradient)
-                // A scale of 0 means max volume (bar is invisible, revealing the whole gradient)
-                vuL.style.transform = `scaleY(${1.0 - (baseVolume * leftGain)})`;
-                vuR.style.transform = `scaleY(${1.0 - (baseVolume * rightGain)})`;
+                // Set VU meter target instead of direct style
+                if (typeof player._chVuLTarget === 'undefined') {
+                    player._chVuLTarget = new Array(16).fill(1.0);
+                    player._chVuRTarget = new Array(16).fill(1.0);
+                }
+                
+                player._chVuLTarget[channel] = 1.0 - (baseVolume * leftGain);
+                player._chVuRTarget[channel] = 1.0 - (baseVolume * rightGain);
             }
         }
 
@@ -1243,14 +1275,13 @@
             // --- VU Meter Release Logic ---
             if (!vuLeftControls[channel] || !vuRightControls[channel]) return;
 
-            const vuL = vuLeftControls[channel];
-            const vuR = vuRightControls[channel];
-
-            if (vuL && vuR) {
-                // Set the target scale to 0
-                vuL.style.transform = 'scaleY(1)';
-                vuR.style.transform = 'scaleY(1)';
+            if (typeof player._chVuLTarget === 'undefined') {
+                player._chVuLTarget = new Array(16).fill(1.0);
+                player._chVuRTarget = new Array(16).fill(1.0);
             }
+            
+            player._chVuLTarget[channel] = 1.0;
+            player._chVuRTarget[channel] = 1.0;
         }
 
 
