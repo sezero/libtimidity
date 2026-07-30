@@ -200,7 +200,7 @@ main (int argc, char *argv[])
 		  total_time / 60000, (total_time / 1000) % 60);
 	  fflush (stdout);
 	}
-      bytes_read = mid_song_read_wave (song, buffer, buffer_size);
+      bytes_read = mid_song_read_wave (song, buffer, buffer_size, 0);
       ao_play (device, (char *) buffer, bytes_read);
     }
   while (bytes_read);

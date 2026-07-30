@@ -95,7 +95,7 @@ class TimidityPlayer {
             getRequiredPatches: cwrap('mid_song_get_required_patches', 'string', ['number']),
             startSong: cwrap('mid_song_start', null, ['number']),
             setEventCallback: cwrap('mid_song_set_event_callback', null, ['number', 'number']),
-            readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number']),
+            readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number', 'number']),
             openMemoryStream: cwrap('mid_istream_open_mem', 'number', ['number', 'number']),
             seekStream: cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']),
             closeStream: cwrap('mid_istream_close', null, ['number']),
@@ -202,7 +202,7 @@ class TimidityPlayer {
 
                     if (this.songPtr !== 0 && !this.isPaused && this.isPlaying) {
                         const pcmBufferPtr = this.Module._malloc(pcmBytes);
-                        bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes);
+                        bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes, 0);
                         if (bytesReadMain > 0) {
                             const samplesRead = bytesReadMain / 4;
                             for (let i = 0; i < samplesRead; i++) {
@@ -220,7 +220,7 @@ class TimidityPlayer {
 
                     if (this.realtimeSongPtr) {
                         const rtBufferPtr = this.Module._malloc(pcmBytes);
-                        const rtBytes = this.c.readWave(this.realtimeSongPtr, rtBufferPtr, pcmBytes);
+                        const rtBytes = this.c.readWave(this.realtimeSongPtr, rtBufferPtr, pcmBytes, 0);
                         if (rtBytes > 0) {
                             const samplesRead = rtBytes / 4;
                             for (let i = 0; i < samplesRead; i++) {
@@ -382,6 +382,102 @@ class TimidityPlayer {
         if (await this.load(midi)) {
             await this.play(offset, options);
         }
+    }
+
+    /**
+     * Renders the currently loaded MIDI song to a WAV Blob offline, without playing it.
+     * Yields to the main thread periodically and emits 'onRenderProgress'.
+     * @returns {Promise<Blob>} The generated WAV file as a Blob.
+     */
+    async renderOffline() {
+        if (this.songPtr === 0) return null;
+
+        if (this.isPlaying) {
+            this.pause();
+        }
+
+        this.c.startSong(this.songPtr); // Restart song
+
+        const totalTime = this.c.getTotalTime(this.songPtr);
+        let currentTime = 0;
+
+        const bufferSize = 4096;
+        const pcmBytes = bufferSize * 2 * 2; // 4096 samples, 2 channels, 2 bytes/sample
+        const pcmBufferPtr = this.Module._malloc(pcmBytes);
+
+        const chunks = [];
+        let totalLength = 0;
+
+        return new Promise((resolve, reject) => {
+            const processChunk = () => {
+                let iterations = 0;
+                while (iterations < 20) { // Render 20 chunks per frame (~2 seconds of audio)
+                    let bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes, 1);
+                    if (bytesReadMain > 0) {
+                        const chunk = new Int16Array(bytesReadMain / 2);
+                        chunk.set(new Int16Array(this.Module.HEAP16.buffer, pcmBufferPtr, bytesReadMain / 2));
+                        chunks.push(chunk);
+                        totalLength += chunk.length;
+                    } else if (bytesReadMain <= 0) {
+                        this.Module._free(pcmBufferPtr);
+                        
+                        // Seek back to 0 so play button works cleanly
+                        this.c.seekSong(this.songPtr, 0);
+
+                        const wavBlob = this._chunksToWav(chunks, totalLength, 44100);
+                        this.emit('onRenderComplete', wavBlob);
+                        resolve(wavBlob);
+                        return;
+                    }
+                    iterations++;
+                }
+
+                currentTime = this.c.getTime(this.songPtr);
+                const progress = totalTime > 0 ? Math.min(100, Math.max(0, (currentTime / totalTime) * 100)) : 0;
+                this.emit('onRenderProgress', progress);
+
+                setTimeout(processChunk, 0); // Yield to main thread
+            };
+
+            processChunk();
+        });
+    }
+
+    _chunksToWav(chunks, totalSamples, sampleRate) {
+        const buffer = new ArrayBuffer(44 + totalSamples * 2);
+        const dataView = new DataView(buffer);
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        const byteLength = totalSamples * 2;
+
+        writeString(dataView, 0, 'RIFF');
+        dataView.setUint32(4, 36 + byteLength, true);
+        writeString(dataView, 8, 'WAVE');
+        writeString(dataView, 12, 'fmt ');
+        dataView.setUint32(16, 16, true);
+        dataView.setUint16(20, 1, true); // PCM format
+        dataView.setUint16(22, 2, true); // Stereo
+        dataView.setUint32(24, sampleRate, true);
+        dataView.setUint32(28, sampleRate * 4, true); // byte rate
+        dataView.setUint16(32, 4, true); // block align
+        dataView.setUint16(34, 16, true); // bits per sample
+        writeString(dataView, 36, 'data');
+        dataView.setUint32(40, byteLength, true);
+
+        let offset = 44;
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const uint8View = new Uint8Array(buffer, offset, chunk.byteLength);
+            uint8View.set(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+            offset += chunk.byteLength;
+        }
+
+        return new Blob([dataView], { type: 'audio/wav' });
     }
 
     /**

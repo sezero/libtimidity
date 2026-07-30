@@ -689,7 +689,7 @@ char *mid_song_get_meta(MidSong *song, MidSongMetaId what)
   return (what < 0 || what >= MID_META_MAX)? NULL : song->meta_data[what];
 }
 
-size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
+size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size, int skip_callback)
 {
   sint32 start_sample, end_sample, samples;
 
@@ -703,7 +703,7 @@ size_t mid_song_read_wave(MidSong *song, sint8 *ptr, size_t size)
   do {
     /* Handle all events that should happen at this time */
     while (song->current_event->time <= song->current_sample) {
-      if (global_event_callback && song->rate != 0) {
+      if (!skip_callback && global_event_callback && song->rate != 0) {
           uint32 current_ms = (uint32)(((uint64)song->current_event->time * 1000) / song->rate);
           uint8 callback_midi_status = song->current_event->midi_event_type;
           uint8 midi_channel     = song->current_event->channel;

@@ -244,7 +244,7 @@ extern "C" {
 
 /* Read WAVE data
  */
-  TIMI_EXPORT extern size_t mid_song_read_wave (MidSong *song, sint8 *ptr, size_t size);
+  TIMI_EXPORT extern size_t mid_song_read_wave (MidSong *song, sint8 *ptr, size_t size, int skip_callback);
 
 /* Seek song to specified offset in milliseconds
  */

@@ -158,7 +158,7 @@ main (int argc, char *argv[])
   mid_song_set_volume (song, volume);
   mid_song_start (song);
 
-  while ((bytes_read = mid_song_read_wave (song, buffer, sizeof (buffer))))
+  while ((bytes_read = mid_song_read_wave (song, buffer, sizeof (buffer), 0)))
     fwrite (buffer, bytes_read, 1, output);
 
   mid_song_free (song);

@@ -318,6 +318,7 @@
             <input type="file" id="midiFile" accept=".mid,.midi">
             <button id="playPause" disabled>Play</button>
             <button id="stop" disabled>Stop</button>
+            <button id="renderWav" disabled>Render WAV</button>
             <button id="free">Free Memory</button>
             <button id="exit">Shutdown</button>
 
@@ -326,6 +327,7 @@
                 <input type="range" id="seeker" min="0" value="0" disabled>
                 <span class="time-display" id="totalTime">00:00.000</span>
             </div>
+            <progress id="renderProgress" value="0" max="100" style="display: none; width: 100%; height: 8px; margin-top: 10px;"></progress>
         </div>
         <div style="margin-top: 10px;" id="status">Waiting for initialization...</div>
     </div>
@@ -382,6 +384,8 @@
             const statusEl = document.getElementById("status");
             const playPauseBtn = document.getElementById("playPause");
             const stopBtn = document.getElementById("stop");
+            const renderWavBtn = document.getElementById("renderWav");
+            const renderProgress = document.getElementById("renderProgress");
             const freeBtn = document.getElementById("free");
             const exitBtn = document.getElementById("exit");
             const mixerSyncToggle = document.getElementById("mixerSyncToggle");
@@ -418,6 +422,7 @@
                 playPauseBtn.textContent = 'Play'; // Reset button text
                 playPauseBtn.disabled = false;
                 stopBtn.disabled = false;
+                renderWavBtn.disabled = false;
                 seekerEl.disabled = false;
                 seekerEl.max = player.totalDuration;
                 seekerEl.value = 0;
@@ -462,6 +467,7 @@
                 seekerEl.disabled = true;
                 seekerEl.value = 0;
                 stopBtn.disabled = true;
+                renderWavBtn.disabled = true;
             });
 
             player.on('onEnded', () => {
@@ -681,6 +687,39 @@
             };
             seekerEl.onchange = (event) => {
                 player.seek(event.target.value);
+            };
+
+            player.on('onRenderProgress', (progress) => {
+                renderProgress.value = progress;
+            });
+
+            renderWavBtn.onclick = async () => {
+                renderWavBtn.disabled = true;
+                playPauseBtn.disabled = true;
+                stopBtn.disabled = true;
+                seekerEl.disabled = true;
+                renderProgress.style.display = 'block';
+                renderProgress.value = 0;
+                statusEl.textContent = "Rendering WAV offline...";
+
+                const blob = await player.renderOffline();
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = (midiFileEl.files[0]?.name || 'output').replace(/\.[^/.]+$/, "") + ".wav";
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+                
+                statusEl.textContent = "Rendering complete.";
+                renderProgress.style.display = 'none';
+                renderWavBtn.disabled = false;
+                playPauseBtn.disabled = false;
+                stopBtn.disabled = false;
+                seekerEl.disabled = false;
             };
 
             stopBtn.onclick = () => player.stop();
