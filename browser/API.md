@@ -64,9 +64,14 @@ Loads a MIDI file into the player and automatically analyzes and downloads the r
 Starts or resumes playback of the currently loaded MIDI song.
 - **Parameters:**
   - `offset` *(number)*: Time offset in seconds to start playing from.
+  - `options` *(Object)*: Additional playback configuration (currently reserved for future use).
 
 ### `loadAndPlay(midi, offset = 0, options = {})`
 Convenience method to sequentially call `load()` and `play()`.
+- **Parameters:**
+  - `midi` *(File | Uint8Array)*: The MIDI file data.
+  - `offset` *(number)*: Time offset in seconds.
+  - `options` *(Object)*: Additional playback configuration.
 - **Returns:** `Promise<void>`
 
 ### `pause()` / `resume()` / `stop()`
@@ -112,8 +117,14 @@ Sends a MIDI Note On message. Dynamically downloads the instrument patch if it h
   - `channel` *(number)*: MIDI channel (0-15).
   - `program` *(number)*: Instrument program number (0-127).
   - `pitch` *(number)*: MIDI pitch/note (0-127).
-  - `velocity` *(number)*: Note velocity (0-127).
-  - `params` *(Object)*: Optional parameters (`bank`, `pan`, `bend`, `modulation`, `chorus`, `sustain`).
+  - `velocity` *(number)*: Note velocity (0-127). Default is `100`.
+  - `params` *(Object)*: Optional parameters to control the instrument's initial state.
+    - `params.bank` *(number)*: Instrument bank number. Default is `0`.
+    - `params.pan` *(number)*: Panning (0-127). Default is `64` (center).
+    - `params.bend` *(number)*: Pitch bend (0-16383). Default is `8192` (center).
+    - `params.modulation` *(number)*: Modulation wheel (0-127). Default is `0`.
+    - `params.chorus` *(number)*: Chorus depth (0-127). Default is `0`.
+    - `params.sustain` *(number)*: Sustain pedal (0-127). Default is `0`.
 
 ### `noteOff(channel, pitch)`
 Sends a MIDI Note Off message.
