@@ -42,6 +42,8 @@ The changes in this release were specifically made to meet the requirements for 
 - Expanded `renderOffline(options)` to support custom `sampleRate`, `isMono`, `isSpatial`, `isSpatialInterpolation`, and `monoToStereo`.
 - Added support for 3D spatial audio rendering using Web Audio API's `PannerNode`, automated by MIDI CC 20 (Y-axis) and CC 21 (Z-axis) events.
 - Added stereo widening effect (detune + delay via Haas effect) for stem exports using the `monoToStereo` option, compensating for mono GUS patches.
+- Added `exportStems(trackList, options, callback)` function to automatically iterate and render multi-track stems offline based on MIDI tracks instead of channels.
+- Added `soloTrack` option to `renderOffline` to easily isolate MIDI tracks during rendering.
 - Added a native C function `mid_song_force_mono_pan` to efficiently center all pan events when rendering in Mono.
 - Added JavaScript-based MIDI parser to extract Tempo Map and Time Signatures upon loading.
 - Added `goTo(ticks)` for accurate seeking based on MIDI ticks by utilizing the extracted Tempo Map.

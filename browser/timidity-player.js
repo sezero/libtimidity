@@ -8,6 +8,10 @@ Module.preRun = [() => {
     FS.createPreloadedFile('/gus-patch', 'timidity.cfg', patchUrlBase + '/timidity.cfg', true, true);
 }];
 
+Module.printErr = function (text) {
+    if (text.includes('Enlarging memory arrays')) return;
+    console.warn(text);
+};
 
 /**
  * TimidityPlayer provides a high-level JavaScript interface to the libTiMidity WebAssembly module.
@@ -369,7 +373,7 @@ class TimidityPlayer {
 
         this.c.seekStream(streamPtr, 0, 0); // Rewind stream to beginning
         this.songPtr = this.c.loadSong(streamPtr, optionsPtr); // Load song
-        
+
         // Build tempo map for accurate goTo(ticks)
         try {
             this.tempoMap = this._buildTempoMap(this.lastMidiData);
@@ -546,7 +550,8 @@ class TimidityPlayer {
      * @param {boolean} [options.isMono=false] - If true, outputs 1 channel and centers pan.
      * @param {boolean} [options.isSpatial=false] - If true, applies 3D spatial audio (overrides isMono to false).
      * @param {boolean} [options.isSpatialInterpolation=false] - If true, interpolates spatial coordinates smoothly.
-     * @param {boolean} [options.monoToStereo=false] - If true, applies stereo widening (delay + detune) to the final output.
+     * @param {boolean} [options.monoToStereo=false] - If true, applies stereo widening (Spectral Panning / EQ) to the final output.
+     * @param {number} [options.monoToStereoWeight=5] - The intensity of the stereo widening effect (gain in dB).
      * @returns {Promise<Blob>} The generated WAV file as a Blob.
      */
     async renderOffline(options = {}) {
@@ -556,14 +561,14 @@ class TimidityPlayer {
             this.pause();
         }
 
-        let { sampleRate = 44100, isMono = false, isSpatial = false, isSpatialInterpolation = false, monoToStereo = false } = options;
+        let { sampleRate = 44100, isMono = false, isSpatial = false, isSpatialInterpolation = false, monoToStereo = false, monoToStereoWeight = 5, soloTrack = -1 } = options;
         if (isSpatial || monoToStereo) {
             isMono = false; // Force stereo if spatial or stereo widening is requested
         }
 
         // Initialize offline processing parameters
         const channels = isMono ? 1 : 2;
-        
+
         // Setup options for libTiMidity reload
         const optionsPtr = this.Module._malloc(12);
         this.Module.setValue(optionsPtr + 0, sampleRate, 'i32');
@@ -575,10 +580,10 @@ class TimidityPlayer {
         const midiDataPtr = this.Module._malloc(this.lastMidiData.length);
         this.Module.HEAPU8.set(this.lastMidiData, midiDataPtr);
         const streamPtr = this.c.openMemoryStream(midiDataPtr, this.lastMidiData.length);
-        
+
         // We assume patches are already loaded from the previous normal load()
         const renderSongPtr = this.c.loadSong(streamPtr, optionsPtr);
-        
+
         this.c.closeStream(streamPtr);
         this.Module._free(midiDataPtr);
         this.Module._free(optionsPtr);
@@ -586,6 +591,19 @@ class TimidityPlayer {
         if (renderSongPtr === 0) {
             this.emit('error', "Failed to prepare song for rendering.");
             return null;
+        }
+
+        // Apply soloTrack if specified (mute all except the soloed track)
+        if (soloTrack >= 0) {
+            if (!this.c.setTrackMute && this.Module.cwrap) {
+                this.c.setTrackMute = this.Module.cwrap('mid_song_set_track_mute', null, ['number', 'number', 'number']);
+            }
+            if (this.c.setTrackMute) {
+                const totalTracks = (this.tempoMap && this.tempoMap.tracksCount) ? this.tempoMap.tracksCount : 256;
+                for (let i = 0; i < totalTracks; i++) {
+                    this.c.setTrackMute(renderSongPtr, i, i === soloTrack ? 0 : 1);
+                }
+            }
         }
 
         if (isMono && this.c.forceMonoPan) { // Optional C function we added
@@ -604,7 +622,7 @@ class TimidityPlayer {
 
         const chunks = [];
         let totalLength = 0;
-        
+
         // Spatial Audio Setup
         let offlineCtx = null;
         let panner = null;
@@ -614,16 +632,16 @@ class TimidityPlayer {
         let spatialChannelDataR = null;
         let spatialOffset = 0;
         let spatialEvents = []; // To collect CC 20 and CC 21
-        
+
         let renderCallbackPtr = 0;
-        
+
         if (isSpatial && durationSeconds > 0) {
             offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
             panner = offlineCtx.createPanner();
             panner.panningModel = 'HRTF';
             panner.distanceModel = 'inverse';
             panner.connect(offlineCtx.destination);
-            
+
             // Initial center position
             panner.positionX.setValueAtTime(0, 0);
             panner.positionY.setValueAtTime(0, 0);
@@ -633,19 +651,25 @@ class TimidityPlayer {
             spatialBufferArray = offlineCtx.createBuffer(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
             spatialChannelDataL = spatialBufferArray.getChannelData(0);
             spatialChannelDataR = spatialBufferArray.getChannelData(1);
-            
+
             // Attach callback to capture CC events during readWave loop
-            renderCallbackPtr = this.Module.addFunction((tick, timeMilisecond, eventStatus, channel, eventType, a, b, textPtr) => {
-                if (eventType === this.ME_CONTROL_CHANGE) {
-                    if (a === 20 || a === 21) {
-                        spatialEvents.push({
-                            time: timeMilisecond / 1000.0,
-                            cc: a,
-                            val: b
-                        });
+            this._spatialEvents = [];
+            spatialEvents = this._spatialEvents;
+
+            if (!this._offlineCallbackPtr) {
+                this._offlineCallbackPtr = this.Module.addFunction((tick, timeMilisecond, eventStatus, channel, eventType, a, b, textPtr) => {
+                    if (this._spatialEvents && eventType === this.ME_CONTROL_CHANGE) {
+                        if (a === 20 || a === 21) {
+                            this._spatialEvents.push({
+                                time: timeMilisecond / 1000.0,
+                                cc: a,
+                                val: b
+                            });
+                        }
                     }
-                }
-            }, 'viiiiippp');
+                }, 'viiiiippp');
+            }
+            renderCallbackPtr = this._offlineCallbackPtr;
             this.c.setEventCallback(renderSongPtr, renderCallbackPtr);
         }
 
@@ -663,10 +687,12 @@ class TimidityPlayer {
                     } else if (bytesReadMain <= 0) {
                         this.Module._free(pcmBufferPtr);
                         if (renderCallbackPtr !== 0) {
-                            this.Module.removeFunction(renderCallbackPtr);
+                            // Do not call removeFunction because it's not exported by default and crashes Emscripten.
+                            // We reuse the _offlineCallbackPtr to prevent memory leak.
+                            this._spatialEvents = null;
                         }
                         this.c.freeSong(renderSongPtr); // Free the temporary render instance
-                        
+
                         if (isSpatial && offlineCtx) {
                             // Cek apakah ada nilai CC selain 64
                             const hasSpatialData = spatialEvents.some(ev => ev.val !== 64);
@@ -704,40 +730,54 @@ class TimidityPlayer {
                             let lastNode = spatialSourceNode;
 
                             if (monoToStereo) {
-                                // Create stereo widening effect
+                                // EQ-Based Stereo Widening (Spectral Panning)
+                                // Menggunakan EQ berkebalikan untuk L dan R tanpa delay agar tidak ada gema/phase shift.
+                                const splitter = offlineCtx.createChannelSplitter(2);
                                 const merger = offlineCtx.createChannelMerger(2);
                                 
-                                // Left channel (slightly detuned up)
-                                const sourceL = offlineCtx.createBufferSource();
-                                sourceL.buffer = spatialBufferArray;
-                                sourceL.detune.value = 5; // +5 cents
-                                sourceL.connect(merger, 0, 0); // Connect to left input of merger
-                                
-                                // Right channel (slightly detuned down + delayed)
-                                const sourceR = offlineCtx.createBufferSource();
-                                sourceR.buffer = spatialBufferArray;
-                                sourceR.detune.value = -5; // -5 cents
-                                
-                                const delay = offlineCtx.createDelay();
-                                delay.delayTime.value = 0.015; // 15ms delay
-                                sourceR.connect(delay);
-                                delay.connect(merger, 0, 1); // Connect to right input of merger
+                                spatialSourceNode.connect(splitter);
+
+                                // Filter Left (Boost Highs, Cut Lows)
+                                const filterL1 = offlineCtx.createBiquadFilter();
+                                filterL1.type = 'highshelf';
+                                filterL1.frequency.value = 2500;
+                                filterL1.gain.value = monoToStereoWeight; 
+                                const filterL2 = offlineCtx.createBiquadFilter();
+                                filterL2.type = 'lowshelf';
+                                filterL2.frequency.value = 400;
+                                filterL2.gain.value = -monoToStereoWeight; 
+
+                                // Filter Right (Cut Highs, Boost Lows)
+                                const filterR1 = offlineCtx.createBiquadFilter();
+                                filterR1.type = 'highshelf';
+                                filterR1.frequency.value = 2500;
+                                filterR1.gain.value = -monoToStereoWeight; 
+                                const filterR2 = offlineCtx.createBiquadFilter();
+                                filterR2.type = 'lowshelf';
+                                filterR2.frequency.value = 400;
+                                filterR2.gain.value = monoToStereoWeight; 
+
+                                // Routing
+                                splitter.connect(filterL1, 0, 0); // Ambil channel kiri
+                                filterL1.connect(filterL2);
+                                filterL2.connect(merger, 0, 0); // Masukkan ke kiri merger
+
+                                splitter.connect(filterR1, 1, 0); // Ambil channel kanan
+                                filterR1.connect(filterR2);
+                                filterR2.connect(merger, 0, 1); // Masukkan ke kanan merger
 
                                 lastNode = merger;
-                                
-                                // We won't use spatialSourceNode for playback, we use sourceL and sourceR
-                                spatialSourceNode = null; 
-                                sourceL.start(0);
-                                sourceR.start(0);
+                                spatialSourceNode.start(0);
                             } else {
                                 spatialSourceNode.start(0);
                             }
+
 
                             if (isSpatial) {
                                 // Apply captured spatial events to the PannerNode
                                 for (let ev of spatialEvents) {
                                     let mappedValue = ((ev.val - 64) / 64) * 10;
-                                    
+
                                     if (ev.cc === 20) {
                                         if (isSpatialInterpolation) {
                                             panner.positionY.linearRampToValueAtTime(mappedValue, ev.time);
@@ -761,13 +801,13 @@ class TimidityPlayer {
                                     panner.positionY.setValueAtTime(0, 0);
                                     panner.positionZ.setValueAtTime(0, 0);
                                 }
-                                
+
                                 lastNode.connect(panner);
                                 panner.connect(offlineCtx.destination);
                             } else {
                                 lastNode.connect(offlineCtx.destination);
                             }
-                            
+
                             offlineCtx.startRendering().then(renderedBuffer => {
                                 const wavBlob = this.audioBufferToWav(renderedBuffer);
                                 this.emit('onRenderComplete', wavBlob);
@@ -1110,7 +1150,7 @@ class TimidityPlayer {
      */
     _buildTempoMap(midiData) {
         let offset = 0;
-        
+
         const readString = (len) => {
             let str = '';
             for (let i = 0; i < len; i++) str += String.fromCharCode(midiData[offset++]);
@@ -1123,39 +1163,50 @@ class TimidityPlayer {
             do { byte = midiData[offset++]; val = (val << 7) | (byte & 0x7F); } while (byte & 0x80);
             return val;
         };
-        
+
         if (readString(4) !== 'MThd') throw new Error("Not a valid MIDI file");
         readUint32(); // length
         const format = readUint16();
         const tracksCount = readUint16();
         const division = readUint16();
-        
+
         const tempoEvents = [];
         const timeSigEvents = [];
-        
+        const trackNames = [];
+        const trackHasNotes = [];
+
         for (let t = 0; t < tracksCount; t++) {
             if (readString(4) !== 'MTrk') break;
             const trackLen = readUint32();
             const trackEnd = offset + trackLen;
-            
+
             let absTick = 0;
             let runningStatus = 0;
-            
+            let currentTrackName = null;
+            let hasChannelEvents = false;
+
             while (offset < trackEnd) {
                 absTick += readVLQ();
                 let status = midiData[offset];
                 if (status >= 0x80) { runningStatus = status; offset++; } else { status = runningStatus; }
-                
+
                 if (status === 0xFF) { // Meta
                     const type = midiData[offset++];
                     const len = readVLQ();
                     if (type === 0x51 && len === 3) { // Set Tempo
-                        const mpqn = (midiData[offset] << 16) | (midiData[offset+1] << 8) | midiData[offset+2];
+                        const mpqn = (midiData[offset] << 16) | (midiData[offset + 1] << 8) | midiData[offset + 2];
                         tempoEvents.push({ tick: absTick, mpqn: mpqn });
                     } else if (type === 0x58 && len === 4) { // Time Signature
                         const num = midiData[offset];
-                        const denom = Math.pow(2, midiData[offset+1]);
+                        const denom = Math.pow(2, midiData[offset + 1]);
                         timeSigEvents.push({ tick: absTick, num: num, denom: denom });
+                    } else if (type === 0x03) { // Track Name
+                        const nameBytes = midiData.slice(offset, offset + len);
+                        try {
+                            const nameStr = new TextDecoder().decode(nameBytes);
+                            // Only set it if it's the first track name found in the track
+                            if (!currentTrackName) currentTrackName = nameStr;
+                        } catch (e) { }
                     }
                     offset += len;
                 } else if (status === 0xF0 || status === 0xF7) { // SysEx
@@ -1163,22 +1214,32 @@ class TimidityPlayer {
                     offset += len;
                 } else { // Channel event
                     const cmd = status >> 4;
-                    if (cmd === 0xC || cmd === 0xD) offset += 1;
-                    else offset += 2;
+                    if (cmd >= 0x8 && cmd <= 0xE) {
+                        hasChannelEvents = true;
+                    }
+                    if (status >= 0xF8) {
+                        // System Realtime (no data bytes)
+                    } else if (status === 0xF1 || status === 0xF3 || cmd === 0xC || cmd === 0xD) {
+                        offset += 1;
+                    } else {
+                        offset += 2;
+                    }
                 }
             }
+            trackNames.push(currentTrackName || `Track ${t}`);
+            trackHasNotes.push(hasChannelEvents);
         }
-        
+
         tempoEvents.sort((a, b) => a.tick - b.tick);
         if (tempoEvents.length === 0 || tempoEvents[0].tick !== 0) {
             tempoEvents.unshift({ tick: 0, mpqn: 500000 }); // Default 120 BPM
         }
-        
+
         const timeMap = [];
         let currentTime = 0;
         let currentTick = 0;
         let currentMpqn = 500000;
-        
+
         for (const ev of tempoEvents) {
             if (ev.tick > currentTick) {
                 const deltaTicks = ev.tick - currentTick;
@@ -1189,20 +1250,20 @@ class TimidityPlayer {
             currentMpqn = ev.mpqn;
             timeMap.push({ tick: currentTick, timeSec: currentTime, mpqn: currentMpqn });
         }
-        
+
         // Build Time Signature Map
         timeSigEvents.sort((a, b) => a.tick - b.tick);
         if (timeSigEvents.length === 0 || timeSigEvents[0].tick !== 0) {
             timeSigEvents.unshift({ tick: 0, num: 4, denom: 4 }); // Default 4/4
         }
-        
+
         const measureMap = [];
         let currentAbsBeat = 0;
         let currentMeasure = 1;
         let lastSigTick = 0;
         let currentNum = 4;
         let currentDenom = 4;
-        
+
         for (const ev of timeSigEvents) {
             if (ev.tick > lastSigTick) {
                 const deltaTicks = ev.tick - lastSigTick;
@@ -1223,8 +1284,8 @@ class TimidityPlayer {
                 ticksPerBeat: division * (4 / currentDenom)
             });
         }
-        
-        return { division, timeMap, measureMap };
+
+        return { division, timeMap, measureMap, tracksCount, trackNames, trackHasNotes };
     }
 
     /**
@@ -1274,22 +1335,22 @@ class TimidityPlayer {
             if (sig.tick > tick) break;
             lastSig = sig;
         }
-        
+
         const deltaTicks = tick - lastSig.tick;
         const ticksPerBeat = lastSig.ticksPerBeat;
-        
+
         // Use a small epsilon for floating point inaccuracies if ticksPerBeat is fractional
         const beatOffset = deltaTicks % ticksPerBeat;
         const isClick = (beatOffset === 0 || Math.abs(beatOffset - ticksPerBeat) < 0.001 || beatOffset < 0.001);
-        
+
         if (!isClick) {
             return { isClick: false };
         }
-        
+
         const elapsedBeats = Math.round(deltaTicks / ticksPerBeat);
         const beatNumber = (elapsedBeats % lastSig.num) + 1;
         const isDownbeat = (beatNumber === 1);
-        
+
         return {
             isClick: true,
             isDownbeat: isDownbeat,
@@ -1370,6 +1431,33 @@ class TimidityPlayer {
     }
 
     /**
+     * Exports audio stems by iteratively rendering selected tracks offline.
+     * @param {number[]} trackList - Array of track numbers to export. If null/empty, exports all tracks.
+     * @param {Object} options - Options to pass to renderOffline (e.g., { sampleRate: 44100, monoToStereo: true }).
+     * @param {Function} callback - Callback function(wavBlob, trackIndex) executed after each stem is rendered.
+     * @returns {Promise<void>} Resolves when all requested stems are exported.
+     */
+    async exportStems(trackList, options = {}, callback) {
+        let tracksToExport = trackList;
+
+        if (!tracksToExport || tracksToExport.length === 0) {
+            const totalTracks = (this.tempoMap && this.tempoMap.tracksCount) ? this.tempoMap.tracksCount : 1;
+            tracksToExport = Array.from({ length: totalTracks }, (_, i) => i);
+        }
+
+        for (let i = 0; i < tracksToExport.length; i++) {
+            const track = tracksToExport[i];
+            const renderOptions = Object.assign({}, options, { soloTrack: track });
+
+            const wavBlob = await this.renderOffline(renderOptions);
+
+            if (callback && typeof callback === 'function') {
+                callback(wavBlob, track);
+            }
+        }
+    }
+
+    /**
      * Formats a time in seconds into a human-readable string (e.g., M:SS or H:MM:SS).
      * @param {number} seconds - The time in seconds to format.
      * @param {boolean} [withMiliSecond=false] - Whether to include milliseconds in the output.
@@ -1409,18 +1497,18 @@ class TimidityPlayer {
             const response = await fetch(`${this.patchUrlBase}/timidity.cfg`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const text = await response.text();
-            
+
             const banks = new Map();
             const drums = new Map();
-            
+
             let currentMode = 'bank';
             let currentId = 0;
-            
+
             const lines = text.split('\n');
             for (let line of lines) {
                 line = line.replace(/#.*/, '').trim(); // Remove comments
                 if (!line) continue;
-                
+
                 const parts = line.split(/\s+/);
                 if (parts[0] === 'bank') {
                     currentMode = 'bank';
@@ -1433,7 +1521,7 @@ class TimidityPlayer {
                 } else if (!isNaN(parseInt(parts[0], 10))) {
                     const id = parseInt(parts[0], 10);
                     const file = parts.slice(1).join(' ');
-                    
+
                     if (currentMode === 'bank') {
                         if (!banks.has(currentId)) banks.set(currentId, []);
                         banks.get(currentId).push({ id: id, file: file });
@@ -1443,7 +1531,7 @@ class TimidityPlayer {
                     }
                 }
             }
-            
+
             this._cfgData = { banks, drums };
             return this._cfgData;
         } catch (e) {

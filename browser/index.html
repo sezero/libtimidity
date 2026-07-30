@@ -413,7 +413,7 @@
             border-radius: 2px;
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
         }
 
         .master-vu-bar {
@@ -438,6 +438,7 @@
             <button id="playPause" disabled>Play</button>
             <button id="stop" disabled>Stop</button>
             <button id="renderWav" disabled>Render WAV</button>
+            <button id="exportStemsBtn" disabled>Export Stems</button>
             <button id="songInfoBtn" disabled>Song Info</button>
             <button id="panic" style="background-color:#e74c3c; color:white;">Panic</button>
             <button id="free">Free Memory</button>
@@ -541,6 +542,46 @@
         </div>
     </div>
 
+    <!-- Export Stems Modal -->
+    <div id="stemsModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-btn" id="closeStemsModal">&times;</span>
+            <h2>Export Audio Stems</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <label>
+                    Sample Rate:
+                    <select id="stemSampleRate" style="width: 100%; margin-top: 5px;">
+                        <option value="44100" selected>44100 Hz</option>
+                        <option value="48000">48000 Hz</option>
+                        <option value="96000">96000 Hz</option>
+                    </select>
+                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <label>
+                        <input type="checkbox" id="stemMonoToStereo"> Apply Mono-to-Stereo Widening (EQ)
+                    </label>
+                    <div id="stemMonoToStereoWeightContainer" style="display: none; align-items: center; gap: 5px;">
+                        Weight: 
+                        <input type="range" id="stemMonoToStereoWeight" min="1" max="15" value="5" style="width: 80px;">
+                        <span id="stemMonoToStereoWeightVal" style="font-size: 0.9em;">5 dB</span>
+                    </div>
+                </div>
+                <label>
+                    <input type="checkbox" id="stemIsSpatial"> Enable 3D Spatial Audio (CC 20/21)
+                </label>
+                <label>
+                    <input type="checkbox" id="stemIsSpatialInterpolation"> Enable Spatial Interpolation
+                </label>
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid #333; padding: 10px; border-radius: 4px; background: #222;" id="stemTrackList">
+                    <!-- Checkboxes will be injected here via JS -->
+                </div>
+                <button id="startStemsExport" style="margin-top: 10px; background: linear-gradient(180deg, #008844 0%, #00aa55 100%);">Start Export</button>
+                <div id="stemsStatus" style="font-size: 0.9em; color: #aaa; text-align: center;"></div>
+                <progress id="stemsProgress" value="0" max="100" style="display: none; width: 100%; height: 8px;"></progress>
+            </div>
+        </div>
+    </div>
+
     <div class="panel">
         <h3>MIDI Controller Input</h3>
         <div class="transport" style="gap: 20px;">
@@ -573,6 +614,7 @@
             const stopBtn = document.getElementById("stop");
             const renderWavBtn = document.getElementById("renderWav");
             const songInfoBtn = document.getElementById("songInfoBtn");
+            const exportStemsBtn = document.getElementById("exportStemsBtn");
             const seekerEl = document.getElementById("seeker");
             const currentTimeEl = document.getElementById("currentTime");
             const totalTimeEl = document.getElementById("totalTime");
@@ -587,6 +629,12 @@
             // Modal Elements
             const infoModal = document.getElementById("infoModal");
             const closeModal = document.getElementById("closeModal");
+            
+            const stemsModal = document.getElementById("stemsModal");
+            const closeStemsModal = document.getElementById("closeStemsModal");
+            const startStemsExport = document.getElementById("startStemsExport");
+            const stemsStatus = document.getElementById("stemsStatus");
+            const stemsProgress = document.getElementById("stemsProgress");
 
             songInfoBtn.onclick = () => {
                 if (!player) return;
@@ -604,9 +652,151 @@
             };
 
             closeModal.onclick = () => infoModal.style.display = "none";
+
+            exportStemsBtn.onclick = () => {
+                const trackListContainer = document.getElementById("stemTrackList");
+                trackListContainer.innerHTML = '';
+                
+                // Add Select All / Deselect All controls
+                const selectControls = document.createElement("div");
+                selectControls.style.marginBottom = "10px";
+                selectControls.style.fontSize = "13px";
+                selectControls.innerHTML = `
+                    <a href="#" id="selectAllStems" style="color: #4CAF50; text-decoration: none; margin-right: 15px;">Select All</a>
+                    <a href="#" id="deselectAllStems" style="color: #f44336; text-decoration: none;">Deselect All</a>
+                `;
+                trackListContainer.appendChild(selectControls);
+                
+                const listWrapper = document.createElement("div");
+                trackListContainer.appendChild(listWrapper);
+                
+                if (player && player.tempoMap) {
+                    const totalTracks = player.tempoMap.tracksCount || 1;
+                    const names = player.tempoMap.trackNames || [];
+                    const hasNotesList = player.tempoMap.trackHasNotes || [];
+                    let visibleTracks = 0;
+                    for (let i = 0; i < totalTracks; i++) {
+                        // Skip tracks that don't have any channel events (meta tracks)
+                        if (hasNotesList.length > i && !hasNotesList[i]) continue;
+                        
+                        visibleTracks++;
+                        const label = document.createElement("label");
+                        label.style.display = "block";
+                        label.style.marginBottom = "5px";
+                        label.style.cursor = "pointer";
+                        const cb = document.createElement("input");
+                        cb.type = "checkbox";
+                        cb.value = i;
+                        cb.checked = true; // default select all
+                        cb.className = "stem-track-cb";
+                        cb.style.marginRight = "8px";
+                        label.appendChild(cb);
+                        
+                        const trackName = names[i] || `Track ${i}`;
+                        label.appendChild(document.createTextNode(`[${i}] ${trackName}`));
+                        listWrapper.appendChild(label);
+                    }
+                    if (visibleTracks === 0) {
+                        listWrapper.innerHTML = '<span style="color:#888;">No renderable note tracks found.</span>';
+                    }
+                    
+                    document.getElementById("selectAllStems").onclick = (e) => {
+                        e.preventDefault();
+                        document.querySelectorAll('.stem-track-cb').forEach(cb => cb.checked = true);
+                    };
+                    document.getElementById("deselectAllStems").onclick = (e) => {
+                        e.preventDefault();
+                        document.querySelectorAll('.stem-track-cb').forEach(cb => cb.checked = false);
+                    };
+                } else {
+                    listWrapper.innerHTML = '<span style="color:#888;">No tracks loaded.</span>';
+                }
+                
+                stemsModal.style.display = "block";
+                stemsStatus.textContent = "";
+                stemsProgress.style.display = "none";
+            };
+
+            closeStemsModal.onclick = () => {
+                stemsModal.style.display = "none";
+            };
+
             window.onclick = (e) => {
                 if (e.target == infoModal) infoModal.style.display = "none";
+                if (e.target == stemsModal) stemsModal.style.display = "none";
             };
+
+            startStemsExport.onclick = async () => {
+                if (!player) return;
+                
+                const checkboxes = document.querySelectorAll('.stem-track-cb');
+                const trackList = [];
+                checkboxes.forEach(cb => {
+                    if (cb.checked) trackList.push(parseInt(cb.value));
+                });
+                
+                if (trackList.length === 0) {
+                    stemsStatus.textContent = "Please select at least one track.";
+                    return;
+                }
+                
+                const options = {
+                    sampleRate: parseInt(document.getElementById("stemSampleRate").value),
+                    monoToStereo: document.getElementById("stemMonoToStereo").checked,
+                    monoToStereoWeight: parseInt(document.getElementById("stemMonoToStereoWeight").value),
+                    isSpatial: document.getElementById("stemIsSpatial").checked,
+                    isSpatialInterpolation: document.getElementById("stemIsSpatialInterpolation").checked
+                };
+
+                startStemsExport.disabled = true;
+                stemsProgress.style.display = "block";
+                
+                let currentTrackIndex = 0;
+                let totalTracks = trackList.length;
+                stemsStatus.textContent = `Preparing to export ${totalTracks} stems...`;
+
+                player.on('onRenderProgress', (percent) => {
+                    stemsProgress.value = percent;
+                    stemsStatus.textContent = `Rendering Track ${currentTrackIndex + 1} / ${totalTracks} (${percent.toFixed(1)}%)`;
+                });
+
+                try {
+                    await player.exportStems(trackList, options, (wavBlob, trackIndex) => {
+                        stemsStatus.textContent = `Saving Track ${trackIndex}...`;
+                        const url = URL.createObjectURL(wavBlob);
+                        const a = document.createElement("a");
+                        a.style.display = "none";
+                        a.href = url;
+                        // Format track index with leading zeros
+                        const trackStr = trackIndex.toString().padStart(3, '0');
+                        a.download = `stem_track_${trackStr}.wav`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        currentTrackIndex++;
+                    });
+                    stemsStatus.textContent = "Export complete!";
+                } catch (e) {
+                    stemsStatus.textContent = "Export failed: " + e.message;
+                }
+                
+                startStemsExport.disabled = false;
+                stemsProgress.style.display = "none";
+            };
+
+            // Stem Mono-to-Stereo Weight visibility
+            const stemMonoToStereo = document.getElementById("stemMonoToStereo");
+            const stemMonoToStereoWeightContainer = document.getElementById("stemMonoToStereoWeightContainer");
+            const stemMonoToStereoWeight = document.getElementById("stemMonoToStereoWeight");
+            const stemMonoToStereoWeightVal = document.getElementById("stemMonoToStereoWeightVal");
+            
+            stemMonoToStereo.addEventListener('change', () => {
+                stemMonoToStereoWeightContainer.style.display = stemMonoToStereo.checked ? "flex" : "none";
+            });
+            stemMonoToStereoWeight.addEventListener('input', () => {
+                stemMonoToStereoWeightVal.textContent = stemMonoToStereoWeight.value + " dB";
+            });
 
             // Solo logic state
             const soloState = new Array(16).fill(false);
@@ -684,16 +874,16 @@
 
             function setupAnalysers() {
                 if (!player.audioContext || !player.scriptNode || analyserL) return;
-                
+
                 splitter = player.audioContext.createChannelSplitter(2);
                 analyserL = player.audioContext.createAnalyser();
                 analyserR = player.audioContext.createAnalyser();
-                
+
                 analyserL.fftSize = 1024;
                 analyserR.fftSize = 1024;
                 dataArrayL = new Float32Array(analyserL.frequencyBinCount);
                 dataArrayR = new Float32Array(analyserR.frequencyBinCount);
-                
+
                 player.scriptNode.connect(splitter);
                 splitter.connect(analyserL, 0);
                 splitter.connect(analyserR, 1);
@@ -712,11 +902,11 @@
                 const activeVoices = player.getActiveVoices();
                 document.getElementById('polyphonyCounter').textContent = activeVoices;
             });
-            
+
             let vuRenderId = null;
             function renderMeters() {
                 vuRenderId = requestAnimationFrame(renderMeters);
-                
+
                 setupAnalysers();
 
                 let targetL = 0;
@@ -725,19 +915,19 @@
                 if (analyserL && analyserR) {
                     analyserL.getFloatTimeDomainData(dataArrayL);
                     analyserR.getFloatTimeDomainData(dataArrayR);
-                    
+
                     let peakL = 0;
                     for (let i = 0; i < dataArrayL.length; i++) {
                         let absL = Math.abs(dataArrayL[i]);
                         if (absL > peakL) peakL = absL;
                     }
-                    
+
                     let peakR = 0;
                     for (let i = 0; i < dataArrayR.length; i++) {
                         let absR = Math.abs(dataArrayR[i]);
                         if (absR > peakR) peakR = absR;
                     }
-                    
+
                     targetL = peakL * 100;
                     targetR = peakR * 100;
                 }
@@ -754,39 +944,39 @@
                 let widthL = player._vuL;
                 if (widthL > 100) widthL = 100;
                 document.getElementById('masterVuL').style.transform = `scaleX(${1 - (widthL / 100)})`;
-                
+
                 // Right Channel
                 let widthR = player._vuR;
                 if (widthR > 100) widthR = 100;
                 document.getElementById('masterVuR').style.transform = `scaleX(${1 - (widthR / 100)})`;
-                
+
                 // --- Channel VU Meter Animation ---
                 if (typeof player._chVuLTarget === 'undefined') {
                     player._chVuLTarget = new Array(16).fill(1.0);
                     player._chVuRTarget = new Array(16).fill(1.0);
                 }
-                
+
                 for (let i = 0; i < 16; i++) {
                     if (vuLeftControls[i] && vuRightControls[i]) {
                         let tL = player._chVuLTarget[i];
                         let tR = player._chVuRTarget[i];
-                        
+
                         // Add 0% to 5% jitter if channel is active (scale < 1)
-                        if (tL < 1) tL -= Math.random() * 0.02;
-                        if (tR < 1) tR -= Math.random() * 0.02;
-                        
+                        if (tL < 1) tL -= Math.random() * 0.03;
+                        if (tR < 1) tR -= Math.random() * 0.03;
+
                         if (tL < 0) tL = 0;
                         if (tR < 0) tR = 0;
-                        
+
                         vuLeftControls[i].style.transform = `scaleY(${tL})`;
                         vuRightControls[i].style.transform = `scaleY(${tR})`;
                     }
                 }
             }
-            
+
             // Start the render loop
             renderMeters();
-            
+
             function resetMasterVu() {
                 player._vuL = 0;
                 player._vuR = 0;
@@ -1265,7 +1455,7 @@
                     player._chVuLTarget = new Array(16).fill(1.0);
                     player._chVuRTarget = new Array(16).fill(1.0);
                 }
-                
+
                 player._chVuLTarget[channel] = 1.0 - (baseVolume * leftGain);
                 player._chVuRTarget[channel] = 1.0 - (baseVolume * rightGain);
             }
@@ -1279,7 +1469,7 @@
                 player._chVuLTarget = new Array(16).fill(1.0);
                 player._chVuRTarget = new Array(16).fill(1.0);
             }
-            
+
             player._chVuLTarget[channel] = 1.0;
             player._chVuRTarget[channel] = 1.0;
         }

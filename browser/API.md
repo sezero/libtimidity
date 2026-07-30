@@ -213,7 +213,18 @@ Renders the currently loaded MIDI song to a WAV file offline (without playing it
     - `options.isMono` *(boolean)*: If true, forces audio to 1 channel and sets all CC pan events to center (default `false`).
     - `options.isSpatial` *(boolean)*: If true, applies 3D spatial audio processing using Web Audio `PannerNode` based on CC 20 (Y/Height) and CC 21 (Z/Depth) events. Forces `isMono` to false (default `false`).
     - `options.isSpatialInterpolation` *(boolean)*: If true, smoothly interpolates the spatial coordinates between CC events (default `false`).
+    - `options.monoToStereo` *(boolean)*: If true, applies stereo widening (Spectral Panning / EQ) to the final output.
+    - `options.monoToStereoWeight` *(number)*: The intensity of the stereo widening effect (gain in dB) (default `5`).
+    - `options.soloTrack` *(number)*: If set to a valid track number, mutes all other tracks during rendering (default `-1`).
 - **Returns:** `Promise<Blob>` - The generated WAV file as a `Blob`.
+
+### `exportStems(trackList, options = {}, callback)`
+Exports audio stems by iteratively rendering selected tracks offline. For each track, it solos the track, renders the full song duration, and calls the callback with the resulting WAV file. The `onRenderProgress` event will still fire repeatedly for each stem rendering cycle.
+- **Parameters:**
+  - `trackList` *(number[])*: Array of track numbers to export. If null or an empty array is provided, it defaults to exporting all parsed tracks in the MIDI file.
+  - `options` *(Object)*: Configuration options passed directly to `renderOffline` (e.g., `{ monoToStereo: true }`).
+  - `callback` *(Function)*: A function called after each stem completes. Signature: `callback(wavBlob, trackIndex)`.
+- **Returns:** `Promise<void>` - Resolves when all requested stems have been successfully exported.
 
 ### `formatTime(seconds, withMiliSecond = false)`
 Formats seconds into a human-readable string (e.g., `H:MM:SS` or `M:SS.mmm`).
