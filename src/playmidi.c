@@ -38,8 +38,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "timidity_internal.h"
 #include "timidity.h"
+#include "timidity_internal.h"
+#include "options.h"
 #include "instrum.h"
 #include "playmidi.h"
 #include "output.h"
@@ -638,13 +639,33 @@ static void skip_to(MidSong *song, sint32 until_time)
 static void do_compute_data(MidSong *song, sint32 count)
 {
   int i;
-  memset(song->common_buffer, 0,
-	 (song->encoding & PE_MONO) ? (count * 4) : (count * 8));
+  int audio_channels = (song->encoding & PE_MONO) ? 1 : 2;
+  memset(song->common_buffer, 0, count * audio_channels * 4);
   for (i = 0; i < song->voices; i++)
     {
       if(song->voice[i].status != VOICE_FREE)
 	mix_voice(song, song->common_buffer, i, count);
     }
+    
+  /* Master Peak Tracking */
+  if (audio_channels == 2) {
+      for (i = 0; i < count * 2; i += 2) {
+          sint32 val_l = song->common_buffer[i];
+          sint32 val_r = song->common_buffer[i+1];
+          if (val_l < 0) val_l = -val_l;
+          if (val_r < 0) val_r = -val_r;
+          if (val_l > song->master_peak_l) song->master_peak_l = val_l;
+          if (val_r > song->master_peak_r) song->master_peak_r = val_r;
+      }
+  } else {
+      for (i = 0; i < count; i++) {
+          sint32 val = song->common_buffer[i];
+          if (val < 0) val = -val;
+          if (val > song->master_peak_l) song->master_peak_l = val;
+          if (val > song->master_peak_r) song->master_peak_r = val;
+      }
+  }
+    
   song->current_sample += count;
 }
 
@@ -914,6 +935,45 @@ void mid_song_panic(MidSong *song)
       }
     }
   }
+}
+
+int mid_song_get_active_voices(MidSong *song)
+{
+    int active = 0;
+    if (song) {
+        for (int i = 0; i < song->voices; i++) {
+            if (song->voice[i].status != VOICE_FREE) {
+                active++;
+            }
+        }
+    }
+    return active;
+}
+
+int mid_song_get_master_peak(MidSong *song, int channel, int reset)
+{
+    int peak = 0;
+    if (song) {
+        peak = (channel == 0) ? song->master_peak_l : song->master_peak_r;
+        
+        /* Shift down from internal 32-bit mix to 16-bit PCM level */
+        peak >>= (32 - 16 - GUARD_BITS);
+        
+        /* Clamp to roughly 16-bit PCM equivalent peak */
+        if (peak > 32767) peak = 32767;
+        
+        /* Map to 0-127 range */
+        peak = (peak * 127) / 32767;
+        
+        if (reset) {
+            if (channel == 0) {
+                song->master_peak_l = 0;
+            } else {
+                song->master_peak_r = 0;
+            }
+        }
+    }
+    return peak;
 }
 
 int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain)

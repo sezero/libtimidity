@@ -263,6 +263,8 @@ struct _MidSong
   MidEventList *evlist;
   sint32 current_sample;
   sint32 event_count;
+  sint32 master_peak_l;
+  sint32 master_peak_r;
   sint32 at;
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];

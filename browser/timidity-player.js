@@ -115,6 +115,8 @@ class TimidityPlayer {
             resendActiveNotes: cwrap('mid_song_resend_active_notes', null, ['number']),
             getControllerValueAtTick: cwrap('mid_song_get_controller_value_at_tick', 'number', ['number', 'number', 'number', 'number']),
             getInfoJson: cwrap('mid_song_get_info_json', 'string', ['number']),
+            getActiveVoices: cwrap('mid_song_get_active_voices', 'number', ['number']),
+            getMasterPeak: cwrap('mid_song_get_master_peak', 'number', ['number', 'number', 'number']),
             malloc: cwrap('malloc', 'number', ['number']),
         };
 
@@ -236,6 +238,18 @@ class TimidityPlayer {
                         }
                         this.Module._free(rtBufferPtr);
                     }
+
+                    // Calculate Master Peak from final mixed audio
+                    let peakL = 0;
+                    let peakR = 0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        let l = Math.abs(outL[i]);
+                        let r = Math.abs(outR[i]);
+                        if (l > peakL) peakL = l;
+                        if (r > peakR) peakR = r;
+                    }
+                    this.masterPeakL = Math.max(this.masterPeakL || 0, peakL);
+                    this.masterPeakR = Math.max(this.masterPeakR || 0, peakR);
                 };
 
                 this.scriptNode.connect(this.audioContext.destination);
@@ -457,6 +471,37 @@ class TimidityPlayer {
             }
         }
         return null;
+    }
+
+    /**
+     * Get the number of currently sounding polyphony voices.
+     * @returns {number} Active voices count.
+     */
+    getActiveVoices() {
+        if (this.songPtr !== 0) {
+            return this.c.getActiveVoices(this.songPtr);
+        } else if (this.realtimeSongPtr !== 0) {
+            return this.c.getActiveVoices(this.realtimeSongPtr);
+        }
+        return 0;
+    }
+
+    /**
+     * Get the master peak volume (0-127) since last reset, calculated directly from Web Audio output.
+     * @param {number} channel 0 for Left, 1 for Right.
+     * @param {boolean} reset Whether to reset the peak after reading it.
+     * @returns {number} The absolute peak sample value (0-127).
+     */
+    getMasterPeak(channel = 0, reset = true) {
+        let peak = channel === 0 ? (this.masterPeakL || 0) : (this.masterPeakR || 0);
+        if (reset) {
+            if (channel === 0) this.masterPeakL = 0;
+            else this.masterPeakR = 0;
+        }
+        
+        let scaled = Math.round(peak * 127);
+        if (scaled > 127) scaled = 127;
+        return scaled;
     }
 
     /**

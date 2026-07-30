@@ -23,6 +23,8 @@ The changes in this release were specifically made to meet the requirements for 
 - Added `mid_song_set_channel_mute` to independently mute or unmute any of the 16 MIDI channels. Muting a channel instantly kills any active notes on that channel to save CPU and polyphony, making it perfect for DAW 'Solo/Mute' track features.
 - Added `mid_song_set_track_mute` to mute or unmute specific tracks (0-255) for MIDI Type 1 files. This allows true per-track muting in a multi-track MIDI file.
 - Added `mid_song_panic` as a MIDI "Panic" feature. This instantly sends a `VOICE_DIE` command to all active polyphony voices, which is extremely useful to stop hanging notes when a DAW seeks abruptly.
+- Added `mid_song_get_active_voices` to query the exact number of polyphony voices currently sounding in the synthesizer.
+- Added `mid_song_get_master_peak` to query the highest absolute sample value generated since the last reset, perfect for building a true DAW Master VU/Peak Meter.
 - Added **Event Callback** hook (`mid_song_set_event_callback`) to forward specific MIDI events (Note On/Off, Control Changes, lyric changes, tempo, meta-events) back to the JavaScript layer during the audio rendering loop.
 - Added **Debug Callback** hook (`mid_set_debug_msg_callback`) and `timi_debug_msg` in `common.c` to bridge internal libTiMidity debug output to the web browser console instead of `stderr`.
 
@@ -33,6 +35,7 @@ The changes in this release were specifically made to meet the requirements for 
 - Added `setChannelMute(channel, mute)` method to toggle the mute state of any MIDI channel.
 - Added `setTrackMute(track, mute)` method to toggle the mute state of any MIDI track.
 - Added `getInfo()` method to parse and return song metadata (tracks, channels, PCM size, etc.) from the new C API.
+- Added `getActiveVoices()` and `getMasterPeak(reset)` wrappers to feed real-time performance and audio level data to the UI.
 - Added `panic()` method mapped to the new C Panic API.
 - Added a full **Mixer Solo** button logic to the web UI. Selecting Solo on a channel automatically mutes all other un-soloed channels, simulating professional DAW behavior.
 - Added the `initRealtimeSong()` method to create a persistent background *synthesizer* (`realtimeSongPtr`) utilizing the new `mid_song_create` C API.

@@ -292,6 +292,14 @@ extern "C" {
  */
   TIMI_EXPORT extern void mid_song_panic(MidSong *song);
 
+/* Get number of currently active polyphony voices */
+  TIMI_EXPORT extern int mid_song_get_active_voices(MidSong *song);
+
+/* Get the master peak volume (0-32767) since last reset.
+ * channel: 0 for Left, 1 for Right. Pass reset=1 to reset it.
+ */
+  TIMI_EXPORT extern int mid_song_get_master_peak(MidSong *song, int channel, int reset);
+
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 status, uint8 channel, uint8 type, uintptr_t a, uintptr_t b, const char *text);
 

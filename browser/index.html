@@ -293,7 +293,7 @@
             width: 80%;
             text-align: center;
         }
-        
+
         .mute-btn.active {
             background-color: #e74c3c;
             border-color: #c0392b;
@@ -312,7 +312,7 @@
             width: 80%;
             text-align: center;
         }
-        
+
         .solo-btn.active {
             background-color: #f1c40f;
             border-color: #f39c12;
@@ -349,19 +349,19 @@
 
         /* Modal Styles */
         .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
+            display: none;
+            position: fixed;
+            z-index: 1000;
             left: 0;
             top: 0;
-            width: 100%; 
-            height: 100%; 
-            background-color: rgba(0,0,0,0.6); 
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
         }
 
         .modal-content {
             background-color: #222;
-            margin: 15% auto; 
+            margin: 15% auto;
             padding: 20px;
             border: 1px solid #444;
             width: 400px;
@@ -388,21 +388,43 @@
             text-decoration: none;
             cursor: pointer;
         }
-        
+
         .info-table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         .info-table td {
             padding: 8px 0;
             border-bottom: 1px solid #333;
         }
-        
+
         .info-table td:first-child {
             font-weight: bold;
             color: #aaa;
             width: 60%;
+        }
+
+        .master-vu-container {
+            width: 200px;
+            height: 10px;
+            background: linear-gradient(to right, #0f0 50%, #ff0 85%, #f00 100%);
+            border: 1px solid #000;
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .master-vu-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #222;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transform-origin: right;
+            transform: scaleX(1);
         }
     </style>
 </head>
@@ -431,7 +453,15 @@
                 <input type="range" id="seeker" min="0" value="0" disabled>
                 <span class="time-display" id="totalTime">00:00.000</span>
             </div>
-            <progress id="renderProgress" value="0" max="100" style="display: none; width: 100%; height: 8px; margin-top: 10px;"></progress>
+            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-end;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-size: 0.9em; color:#aaa;">Polyphony:</label>
+                    <span id="polyphonyCounter"
+                        style="font-family: monospace; background: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">0</span>
+                </div>
+            </div>
+            <progress id="renderProgress" value="0" max="100"
+                style="display: none; width: 100%; height: 8px; margin-top: 10px;"></progress>
         </div>
         <div style="margin-top: 10px;" id="status">Waiting for initialization...</div>
     </div>
@@ -450,10 +480,25 @@
 
     <div class="panel">
         <h3>Mixing Console</h3>
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
             <label>
                 <input type="checkbox" id="mixerSyncToggle" checked> Sync with MIDI Events
             </label>
+            <div
+                style="display: flex; align-items: center; gap: 15px; background: #222; padding: 10px 15px; border-radius: 6px; border: 1px solid #333;">
+                <div style="text-align: right;">
+                    <strong style="display: block; font-size: 1.1em; color: #fff;">Audio Output Level</strong>
+                    <span style="font-size: 0.8em; color: #888;">Master Volume (L/R Mix)</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div class="master-vu-container">
+                        <div class="master-vu-bar" id="masterVuL"></div>
+                    </div>
+                    <div class="master-vu-container">
+                        <div class="master-vu-bar" id="masterVuR"></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="mixer" class="mixer-container"></div>
     </div>
@@ -464,18 +509,37 @@
             <span class="close-btn" id="closeModal">&times;</span>
             <h2>Song Information</h2>
             <table class="info-table">
-                <tr><td>Note Tracks</td><td id="infoTracks">-</td></tr>
-                <tr><td>Active Channels</td><td id="infoChannels">-</td></tr>
-                <tr><td>Max Tick (Samples)</td><td id="infoMaxTick">-</td></tr>
-                <tr><td>Duration</td><td id="infoDuration">-</td></tr>
-                <tr><td>Sample Rate</td><td id="infoSampleRate">-</td></tr>
-                <tr><td>Bit Depth</td><td id="infoBitDepth">-</td></tr>
-                <tr><td>Estimated PCM Size</td><td id="infoPcmSize">-</td></tr>
+                <tr>
+                    <td>Note Tracks</td>
+                    <td id="infoTracks">-</td>
+                </tr>
+                <tr>
+                    <td>Active Channels</td>
+                    <td id="infoChannels">-</td>
+                </tr>
+                <tr>
+                    <td>Max Tick (Samples)</td>
+                    <td id="infoMaxTick">-</td>
+                </tr>
+                <tr>
+                    <td>Duration</td>
+                    <td id="infoDuration">-</td>
+                </tr>
+                <tr>
+                    <td>Sample Rate</td>
+                    <td id="infoSampleRate">-</td>
+                </tr>
+                <tr>
+                    <td>Bit Depth</td>
+                    <td id="infoBitDepth">-</td>
+                </tr>
+                <tr>
+                    <td>Estimated PCM Size</td>
+                    <td id="infoPcmSize">-</td>
+                </tr>
             </table>
         </div>
     </div>
-
-    <script src="timidity-player.js"></script>
 
     <div class="panel">
         <h3>MIDI Controller Input</h3>
@@ -519,11 +583,11 @@
             const mixerSyncToggle = document.getElementById("mixerSyncToggle");
             const transposeEl = document.getElementById("transpose");
             const transposeValueEl = document.getElementById("transposeValue");
-            
+
             // Modal Elements
             const infoModal = document.getElementById("infoModal");
             const closeModal = document.getElementById("closeModal");
-            
+
             songInfoBtn.onclick = () => {
                 if (!player) return;
                 const info = player.getInfo();
@@ -538,12 +602,12 @@
                     infoModal.style.display = "block";
                 }
             };
-            
+
             closeModal.onclick = () => infoModal.style.display = "none";
             window.onclick = (e) => {
                 if (e.target == infoModal) infoModal.style.display = "none";
             };
-            
+
             // Solo logic state
             const soloState = new Array(16).fill(false);
             const muteState = new Array(16).fill(false);
@@ -619,7 +683,44 @@
             player.on('onPlaying', (tick, elapsedMs) => { // Update seeker and current time
                 seekerEl.value = elapsedMs / 1000;
                 currentTimeEl.textContent = player.formatTime(elapsedMs / 1000);
+
+                // Update DAW Meters
+                const activeVoices = player.getActiveVoices();
+                document.getElementById('polyphonyCounter').textContent = activeVoices;
+
+                const peakL = player.getMasterPeak(0, true); // Left, reset=true
+                const peakR = player.getMasterPeak(1, true); // Right, reset=true
+                const maxPeak = 127;
+
+                let targetL = (peakL / maxPeak) * 100;
+                let targetR = (peakR / maxPeak) * 100;
+
+                // Initialize state if not present
+                if (typeof player._vuL === 'undefined') player._vuL = 0;
+                if (typeof player._vuR === 'undefined') player._vuR = 0;
+
+                // Smooth decay logic
+                player._vuL = targetL > player._vuL ? targetL : player._vuL + (targetL - player._vuL) * 0.15;
+                player._vuR = targetR > player._vuR ? targetR : player._vuR + (targetR - player._vuR) * 0.15;
+
+                // Left Channel
+                let widthL = player._vuL;
+                if (widthL > 100) widthL = 100;
+                document.getElementById('masterVuL').style.transform = `scaleX(${1 - (widthL / 100)})`;
+                
+                // Right Channel
+                let widthR = player._vuR;
+                if (widthR > 100) widthR = 100;
+                document.getElementById('masterVuR').style.transform = `scaleX(${1 - (widthR / 100)})`;
             });
+            
+            function resetMasterVu() {
+                player._vuL = 0;
+                player._vuR = 0;
+                document.getElementById('masterVuL').style.transform = 'scaleX(1)';
+                document.getElementById('masterVuR').style.transform = 'scaleX(1)';
+                document.getElementById('polyphonyCounter').textContent = '0';
+            }
 
             player.on('onPlay', () => {
                 playPauseBtn.textContent = 'Pause';
@@ -634,6 +735,7 @@
             player.on('onPause', () => { // Playback paused
                 playPauseBtn.textContent = 'Play';
                 statusEl.textContent = `Paused: ${midiFileEl.files[0]?.name || 'Real-time Player'}`;
+                resetMasterVu();
             });
 
             player.on('onStop', () => {
@@ -645,6 +747,7 @@
                 seekerEl.value = 0;
                 stopBtn.disabled = true;
                 renderWavBtn.disabled = true;
+                resetMasterVu();
             });
 
             player.on('onEnded', () => {
@@ -744,17 +847,17 @@
                 // Bind mixer events
                 const soloBtn = document.getElementById(`solo-btn-${i}`);
                 const muteBtn = document.getElementById(`mute-btn-${i}`);
-                
+
                 soloBtn.addEventListener('click', () => {
                     soloState[i] = soloBtn.classList.toggle('active');
                     updateMutesFromSolo();
                 });
-                
+
                 muteBtn.addEventListener('click', () => {
                     muteState[i] = muteBtn.classList.toggle('active');
                     updateMutesFromSolo();
                 });
-                
+
                 document.getElementById(`vol-${i}`).addEventListener('input', (e) => {
                     player.sendEvent(player.ME_MAINVOLUME, i, parseInt(e.target.value));
                 });
@@ -906,7 +1009,7 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                 }
-                
+
                 statusEl.textContent = "Rendering complete.";
                 renderProgress.style.display = 'none';
                 renderWavBtn.disabled = false;
