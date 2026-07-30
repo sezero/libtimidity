@@ -433,7 +433,6 @@
     <div class="panel">
         <div class="transport">
             <h1>libTiMidity DAW</h1>
-            <button id="init">Initialize Audio</button>
             <input type="file" id="midiFile" accept=".mid,.midi">
             <button id="playPause" disabled>Play</button>
             <button id="stop" disabled>Stop</button>
@@ -597,6 +596,8 @@
     </div>
 
     <script>
+
+        let patchUrlBase = 'gus-patch';
 
         let volumeControls = {};
         let panControls = {};
@@ -821,7 +822,6 @@
                     player.setTranspose(val);
                 }
             };
-            const initBtn = document.getElementById("init");
             const midiFileEl = document.getElementById("midiFile");
             const pianoChannelSelect = document.getElementById('pianoChannel');
             const noteOnBtn = document.getElementById("noteOn");
@@ -835,6 +835,8 @@
 
 
             player = new TimidityPlayer({ patchUrlBase: patchUrlBase });
+            player.init();
+
             // Set initial sync state from the checkbox
             player.isSyncEnabled = mixerSyncToggle.checked;
 
@@ -892,11 +894,11 @@
             let isSeeking = false;
             seekerEl.oninput = () => { isSeeking = true; };
 
-            player.on('onPlaying', (tick, elapsedMs) => { // Update seeker and current time
+            player.on('onPlaying', (tick, elapsedSecs) => { // Update seeker and current time
                 if (!isSeeking) {
-                    seekerEl.value = elapsedMs / 1000;
+                    seekerEl.value = elapsedSecs;
                 }
-                currentTimeEl.textContent = player.formatTime(elapsedMs / 1000);
+                currentTimeEl.textContent = player.formatTime(elapsedSecs);
 
                 // Update DAW Meters
                 const activeVoices = player.getActiveVoices();
@@ -1228,9 +1230,7 @@
                 stopBtn.disabled = true;
             });
 
-            initBtn.onclick = async () => {
-                if (await player.init()) initBtn.disabled = true;
-            };
+
             midiFileEl.onchange = (event) => {
                 const file = event.target.files[0];
                 if (file) player.load(file); // Load selected MIDI file

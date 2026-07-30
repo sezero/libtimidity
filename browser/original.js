@@ -1,10 +1,5 @@
 var Module = {};
 
-Module.timidityReady = false;
-Module.onRuntimeInitialized = function () {
-    Module.timidityReady = true;
-};
-
 // This must be defined *before* libtimidity.js is loaded and executed.
 Module.preRun = [() => {
     FS.mkdir('/gus-patch');
@@ -32,7 +27,7 @@ class TimidityPlayer {
         this.audioContext = null;
         this.scriptNode = null;
         this.songPtr = 0; // Pointer to the C MidSong object
-        this.loadedPatches = new Map(); // Map of filename -> Promise
+        this.loadedPatches = new Set();
         this.eventListeners = {};
         this.playingInterval = null;
         this.isPlaying = false;
@@ -58,20 +53,8 @@ class TimidityPlayer {
         this.ME_TONE_BANK = 15;
         this.ME_CONTROL_CHANGE = 16; // New constant for generic Control Change
         this.totalDuration = 0; // Total duration in seconds
-        this.midiInfo = {};
 
-        // If the WebAssembly module has already finished initializing, set up the C bindings immediately.
-        if (this.Module.timidityReady) {
-            this._onRuntimeInitialized();
-        } else {
-            // Otherwise, we must wait. But since this wrapper expects synchronous usage,
-            // we override the existing onRuntimeInitialized to ALSO call our initialization.
-            const orig = this.Module.onRuntimeInitialized;
-            this.Module.onRuntimeInitialized = () => {
-                if (orig) orig();
-                this._onRuntimeInitialized();
-            };
-        }
+        this.Module.onRuntimeInitialized = () => this._onRuntimeInitialized();
     }
 
     // --- Event Emitter ---
@@ -170,46 +153,28 @@ class TimidityPlayer {
 
     }
 
-    _loadRequiredPatches(patchListString) {
-        if (!patchListString) return Promise.resolve();
+    async _loadRequiredPatches(patchListString) {
+        if (!patchListString) return;
 
-        const requiredPatches = patchListString.split('\n').filter(p => p.length > 0);
+        const requiredPatches = patchListString.split('\n').filter(p => p.length > 0 && !this.loadedPatches.has(p));
         const total = requiredPatches.length;
-        if (total === 0) return Promise.resolve();
+        if (total === 0) return;
 
         this.emit('onInstrumentLoading', 0, total, '');
 
         const preloadPromises = requiredPatches.map(file => {
-            if (this.loadedPatches.has(file)) {
-                return this.loadedPatches.get(file);
-            }
-
             const fullVirtualPath = `/${this.patchUrlBase}/${file}`; // e.g., /gus-patch/pat/0/arachno-000.pat
             this.Module.FS.mkdirTree(this.Module.PATH.dirname(fullVirtualPath)); // Create /gus-patch/pat/0
-
-            const promise = new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 this.emit('onInstrumentLoading', this.loadedPatches.size, total, file);
-                try {
-                    this.Module.FS.createPreloadedFile(this.Module.PATH.dirname(fullVirtualPath), this.Module.PATH.basename(file), `${this.patchUrlBase}/${file}`, true, true, resolve, reject); // Preload from server
-                } catch (e) {
-                    if (e.name === 'ErrnoError' || (e.message && e.message.includes('File exists'))) {
-                        resolve();
-                    } else {
-                        console.warn("Patch loading error:", file, e);
-                        reject(e);
-                    }
-                }
-            }).catch(e => {
-                console.warn("Failed to load patch asynchronously:", file, e);
+                this.Module.FS.createPreloadedFile(this.Module.PATH.dirname(fullVirtualPath), this.Module.PATH.basename(file), `${this.patchUrlBase}/${file}`, true, true, resolve, reject); // Preload from server
+            }).then(() => {
+                this.loadedPatches.add(file);
             });
-
-            this.loadedPatches.set(file, promise);
-            return promise;
         });
 
-        return Promise.all(preloadPromises).then(() => {
-            this.emit('onInstrumentLoaded', this.loadedPatches.size);
-        });
+        await Promise.all(preloadPromises);
+        this.emit('onInstrumentLoaded', this.loadedPatches.size);
     }
 
     // --- Public API ---
@@ -220,101 +185,93 @@ class TimidityPlayer {
      * @param {boolean} [offline=false] - Whether to initialize an OfflineAudioContext for rendering without playback.
      * @returns {Promise<boolean>} True if initialization was successful, false otherwise.
      */
-    init(offline = false) {
+    async init(offline = false) {
         if (this.audioContext) {
             this.emit('error', "Already initialized.");
             return false;
         }
+        const rc = this.c.init(`/${this.patchUrlBase}/timidity.cfg`); // Initialize libTiMidity with config file
+        if (rc === 0) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass({ sampleRate: 44100 });
+            if (!offline) {
+                this.audioContext.suspend();
 
-        // Initialize AudioContext synchronously so load() doesn't fail its check
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        this.audioContext = offline ? new OfflineAudioContext(2, 44100 * 60, 44100) : new AudioContextClass({ sampleRate: 44100 });
-        if (!offline) {
-            this.audioContext.suspend();
-        }
+                await this.initRealtimeSong();
 
-        return this._waitForRuntime().then(() => {
-            const rc = this.c.init(`/${this.patchUrlBase}/timidity.cfg`); // Initialize libTiMidity with config file
-            if (rc === 0) {
-                if (!offline) {
+                const bufferSize = 4096;
+                this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
 
-                    // Removed await this.initRealtimeSong() because we'll chain it
-                    let rtPromise = this.initRealtimeSong() || Promise.resolve();
+                this.scriptNode.onaudioprocess = (e) => {
+                    const outL = e.outputBuffer.getChannelData(0);
+                    const outR = e.outputBuffer.getChannelData(1);
+                    outL.fill(0);
+                    outR.fill(0);
 
-                    const bufferSize = 4096;
-                    this.scriptNode = this.audioContext.createScriptProcessor(bufferSize, 0, 2);
+                    const pcmBytes = bufferSize * 2 * 2;
+                    let bytesReadMain = 0;
 
-                    this.scriptNode.onaudioprocess = (e) => {
-                        const outL = e.outputBuffer.getChannelData(0);
-                        const outR = e.outputBuffer.getChannelData(1);
-                        outL.fill(0);
-                        outR.fill(0);
-
-                        const pcmBytes = bufferSize * 2 * 2;
-                        let bytesReadMain = 0;
-
-                        if (this.songPtr !== 0 && !this.isPaused && this.isPlaying) {
-                            const pcmBufferPtr = this.Module._malloc(pcmBytes);
-                            bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes, 0);
-                            if (bytesReadMain > 0) {
-                                const samplesRead = bytesReadMain / 4;
-                                for (let i = 0; i < samplesRead; i++) {
-                                    outL[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)] / 32768.0;
-                                    outR[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
-                                }
-                            }
-                            this.Module._free(pcmBufferPtr);
-
-                            if (bytesReadMain <= 0) {
-                                console.log("readWave returned " + bytesReadMain + ", stopping playback. songPtr=" + this.songPtr + ", isPlaying=" + this.isPlaying);
-                                this.stop();
-                                this.emit('onEnded');
+                    if (this.songPtr !== 0 && !this.isPaused && this.isPlaying) {
+                        const pcmBufferPtr = this.Module._malloc(pcmBytes);
+                        bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes, 0);
+                        if (bytesReadMain > 0) {
+                            const samplesRead = bytesReadMain / 4;
+                            for (let i = 0; i < samplesRead; i++) {
+                                outL[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2)] / 32768.0;
+                                outR[i] = this.Module.HEAP16[(pcmBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
                             }
                         }
+                        this.Module._free(pcmBufferPtr);
 
-                        if (this.realtimeSongPtr) {
-                            const rtBufferPtr = this.Module._malloc(pcmBytes);
-                            const rtBytes = this.c.readWave(this.realtimeSongPtr, rtBufferPtr, pcmBytes, 0);
-                            if (rtBytes > 0) {
-                                const samplesRead = rtBytes / 4;
-                                for (let i = 0; i < samplesRead; i++) {
-                                    outL[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2)] / 32768.0;
-                                    outR[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
-                                }
+                        if (bytesReadMain <= 0) {
+                            this.stop();
+                            this.emit('onEnded');
+                        }
+                    }
+
+                    if (this.realtimeSongPtr) {
+                        const rtBufferPtr = this.Module._malloc(pcmBytes);
+                        const rtBytes = this.c.readWave(this.realtimeSongPtr, rtBufferPtr, pcmBytes, 0);
+                        if (rtBytes > 0) {
+                            const samplesRead = rtBytes / 4;
+                            for (let i = 0; i < samplesRead; i++) {
+                                outL[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2)] / 32768.0;
+                                outR[i] += this.Module.HEAP16[(rtBufferPtr >> 1) + (i * 2) + 1] / 32768.0;
                             }
-                            this.Module._free(rtBufferPtr);
                         }
+                        this.Module._free(rtBufferPtr);
+                    }
 
-                        // Calculate Master Peak from final mixed audio
-                        let peakL = 0;
-                        let peakR = 0;
-                        for (let i = 0; i < bufferSize; i++) {
-                            let l = Math.abs(outL[i]);
-                            let r = Math.abs(outR[i]);
-                            if (l > peakL) peakL = l;
-                            if (r > peakR) peakR = r;
-                        }
-                        this.masterPeakL = Math.max(this.masterPeakL || 0, peakL);
-                        this.masterPeakR = Math.max(this.masterPeakR || 0, peakR);
-                    };
+                    // Calculate Master Peak from final mixed audio
+                    let peakL = 0;
+                    let peakR = 0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        let l = Math.abs(outL[i]);
+                        let r = Math.abs(outR[i]);
+                        if (l > peakL) peakL = l;
+                        if (r > peakR) peakR = r;
+                    }
+                    this.masterPeakL = Math.max(this.masterPeakL || 0, peakL);
+                    this.masterPeakR = Math.max(this.masterPeakR || 0, peakR);
+                };
 
-                    this.scriptNode.connect(this.audioContext.destination);
-                }
-
-                // Preload the default instrument (Acoustic Grand Piano) for the real-time player
-                // This ensures that the debug buttons and initial MIDI controller input work immediately.
-                return this.setRealtimeInstrument(0, 0, 0).then(() => {
-                    console.log("Default real-time instrument (Piano) preloaded.");
-                    const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiippp');
-                    this.c.setEventCallback(0, callbackPtr);
-                    this.emit('onInit');
-                    return true;
-                });
-            } else {
-                this.emit('error', "Initialization failed. Check patch files.");
-                return false;
+                this.scriptNode.connect(this.audioContext.destination);
             }
-        });
+
+            // Preload the default instrument (Acoustic Grand Piano) for the real-time player
+            // This ensures that the debug buttons and initial MIDI controller input work immediately.
+            await this.setRealtimeInstrument(0, 0, 0).then(() => {
+                console.log("Default real-time instrument (Piano) preloaded.");
+            });
+
+            const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiippp');
+            this.c.setEventCallback(0, callbackPtr);
+            this.emit('onInit');
+            return true;
+        } else {
+            this.emit('error', "Initialization failed. Check patch files.");
+            return false;
+        }
     }
 
     /**
@@ -322,7 +279,7 @@ class TimidityPlayer {
      * This prepares an empty song specifically used for real-time MIDI input.
      * @returns {Promise<void>}
      */
-    initRealtimeSong() {
+    async initRealtimeSong() {
         if (this.realtimeSongPtr) return;
 
         const midiBytes = [
@@ -353,7 +310,6 @@ class TimidityPlayer {
         if (this.realtimeSongPtr !== 0) {
             this.c.startSong(this.realtimeSongPtr);
         }
-        return Promise.resolve();
     }
 
     /**
@@ -383,111 +339,67 @@ class TimidityPlayer {
     /**
      * Loads a MIDI file into the player and prepares required patches.
      * @param {File|Uint8Array} midi - The MIDI file data to load.
-     * @param {Function} [callback=null] - Optional callback function called when loading finishes.
      * @returns {Promise<boolean>} True if loaded successfully, false otherwise.
      */
-    load(midi, callback = null) {
+    async load(midi) {
         if (!this.audioContext) {
             this.emit('error', "Player not initialized. Call init() first.");
-            if (callback) callback(false);
-            return Promise.resolve(false);
+            return false;
         }
         if (this.songPtr !== 0) {
             this.stop();
         }
 
         this.emit('onMidiLoading', midi);
-        this.midiInfo = {};
 
-        let midiDataPromise;
-        if (midi instanceof Uint8Array) {
-            midiDataPromise = Promise.resolve(midi);
-        } else if (typeof midi === 'string') {
-            if (midi.substring(0, 4) === 'MThd') {
-                const md = new Uint8Array(midi.length);
-                for (let i = 0; i < midi.length; i++) md[i] = midi.charCodeAt(i);
-                midiDataPromise = Promise.resolve(md);
-            } else if (midi.indexOf("data:") !== -1) {
-                const dataOffset = midi.indexOf(",") + 1;
-                const binaryString = atob(midi.substring(dataOffset));
-                const md = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) md[i] = binaryString.charCodeAt(i);
-                midiDataPromise = Promise.resolve(md);
-            } else {
-                midiDataPromise = fetch(midi).then(response => {
-                    if (!response.ok) throw new Error("Failed to load MIDI file from URL: " + response.statusText);
-                    return response.arrayBuffer().then(buf => new Uint8Array(buf));
-                });
-            }
-        } else if (midi && typeof midi.arrayBuffer === 'function') {
-            midiDataPromise = midi.arrayBuffer().then(buffer => new Uint8Array(buffer));
-        } else {
-            return Promise.reject(new Error("Unsupported MIDI data format"));
+        const midiData = (midi instanceof Uint8Array) ? midi : new Uint8Array(await midi.arrayBuffer()); // Handle File object or Uint8Array
+        this.lastMidiData = midiData; // Store for offline rendering reloading
+
+        const midiDataPtr = this.Module._malloc(midiData.length);
+        this.Module.HEAPU8.set(midiData, midiDataPtr);
+
+        const optionsPtr = this.Module._malloc(12);
+        this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+        this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+        this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
+        this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+        const streamPtr = this.c.openMemoryStream(midiDataPtr, midiData.length); // Create memory stream for MIDI data
+        const patchListString = this.c.getRequiredPatches(streamPtr); // Analyze MIDI to get required patches
+        console.log("Required patches:", patchListString);
+        await this._loadRequiredPatches(patchListString);
+
+        this.c.seekStream(streamPtr, 0, 0); // Rewind stream to beginning
+        this.songPtr = this.c.loadSong(streamPtr, optionsPtr); // Load song
+
+        // Build tempo map for accurate goTo(ticks)
+        try {
+            this.tempoMap = this._buildTempoMap(this.lastMidiData);
+        } catch (e) {
+            console.warn("Failed to parse tempo map:", e);
         }
 
+        if (this.songPtr !== 0) {
+            const callbackPtr = this.Module.addFunction(this._handleMidiEvent.bind(this), 'viiiiiii');
+            this.c.setEventCallback(this.songPtr, callbackPtr);
+        }
 
+        if (this.songPtr !== 0) {
+            this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
+            // Process initial events at tick 0 to set up mixer state
+            if (this.isSyncEnabled) {
+                this.seek(0);
+            }
+            this.emit('onMidiLoaded', midi);
+            return true;
+        } else {
+            this.emit('error', "Failed to load MIDI file.");
+            return false;
+        }
 
-        return midiDataPromise.then(midiData => {
-            return this._waitForRuntime().then(() => {
-                this.lastMidiData = midiData; // Store for offline rendering reloading
-
-                const midiDataPtr = this.Module._malloc(midiData.length);
-                this.Module.HEAPU8.set(midiData, midiDataPtr);
-
-                const optionsPtr = this.Module._malloc(12);
-                this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
-                this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
-                this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
-                this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
-
-                const streamPtr = this.c.openMemoryStream(midiDataPtr, midiData.length); // Create memory stream for MIDI data
-                const patchListString = this.c.getRequiredPatches(streamPtr); // Analyze MIDI to get required patches
-
-                return this._loadRequiredPatches(patchListString).then(() => {
-                    this.c.seekStream(streamPtr, 0, 0); // Rewind stream to beginning
-                    this.songPtr = this.c.loadSong(streamPtr, optionsPtr); // Load song
-
-                    // Build tempo map for accurate goTo(ticks)
-                    try {
-                        this.tempoMap = this._buildTempoMap(this.lastMidiData);
-                    } catch (e) {
-                        console.warn("Failed to parse tempo map:", e);
-                    }
-
-                    if (this.songPtr !== 0) {
-                        const callbackPtr = this.Module.addFunction(this._handleMidiEvent.bind(this), 'viiiiiii');
-                        this.c.setEventCallback(this.songPtr, callbackPtr);
-                    }
-
-                    if (this.songPtr !== 0) {
-                        this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
-                        console.log("loadSong success. songPtr:", this.songPtr, "duration:", this.totalDuration);
-                        // Process initial events at tick 0 to set up mixer state
-                        if (this.isSyncEnabled) {
-                            this.seek(0);
-                        }
-                        this.emit('onMidiLoaded', midi);
-
-                        this.currentStreamPtr = streamPtr;
-                        this.currentMidiDataPtr = midiDataPtr;
-                        this.currentOptionsPtr = optionsPtr;
-                        this.midiInfo = this.getInfo();
-                        this.totalDuration = this.midiInfo?.duration_sec || 0;
-
-                        if (callback) callback(true);
-                        return true;
-                    } else {
-                        this.emit('error', "Failed to load MIDI file.");
-
-                        this.c.closeStream(streamPtr); // Close memory stream
-                        this.Module._free(midiDataPtr);
-                        this.Module._free(optionsPtr);
-                        if (callback) callback(false);
-                        return false;
-                    }
-                });
-            });
-        });
+        this.c.closeStream(streamPtr); // Close memory stream
+        this.Module._free(midiDataPtr);
+        this.Module._free(optionsPtr);
     }
 
     /**
@@ -495,26 +407,17 @@ class TimidityPlayer {
      * @param {number} [offset=0] - The time offset in seconds to start playing from.
      * @param {Object} [options={}] - Additional playback options.
      */
-    play(offset = 0, options = {}) {
+    async play(offset = 0, options = {}) {
         if (!this.audioContext || this.songPtr === 0) return;
 
         this.c.startSong(this.songPtr); // Prepare song for playback
         if (offset > 0) this.seek(offset); // Seek if offset is provided
 
-        const updatePlaying = () => {
+        this.playingInterval = setInterval(() => {
             if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) {
-                this.emit('onPlaying', this.c.getCurrentTick(this.songPtr) / 1000);
+                this.emit('onPlaying', this.c.getCurrentTick(this.songPtr), this.c.getTime(this.songPtr));
             }
-            if (this.isPlaying) {
-                this.playingInterval = requestAnimationFrame(updatePlaying);
-            }
-        };
-
-        if (this.playingInterval) {
-            cancelAnimationFrame(this.playingInterval);
-            clearInterval(this.playingInterval); // Fallback in case it was setInterval
-        }
-        this.playingInterval = requestAnimationFrame(updatePlaying);
+        }, 1000); // Update every 1 second
 
         this.isPlaying = true;
         this.isPaused = false;
@@ -530,12 +433,10 @@ class TimidityPlayer {
      * @param {Object} [options={}] - Additional playback options.
      * @returns {Promise<void>}
      */
-    loadAndPlay(midi, offset = 0, options = {}) {
-        return this.load(midi).then((success) => {
-            if (success) {
-                this.play(offset, options);
-            }
-        });
+    async loadAndPlay(midi, offset = 0, options = {}) {
+        if (await this.load(midi)) {
+            await this.play(offset, options);
+        }
     }
 
     /**
@@ -651,7 +552,7 @@ class TimidityPlayer {
      * @param {number} [options.monoToStereoWeight=5] - The intensity of the stereo widening effect (gain in dB).
      * @returns {Promise<Blob>} The generated WAV file as a Blob.
      */
-    renderOffline(options = {}) {
+    async renderOffline(options = {}) {
         if (!this.lastMidiData) return null;
 
         if (this.isPlaying) {
@@ -831,28 +732,28 @@ class TimidityPlayer {
                                 // Menggunakan EQ berkebalikan untuk L dan R tanpa delay agar tidak ada gema/phase shift.
                                 const splitter = offlineCtx.createChannelSplitter(2);
                                 const merger = offlineCtx.createChannelMerger(2);
-
+                                
                                 spatialSourceNode.connect(splitter);
 
                                 // Filter Left (Boost Highs, Cut Lows)
                                 const filterL1 = offlineCtx.createBiquadFilter();
                                 filterL1.type = 'highshelf';
                                 filterL1.frequency.value = 2500;
-                                filterL1.gain.value = monoToStereoWeight;
+                                filterL1.gain.value = monoToStereoWeight; 
                                 const filterL2 = offlineCtx.createBiquadFilter();
                                 filterL2.type = 'lowshelf';
                                 filterL2.frequency.value = 400;
-                                filterL2.gain.value = -monoToStereoWeight;
+                                filterL2.gain.value = -monoToStereoWeight; 
 
                                 // Filter Right (Cut Highs, Boost Lows)
                                 const filterR1 = offlineCtx.createBiquadFilter();
                                 filterR1.type = 'highshelf';
                                 filterR1.frequency.value = 2500;
-                                filterR1.gain.value = -monoToStereoWeight;
+                                filterR1.gain.value = -monoToStereoWeight; 
                                 const filterR2 = offlineCtx.createBiquadFilter();
                                 filterR2.type = 'lowshelf';
                                 filterR2.frequency.value = 400;
-                                filterR2.gain.value = monoToStereoWeight;
+                                filterR2.gain.value = monoToStereoWeight; 
 
                                 // Routing
                                 splitter.connect(filterL1, 0, 0); // Ambil channel kiri
@@ -1003,27 +904,10 @@ class TimidityPlayer {
      */
     stop() {
         if (this.songPtr !== 0) {
-            if (this.playingInterval) {
-                cancelAnimationFrame(this.playingInterval);
-                clearInterval(this.playingInterval);
-            }
+            if (this.playingInterval) clearInterval(this.playingInterval);
             this.playingInterval = null;
             this.c.freeSong(this.songPtr);
             this.songPtr = 0;
-
-            if (this.currentStreamPtr) {
-                this.c.closeStream(this.currentStreamPtr);
-                this.currentStreamPtr = 0;
-            }
-            if (this.currentMidiDataPtr) {
-                this.Module._free(this.currentMidiDataPtr);
-                this.currentMidiDataPtr = 0;
-            }
-            if (this.currentOptionsPtr) {
-                this.Module._free(this.currentOptionsPtr);
-                this.currentOptionsPtr = 0;
-            }
-
             this.emit('onStop');
             // After stopping a song, the real-time synth might also be affected.
             // We re-initialize it to ensure it's ready for the next input.
@@ -1065,34 +949,31 @@ class TimidityPlayer {
      * @param {number} [velocity=100] - The note velocity (0-127).
      * @param {Object} [params={}] - Additional note parameters.
      */
-    noteOn(channel, program, pitch, velocity = 100, { bank = 0, pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
+    async noteOn(channel, program, pitch, velocity = 100, { bank = 0, pan = 64, bend = 8192, modulation = 0, chorus = 0, sustain = 0 } = {}) {
         if (!this.realtimeSongPtr || !this.audioContext || this.audioContext.state === 'closed') return;
 
         // If realtime synth was freed (e.g. after a stop()), re-initialize it.
-        let p = Promise.resolve();
         if (!this.realtimeSongPtr) {
-            p = this.initRealtimeSong() || Promise.resolve();
+            await this.initRealtimeSong();
         }
 
-        return p.then(() => {
-            if (this.audioContext?.state == 'suspended') {
-                this.audioContext.resume();
+        if (this.audioContext?.state == 'suspended') {
+            this.audioContext.resume();
+        }
+
+        // missingProgram could be the missing program number or drum key
+        const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
+
+        if (missingProgram > 0) {
+            console.warn(`Instrument for program ${program} (bank ${bank}) is missing. Dynamically loading...`);
+
+            // Load the instrument and then retry playing the note.
+            const loaded = await this.setRealtimeInstrument(channel, program, bank);
+            if (loaded) {
+                console.log(`Retrying noteOn for program ${program}`);
+                this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
             }
-
-            // missingProgram could be the missing program number or drum key
-            const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
-
-            if (missingProgram > 0) {
-                console.warn(`Instrument for program ${program} (bank ${bank}) is missing. Dynamically loading...`);
-
-                // Load the instrument and then retry playing the note.
-                return this.setRealtimeInstrument(channel, program, bank).then(loaded => {
-                    if (loaded) {
-                        this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
-                    }
-                });
-            }
-        });
+        }
     }
 
     /**
@@ -1114,7 +995,7 @@ class TimidityPlayer {
      * @param {number} [bank=0] - The instrument bank number.
      * @returns {Promise<boolean>} True if successfully loaded.
      */
-    setRealtimeInstrument(channel, program, bank = 0) {
+    async setRealtimeInstrument(channel, program, bank = 0) {
         if (!this.realtimeSongPtr) {
             console.warn("Realtime song not initialized, cannot set instrument.");
             return false;
@@ -1145,12 +1026,11 @@ class TimidityPlayer {
 
         // 2. Download the patch file(s) if not already downloaded
         if (patchListString) {
-            return this._loadRequiredPatches(patchListString).then(() => {
-                // 3. Command C to load the patch into the active realtimeSongPtr
-                return this.c.loadProgram(this.realtimeSongPtr, bank, program, isDrum) === 0;
-            });
+            await this._loadRequiredPatches(patchListString);
+            // 3. Command C to load the patch into the active realtimeSongPtr
+            return this.c.loadProgram(this.realtimeSongPtr, bank, program, isDrum) === 0;
         }
-        return Promise.resolve(false);
+        return false;
     }
 
     /**
@@ -1258,29 +1138,6 @@ class TimidityPlayer {
         const targetTimeSec = lastEvent.timeSec + deltaTimeSec;
 
         this.seek(targetTimeSec);
-    }
-
-    /**
-     * Converts a time in seconds to an approximate tick position with interpolation.
-     * This is useful for DAW playhead synchronization.
-     * @param {number} seconds - The time in seconds.
-     * @returns {number} The approximate tick position (float).
-     */
-    timeToTick(seconds) {
-        if (!this.tempoMap || !this.lastMidiData) {
-            // Cannot convert without a tempo map.
-            return 0;
-        }
-
-        let lastEvent = this.tempoMap.timeMap[0];
-        for (const ev of this.tempoMap.timeMap) {
-            if (ev.timeSec > seconds) break;
-            lastEvent = ev;
-        }
-
-        const deltaTimeSec = seconds - lastEvent.timeSec;
-        const deltaTicks = (deltaTimeSec * 1000000 / lastEvent.mpqn) * this.tempoMap.division;
-        return lastEvent.tick + deltaTicks;
     }
 
     /**
@@ -1578,7 +1435,7 @@ class TimidityPlayer {
      * @param {Function} callback - Callback function(wavBlob, trackIndex) executed after each stem is rendered.
      * @returns {Promise<void>} Resolves when all requested stems are exported.
      */
-    exportStems(trackList, options = {}, callback) {
+    async exportStems(trackList, options = {}, callback) {
         let tracksToExport = trackList;
 
         if (!tracksToExport || tracksToExport.length === 0) {
@@ -1586,21 +1443,16 @@ class TimidityPlayer {
             tracksToExport = Array.from({ length: totalTracks }, (_, i) => i);
         }
 
-        let p = Promise.resolve();
         for (let i = 0; i < tracksToExport.length; i++) {
-            p = p.then(() => {
-                const track = tracksToExport[i];
-                const renderOptions = Object.assign({}, options, { soloTrack: track });
+            const track = tracksToExport[i];
+            const renderOptions = Object.assign({}, options, { soloTrack: track });
 
-                return this.renderOffline(renderOptions).then(wavBlob => {
+            const wavBlob = await this.renderOffline(renderOptions);
 
-                    if (callback && typeof callback === 'function') {
-                        callback(wavBlob, track);
-                    }
-                });
-            });
+            if (callback && typeof callback === 'function') {
+                callback(wavBlob, track);
+            }
         }
-        return p;
     }
 
     /**
@@ -1635,87 +1487,64 @@ class TimidityPlayer {
     }
 
     /**
-     * Waits for the WebAssembly runtime to be fully initialized.
-     * @private
-     * @returns {Promise<void>}
-     */
-    _waitForRuntime() {
-        return new Promise((resolve) => {
-            const check = () => {
-                if (this.Module.timidityReady) {
-                    if (!this.c) this._onRuntimeInitialized();
-                    resolve();
-                } else {
-                    setTimeout(check, 50);
-                }
-            };
-            check();
-        });
-    }
-
-    /**
      * Loads and parses timidity.cfg to extract bank and drumset information.
      */
-    _loadTimidityCfg() {
-        if (this._cfgData) return Promise.resolve(this._cfgData);
-        return fetch(`${this.patchUrlBase}/timidity.cfg`)
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.text();
-            })
-            .then(text => {
+    async _loadTimidityCfg() {
+        if (this._cfgData) return this._cfgData;
+        try {
+            const response = await fetch(`${this.patchUrlBase}/timidity.cfg`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const text = await response.text();
 
-                const banks = new Map();
-                const drums = new Map();
+            const banks = new Map();
+            const drums = new Map();
 
-                let currentMode = 'bank';
-                let currentId = 0;
+            let currentMode = 'bank';
+            let currentId = 0;
 
-                const lines = text.split('\n');
-                for (let line of lines) {
-                    line = line.replace(/#.*/, '').trim(); // Remove comments
-                    if (!line) continue;
+            const lines = text.split('\n');
+            for (let line of lines) {
+                line = line.replace(/#.*/, '').trim(); // Remove comments
+                if (!line) continue;
 
-                    const parts = line.split(/\s+/);
-                    if (parts[0] === 'bank') {
-                        currentMode = 'bank';
-                        currentId = parseInt(parts[1], 10);
-                    } else if (parts[0] === 'drumset') {
-                        currentMode = 'drumset';
-                        currentId = parseInt(parts[1], 10);
-                    } else if (parts[0] === 'dir' || parts[0] === 'source') {
-                        // Ignore directory and source directives
-                    } else if (!isNaN(parseInt(parts[0], 10))) {
-                        const id = parseInt(parts[0], 10);
-                        const file = parts.slice(1).join(' ');
+                const parts = line.split(/\s+/);
+                if (parts[0] === 'bank') {
+                    currentMode = 'bank';
+                    currentId = parseInt(parts[1], 10);
+                } else if (parts[0] === 'drumset') {
+                    currentMode = 'drumset';
+                    currentId = parseInt(parts[1], 10);
+                } else if (parts[0] === 'dir' || parts[0] === 'source') {
+                    // Ignore directory and source directives
+                } else if (!isNaN(parseInt(parts[0], 10))) {
+                    const id = parseInt(parts[0], 10);
+                    const file = parts.slice(1).join(' ');
 
-                        if (currentMode === 'bank') {
-                            if (!banks.has(currentId)) banks.set(currentId, []);
-                            banks.get(currentId).push({ id: id, file: file });
-                        } else if (currentMode === 'drumset') {
-                            if (!drums.has(currentId)) drums.set(currentId, []);
-                            drums.get(currentId).push({ id: id, file: file });
-                        }
+                    if (currentMode === 'bank') {
+                        if (!banks.has(currentId)) banks.set(currentId, []);
+                        banks.get(currentId).push({ id: id, file: file });
+                    } else if (currentMode === 'drumset') {
+                        if (!drums.has(currentId)) drums.set(currentId, []);
+                        drums.get(currentId).push({ id: id, file: file });
                     }
                 }
+            }
 
-                this._cfgData = { banks, drums };
-                return this._cfgData;
-            })
-            .catch(e => {
-                console.error("Failed to load timidity.cfg:", e);
-                return { banks: new Map(), drums: new Map() };
-            });
+            this._cfgData = { banks, drums };
+            return this._cfgData;
+        } catch (e) {
+            console.error("Failed to load timidity.cfg:", e);
+            return { banks: new Map(), drums: new Map() };
+        }
     }
 
     /**
      * Returns a list of available bank numbers.
      * @returns {Promise<number[]>} Array of bank IDs.
      */
-    getBankList() {
-        return this._loadTimidityCfg().then(data => {
-            return Array.from(data.banks.keys()).sort((a, b) => a - b);
-        });
+    async getBankList() {
+        const data = await this._loadTimidityCfg();
+        return Array.from(data.banks.keys()).sort((a, b) => a - b);
     }
 
     /**
@@ -1723,11 +1552,10 @@ class TimidityPlayer {
      * @param {number} bank - The bank number.
      * @returns {Promise<Array<{id: number, file: string}>>} List of instruments.
      */
-    getInstrumentList(bank) {
-        return this._loadTimidityCfg().then(data => {
-            const list = data.banks.get(bank) || [];
-            return list.sort((a, b) => a.id - b.id);
-        });
+    async getInstrumentList(bank) {
+        const data = await this._loadTimidityCfg();
+        const list = data.banks.get(bank) || [];
+        return list.sort((a, b) => a.id - b.id);
     }
 
     /**
@@ -1735,10 +1563,9 @@ class TimidityPlayer {
      * @param {number} bank - The drumset bank number.
      * @returns {Promise<Array<{id: number, file: string}>>} List of drums.
      */
-    getDrumList(bank) {
-        return this._loadTimidityCfg().then(data => {
-            const list = data.drums.get(bank) || [];
-            return list.sort((a, b) => a.id - b.id);
-        });
+    async getDrumList(bank) {
+        const data = await this._loadTimidityCfg();
+        const list = data.drums.get(bank) || [];
+        return list.sort((a, b) => a.id - b.id);
     }
 }
