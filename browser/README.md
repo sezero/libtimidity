@@ -12,7 +12,7 @@ The standard libTiMidity engine has been heavily modified and extended to meet t
 - **Dynamic Instrument Loading**: 
   Instead of freezing the browser to load hundreds of megabytes of soundfonts at once, the engine analyzes your `.mid` files or takes direct commands to load *only* the specific patches required for playback on-the-fly.
 - **Sample-Accurate Callbacks**:
-  Events (such as Lyrics, Meta-events, and Note On/Off triggers) are dispatched back to JavaScript precisely when the audio buffer reaches that exact sample. This guarantees flawless UI synchronization (like lighting up virtual piano keys or updating lyrics).
+  Events (such as Lyrics, Meta-events, and Note On/Off triggers) are dispatched back to JavaScript precisely when the audio buffer reaches that exact sample. This guarantees flawless UI synchronization (like lighting up virtual piano keys or updating lyrics). Furthermore, callbacks are crucial for DAW integration, such as displaying per-channel VU meters. The VU meters don't just calculate initial velocity; they can be dynamically updated during real-time control changes like volume, expression, and pan. Pitch bend controls can also be updated directly from the callback, ensuring that the DAW's UI updates smoothly and stays perfectly in sync with automation.
 - **DAW Controller Emulation**:
   Full support for sending and retrieving `Control Change` events (Volume, Pan, Pitch Bend, Expression, Sustain) dynamically.
 - **Offline Rendering Protection**:
