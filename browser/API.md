@@ -64,7 +64,7 @@ Loads a MIDI file into the player and automatically analyzes and downloads the r
 Starts or resumes playback of the currently loaded MIDI song.
 - **Parameters:**
   - `offset` *(number)*: Time offset in seconds to start playing from.
-  - `options` *(Object)*: Additional playback configuration (currently reserved for future use).
+  - `options` *(Object)*: Additional playback configuration. *(Note: Currently in `timidity-player.js`, this object is empty and reserved for future use. No specific properties are implemented yet.)*
 
 ### `loadAndPlay(midi, offset = 0, options = {})`
 Convenience method to sequentially call `load()` and `play()`.
