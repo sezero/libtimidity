@@ -274,6 +274,10 @@ extern "C" {
  */
   TIMI_EXPORT extern uint32 mid_song_get_current_tick(MidSong *song);
 
+/* Set global transpose in semitones
+ */
+  TIMI_EXPORT extern void mid_song_set_transpose(MidSong *song, int semitones);
+
 /* Callback for MIDI events during playback */
 typedef void (*MidEventCallback)(uint32 tick, uint32 time_ms, uint8 status, uint8 channel, uint8 type, uintptr_t a, uintptr_t b, const char *text);
 

@@ -95,6 +95,7 @@ class TimidityPlayer {
             getRequiredPatches: cwrap('mid_song_get_required_patches', 'string', ['number']),
             startSong: cwrap('mid_song_start', null, ['number']),
             setEventCallback: cwrap('mid_song_set_event_callback', null, ['number', 'number']),
+            setTranspose: cwrap('mid_song_set_transpose', null, ['number', 'number']),
             readWave: cwrap('mid_song_read_wave', 'number', ['number', 'number', 'number', 'number']),
             openMemoryStream: cwrap('mid_istream_open_mem', 'number', ['number', 'number']),
             seekStream: cwrap('mid_istream_seek', 'number', ['number', 'number', 'number']),
@@ -381,6 +382,18 @@ class TimidityPlayer {
     async loadAndPlay(midi, offset = 0, options = {}) {
         if (await this.load(midi)) {
             await this.play(offset, options);
+        }
+    }
+
+    /**
+     * Set the global pitch transpose in semitones (-12 to +12)
+     */
+    setTranspose(semitones) {
+        if (this.songPtr !== 0) {
+            this.c.setTranspose(this.songPtr, semitones);
+        }
+        if (this.realtimeSongPtr !== 0) {
+            this.c.setTranspose(this.realtimeSongPtr, semitones);
         }
     }
 

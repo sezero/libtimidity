@@ -322,7 +322,12 @@
             <button id="free">Free Memory</button>
             <button id="exit">Shutdown</button>
 
-            <div class="seeker-container">
+            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                <label for="transpose">Transpose:</label>
+                <input type="range" id="transpose" min="-12" max="12" value="0" style="width: 100px;">
+                <span id="transposeValue">0</span>
+            </div>
+            <div style="margin-top: 10px;" class="seeker-container">
                 <span class="time-display" id="currentTime">00:00.000</span>
                 <input type="range" id="seeker" min="0" value="0" disabled>
                 <span class="time-display" id="totalTime">00:00.000</span>
@@ -389,6 +394,16 @@
             const freeBtn = document.getElementById("free");
             const exitBtn = document.getElementById("exit");
             const mixerSyncToggle = document.getElementById("mixerSyncToggle");
+            const transposeEl = document.getElementById("transpose");
+            const transposeValueEl = document.getElementById("transposeValue");
+
+            transposeEl.oninput = (e) => {
+                const val = parseInt(e.target.value, 10);
+                transposeValueEl.textContent = (val > 0 ? "+" : "") + val;
+                if (player) {
+                    player.setTranspose(val);
+                }
+            };
             const initBtn = document.getElementById("init");
             const midiFileEl = document.getElementById("midiFile");
             const pianoChannelSelect = document.getElementById('pianoChannel');

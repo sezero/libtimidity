@@ -18,12 +18,14 @@ The changes in this release were specifically made to meet the requirements for 
 - Added `mid_song_get_controller_value_at_tick` function to simulate playback up to a tick and query the state of a specific controller (volume, pan, pitch bend, expression, sustain) for any channel.
 - Added `mid_song_set_volume` to adjust global song amplification dynamically.
 - Added `mid_song_resend_active_notes` to forcefully trigger the callback for all currently playing notes, allowing the UI to refresh its state.
+- Added `mid_song_set_transpose` to instantly transpose all incoming notes (except drum channels) up or down by a specified number of semitones. Useful for quickly changing the key of the playback without modifying the original MIDI data.
 - Added **Event Callback** hook (`mid_song_set_event_callback`) to forward specific MIDI events (Note On/Off, Control Changes, lyric changes, tempo, meta-events) back to the JavaScript layer during the audio rendering loop.
 - Added **Debug Callback** hook (`mid_set_debug_msg_callback`) and `timi_debug_msg` in `common.c` to bridge internal libTiMidity debug output to the web browser console instead of `stderr`.
 
 **JavaScript API / TimidityPlayer**
-- Exposed all newly added C functions (`mid_song_create`, `mid_note_on`, etc.) via Emscripten `cwrap`.
+- Exposed all newly added C functions (`mid_song_create`, `mid_note_on`, `mid_song_set_transpose`, etc.) via Emscripten `cwrap`.
 - Added the `sendEvent()` method to forward DAW slider/control interactions simultaneously to `songPtr` (main song) and `realtimeSongPtr` (real-time synth).
+- Added `setTranspose(semitones)` method to globally adjust the pitch of the playback using the new C API.
 - Added the `initRealtimeSong()` method to create a persistent background *synthesizer* (`realtimeSongPtr`) utilizing the new `mid_song_create` C API.
 
 ### Changed

@@ -303,8 +303,15 @@ static void start_note(MidSong *song, MidEvent *e, int i)
 
       if (ip->sample->note_to_use) /* Fixed-pitch instrument? */
 	song->voice[i].orig_frequency = freq_table[(int)(ip->sample->note_to_use)];
-      else
-	song->voice[i].orig_frequency = freq_table[e->a & 0x7F];
+      else {
+        int note = e->a;
+        if (song->transpose_semitones != 0) {
+          note += song->transpose_semitones;
+          if (note < 0) note = 0;
+          if (note > 127) note = 127;
+        }
+	song->voice[i].orig_frequency = freq_table[note & 0x7F];
+      }
       select_sample(song, i, ip);
     }
 
@@ -845,6 +852,13 @@ void mid_song_set_volume(MidSong *song, int volume)
 	recompute_amp(song, i);
 	apply_envelope_to_amp(song, i);
       }
+}
+
+void mid_song_set_transpose(MidSong *song, int semitones)
+{
+  if (song) {
+    song->transpose_semitones = semitones;
+  }
 }
 
 int mid_note_on(MidSong *song, int channel, int bank, int program, int note, int velocity, int pan, int bend, int modulation, int chorus, int sustain)

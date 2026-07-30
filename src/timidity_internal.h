@@ -264,6 +264,7 @@ struct _MidSong
   sint32 at;
   sint32 groomed_event_count;
   char *meta_data[MID_META_MAX];
+  sint32 transpose_semitones;
 };
 
 /* The global callback, shared between modules */
