@@ -117,6 +117,7 @@ class TimidityPlayer {
             getInfoJson: cwrap('mid_song_get_info_json', 'string', ['number']),
             getActiveVoices: cwrap('mid_song_get_active_voices', 'number', ['number']),
             getMasterPeak: cwrap('mid_song_get_master_peak', 'number', ['number', 'number', 'number']),
+            forceMonoPan: cwrap('mid_song_force_mono_pan', null, ['number']),
             malloc: cwrap('malloc', 'number', ['number']),
         };
 
@@ -350,6 +351,8 @@ class TimidityPlayer {
         this.emit('onMidiLoading', midi);
 
         const midiData = (midi instanceof Uint8Array) ? midi : new Uint8Array(await midi.arrayBuffer()); // Handle File object or Uint8Array
+        this.lastMidiData = midiData; // Store for offline rendering reloading
+
         const midiDataPtr = this.Module._malloc(midiData.length);
         this.Module.HEAPU8.set(midiData, midiDataPtr);
 
@@ -531,52 +534,249 @@ class TimidityPlayer {
     /**
      * Renders the currently loaded MIDI song to a WAV Blob offline, without playing it.
      * Yields to the main thread periodically and emits 'onRenderProgress'.
+     * @param {Object} [options={}] - Options for rendering.
+     * @param {number} [options.sampleRate=44100] - The target sample rate.
+     * @param {boolean} [options.isMono=false] - If true, outputs 1 channel and centers pan.
+     * @param {boolean} [options.isSpatial=false] - If true, applies 3D spatial audio (overrides isMono to false).
+     * @param {boolean} [options.isSpatialInterpolation=false] - If true, interpolates spatial coordinates smoothly.
+     * @param {boolean} [options.monoToStereo=false] - If true, applies stereo widening (delay + detune) to the final output.
      * @returns {Promise<Blob>} The generated WAV file as a Blob.
      */
-    async renderOffline() {
-        if (this.songPtr === 0) return null;
+    async renderOffline(options = {}) {
+        if (!this.lastMidiData) return null;
 
         if (this.isPlaying) {
             this.pause();
         }
 
-        this.c.startSong(this.songPtr); // Restart song
+        let { sampleRate = 44100, isMono = false, isSpatial = false, isSpatialInterpolation = false, monoToStereo = false } = options;
+        if (isSpatial || monoToStereo) {
+            isMono = false; // Force stereo if spatial or stereo widening is requested
+        }
 
-        const totalTime = this.c.getTotalTime(this.songPtr);
+        // Initialize offline processing parameters
+        const channels = isMono ? 1 : 2;
+        
+        // Setup options for libTiMidity reload
+        const optionsPtr = this.Module._malloc(12);
+        this.Module.setValue(optionsPtr + 0, sampleRate, 'i32');
+        this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+        this.Module.setValue(optionsPtr + 6, channels, 'i8');
+        this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+
+        // Reload song from raw data for offline rendering
+        const midiDataPtr = this.Module._malloc(this.lastMidiData.length);
+        this.Module.HEAPU8.set(this.lastMidiData, midiDataPtr);
+        const streamPtr = this.c.openMemoryStream(midiDataPtr, this.lastMidiData.length);
+        
+        // We assume patches are already loaded from the previous normal load()
+        const renderSongPtr = this.c.loadSong(streamPtr, optionsPtr);
+        
+        this.c.closeStream(streamPtr);
+        this.Module._free(midiDataPtr);
+        this.Module._free(optionsPtr);
+
+        if (renderSongPtr === 0) {
+            this.emit('error', "Failed to prepare song for rendering.");
+            return null;
+        }
+
+        if (isMono && this.c.forceMonoPan) { // Optional C function we added
+            this.c.forceMonoPan(renderSongPtr);
+        }
+
+        this.c.startSong(renderSongPtr);
+
+        const totalTime = this.c.getTotalTime(renderSongPtr);
+        const durationSeconds = totalTime / 1000.0;
         let currentTime = 0;
 
         const bufferSize = 4096;
-        const pcmBytes = bufferSize * 2 * 2; // 4096 samples, 2 channels, 2 bytes/sample
+        const pcmBytes = bufferSize * channels * 2; // bytes per sample = 2
         const pcmBufferPtr = this.Module._malloc(pcmBytes);
 
         const chunks = [];
         let totalLength = 0;
+        
+        // Spatial Audio Setup
+        let offlineCtx = null;
+        let panner = null;
+        let spatialSourceNode = null;
+        let spatialBufferArray = null;
+        let spatialChannelDataL = null;
+        let spatialChannelDataR = null;
+        let spatialOffset = 0;
+        let spatialEvents = []; // To collect CC 20 and CC 21
+        
+        let renderCallbackPtr = 0;
+        
+        if (isSpatial && durationSeconds > 0) {
+            offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
+            panner = offlineCtx.createPanner();
+            panner.panningModel = 'HRTF';
+            panner.distanceModel = 'inverse';
+            panner.connect(offlineCtx.destination);
+            
+            // Initial center position
+            panner.positionX.setValueAtTime(0, 0);
+            panner.positionY.setValueAtTime(0, 0);
+            panner.positionZ.setValueAtTime(0, 0);
+
+            // Pre-allocate buffer for the entire song to feed into PannerNode
+            spatialBufferArray = offlineCtx.createBuffer(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
+            spatialChannelDataL = spatialBufferArray.getChannelData(0);
+            spatialChannelDataR = spatialBufferArray.getChannelData(1);
+            
+            // Attach callback to capture CC events during readWave loop
+            renderCallbackPtr = this.Module.addFunction((tick, timeMilisecond, eventStatus, channel, eventType, a, b, textPtr) => {
+                if (eventType === this.ME_CONTROL_CHANGE) {
+                    if (a === 20 || a === 21) {
+                        spatialEvents.push({
+                            time: timeMilisecond / 1000.0,
+                            cc: a,
+                            val: b
+                        });
+                    }
+                }
+            }, 'viiiiippp');
+            this.c.setEventCallback(renderSongPtr, renderCallbackPtr);
+        }
 
         return new Promise((resolve, reject) => {
             const processChunk = () => {
                 let iterations = 0;
-                while (iterations < 20) { // Render 20 chunks per frame (~2 seconds of audio)
-                    let bytesReadMain = this.c.readWave(this.songPtr, pcmBufferPtr, pcmBytes, 1);
+                while (iterations < 20) { // Render 20 chunks per frame
+                    let bytesReadMain = this.c.readWave(renderSongPtr, pcmBufferPtr, pcmBytes, 1);
                     if (bytesReadMain > 0) {
-                        const chunk = new Int16Array(bytesReadMain / 2);
-                        chunk.set(new Int16Array(this.Module.HEAP16.buffer, pcmBufferPtr, bytesReadMain / 2));
+                        const samples = bytesReadMain / 2;
+                        const chunk = new Int16Array(samples);
+                        chunk.set(new Int16Array(this.Module.HEAP16.buffer, pcmBufferPtr, samples));
                         chunks.push(chunk);
                         totalLength += chunk.length;
                     } else if (bytesReadMain <= 0) {
                         this.Module._free(pcmBufferPtr);
+                        if (renderCallbackPtr !== 0) {
+                            this.Module.removeFunction(renderCallbackPtr);
+                        }
+                        this.c.freeSong(renderSongPtr); // Free the temporary render instance
+                        
+                        if (isSpatial && offlineCtx) {
+                            // Cek apakah ada nilai CC selain 64
+                            const hasSpatialData = spatialEvents.some(ev => ev.val !== 64);
+                            if (!hasSpatialData) {
+                                isSpatial = false; // Batalkan spatial processing
+                            }
+                        }
 
-                        // Seek back to 0 so play button works cleanly
-                        this.c.seekSong(this.songPtr, 0);
+                        // Determine if we need OfflineAudioContext processing
+                        const requiresWebAudio = (isSpatial && offlineCtx) || monoToStereo;
 
-                        const wavBlob = this._chunksToWav(chunks, totalLength, 44100);
-                        this.emit('onRenderComplete', wavBlob);
-                        resolve(wavBlob);
+                        if (requiresWebAudio) {
+                            // Pindahkan audio dari raw chunks ke Web Audio Buffer
+                            if (!offlineCtx) {
+                                offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
+                                spatialBufferArray = offlineCtx.createBuffer(2, Math.ceil(sampleRate * durationSeconds) + sampleRate, sampleRate);
+                                spatialChannelDataL = spatialBufferArray.getChannelData(0);
+                                spatialChannelDataR = spatialBufferArray.getChannelData(1);
+                            }
+
+                            let localOffset = 0;
+                            for (let i = 0; i < chunks.length; i++) {
+                                const chk = chunks[i];
+                                const frameCount = chk.length / channels;
+                                for (let j = 0; j < frameCount; j++) {
+                                    spatialChannelDataL[localOffset + j] = chk[j * channels] / 32768.0;
+                                    spatialChannelDataR[localOffset + j] = chk[j * channels + (channels === 2 ? 1 : 0)] / 32768.0;
+                                }
+                                localOffset += frameCount;
+                            }
+
+                            spatialSourceNode = offlineCtx.createBufferSource();
+                            spatialSourceNode.buffer = spatialBufferArray;
+
+                            let lastNode = spatialSourceNode;
+
+                            if (monoToStereo) {
+                                // Create stereo widening effect
+                                const merger = offlineCtx.createChannelMerger(2);
+                                
+                                // Left channel (slightly detuned up)
+                                const sourceL = offlineCtx.createBufferSource();
+                                sourceL.buffer = spatialBufferArray;
+                                sourceL.detune.value = 5; // +5 cents
+                                sourceL.connect(merger, 0, 0); // Connect to left input of merger
+                                
+                                // Right channel (slightly detuned down + delayed)
+                                const sourceR = offlineCtx.createBufferSource();
+                                sourceR.buffer = spatialBufferArray;
+                                sourceR.detune.value = -5; // -5 cents
+                                
+                                const delay = offlineCtx.createDelay();
+                                delay.delayTime.value = 0.015; // 15ms delay
+                                sourceR.connect(delay);
+                                delay.connect(merger, 0, 1); // Connect to right input of merger
+
+                                lastNode = merger;
+                                
+                                // We won't use spatialSourceNode for playback, we use sourceL and sourceR
+                                spatialSourceNode = null; 
+                                sourceL.start(0);
+                                sourceR.start(0);
+                            } else {
+                                spatialSourceNode.start(0);
+                            }
+
+                            if (isSpatial) {
+                                // Apply captured spatial events to the PannerNode
+                                for (let ev of spatialEvents) {
+                                    let mappedValue = ((ev.val - 64) / 64) * 10;
+                                    
+                                    if (ev.cc === 20) {
+                                        if (isSpatialInterpolation) {
+                                            panner.positionY.linearRampToValueAtTime(mappedValue, ev.time);
+                                        } else {
+                                            panner.positionY.setValueAtTime(mappedValue, ev.time);
+                                        }
+                                    } else if (ev.cc === 21) {
+                                        if (isSpatialInterpolation) {
+                                            panner.positionZ.linearRampToValueAtTime(mappedValue, ev.time);
+                                        } else {
+                                            panner.positionZ.setValueAtTime(mappedValue, ev.time);
+                                        }
+                                    }
+                                }
+
+                                if (!panner) {
+                                    panner = offlineCtx.createPanner();
+                                    panner.panningModel = 'HRTF';
+                                    panner.distanceModel = 'inverse';
+                                    panner.positionX.setValueAtTime(0, 0);
+                                    panner.positionY.setValueAtTime(0, 0);
+                                    panner.positionZ.setValueAtTime(0, 0);
+                                }
+                                
+                                lastNode.connect(panner);
+                                panner.connect(offlineCtx.destination);
+                            } else {
+                                lastNode.connect(offlineCtx.destination);
+                            }
+                            
+                            offlineCtx.startRendering().then(renderedBuffer => {
+                                const wavBlob = this.audioBufferToWav(renderedBuffer);
+                                this.emit('onRenderComplete', wavBlob);
+                                resolve(wavBlob);
+                            });
+                        } else {
+                            const wavBlob = this._chunksToWav(chunks, totalLength, sampleRate, channels);
+                            this.emit('onRenderComplete', wavBlob);
+                            resolve(wavBlob);
+                        }
                         return;
                     }
                     iterations++;
                 }
 
-                currentTime = this.c.getTime(this.songPtr);
+                currentTime = this.c.getTime(renderSongPtr);
                 const progress = totalTime > 0 ? Math.min(100, Math.max(0, (currentTime / totalTime) * 100)) : 0;
                 this.emit('onRenderProgress', progress);
 
@@ -587,7 +787,7 @@ class TimidityPlayer {
         });
     }
 
-    _chunksToWav(chunks, totalSamples, sampleRate) {
+    _chunksToWav(chunks, totalSamples, sampleRate, channels = 2) {
         const buffer = new ArrayBuffer(44 + totalSamples * 2);
         const dataView = new DataView(buffer);
 
@@ -605,10 +805,10 @@ class TimidityPlayer {
         writeString(dataView, 12, 'fmt ');
         dataView.setUint32(16, 16, true);
         dataView.setUint16(20, 1, true); // PCM format
-        dataView.setUint16(22, 2, true); // Stereo
+        dataView.setUint16(22, channels, true); // Mono or Stereo
         dataView.setUint32(24, sampleRate, true);
-        dataView.setUint32(28, sampleRate * 4, true); // byte rate
-        dataView.setUint16(32, 4, true); // block align
+        dataView.setUint32(28, sampleRate * channels * 2, true); // byte rate
+        dataView.setUint16(32, channels * 2, true); // block align
         dataView.setUint16(34, 16, true); // bits per sample
         writeString(dataView, 36, 'data');
         dataView.setUint32(40, byteLength, true);

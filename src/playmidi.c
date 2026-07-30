@@ -712,6 +712,16 @@ uint32 mid_song_get_total_time(MidSong *song)
   return retvalue;
 }
 
+void mid_song_force_mono_pan(MidSong *song)
+{
+  int i;
+  for (i = 0; i < song->groomed_event_count; i++) {
+    if (song->events[i].type == ME_PAN) {
+      song->events[i].a = 64;
+    }
+  }
+}
+
 uint32 mid_song_get_time(MidSong *song)
 {
   uint32 retvalue = (song->current_sample / song->rate) * 1000;

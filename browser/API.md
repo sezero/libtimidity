@@ -178,8 +178,14 @@ These methods read directly from the `timidity.cfg` file located at `patchUrlBas
 
 ## Utilities
 
-### `renderOffline()`
+### `renderOffline(options = {})`
 Renders the currently loaded MIDI song to a WAV file offline (without playing it over speakers). Yields progress via the `onRenderProgress` event.
+- **Parameters:**
+  - `options` *(Object)*: Configuration options for rendering.
+    - `options.sampleRate` *(number)*: The target sample rate (default `44100`).
+    - `options.isMono` *(boolean)*: If true, forces audio to 1 channel and sets all CC pan events to center (default `false`).
+    - `options.isSpatial` *(boolean)*: If true, applies 3D spatial audio processing using Web Audio `PannerNode` based on CC 20 (Y/Height) and CC 21 (Z/Depth) events. Forces `isMono` to false (default `false`).
+    - `options.isSpatialInterpolation` *(boolean)*: If true, smoothly interpolates the spatial coordinates between CC events (default `false`).
 - **Returns:** `Promise<Blob>` - The generated WAV file as a `Blob`.
 
 ### `formatTime(seconds, withMiliSecond = false)`

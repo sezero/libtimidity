@@ -39,6 +39,10 @@ The changes in this release were specifically made to meet the requirements for 
 - Added `panic()` method mapped to the new C Panic API.
 - Added a full **Mixer Solo** button logic to the web UI. Selecting Solo on a channel automatically mutes all other un-soloed channels, simulating professional DAW behavior.
 - Added the `initRealtimeSong()` method to create a persistent background *synthesizer* (`realtimeSongPtr`) utilizing the new `mid_song_create` C API.
+- Expanded `renderOffline(options)` to support custom `sampleRate`, `isMono`, `isSpatial`, `isSpatialInterpolation`, and `monoToStereo`.
+- Added support for 3D spatial audio rendering using Web Audio API's `PannerNode`, automated by MIDI CC 20 (Y-axis) and CC 21 (Z-axis) events.
+- Added stereo widening effect (detune + delay via Haas effect) for stem exports using the `monoToStereo` option, compensating for mono GUS patches.
+- Added a native C function `mid_song_force_mono_pan` to efficiently center all pan events when rendering in Mono.
 
 ### Changed
 
