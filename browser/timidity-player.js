@@ -908,18 +908,26 @@ class TimidityPlayer {
         return new Blob([dataView], { type: 'audio/wav' });
     }
 
-    formatTime(seconds) {
+    formatTime(seconds, withMiliSecond = false) {
         if (isNaN(seconds) || seconds < 0) return "0:00";
+
+        let mills = seconds.toFixed(3).split('.')[1];
 
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
 
+        let formatedTime = '';
+
         if (hrs > 0) {
-            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            formatedTime = `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         } else {
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
+            formatedTime = `${mins}:${secs.toString().padStart(2, '0')}`;
         }
+        if(withMiliSecond) {
+            formatedTime += `.${mills}`;
+        }
+        return formatedTime;
     }
 
 }

@@ -680,6 +680,25 @@
                 statusEl.textContent = `Loaded ${count} patches.`;
             });
 
+            let analyserL, analyserR, dataArrayL, dataArrayR, splitter;
+
+            function setupAnalysers() {
+                if (!player.audioContext || !player.scriptNode || analyserL) return;
+                
+                splitter = player.audioContext.createChannelSplitter(2);
+                analyserL = player.audioContext.createAnalyser();
+                analyserR = player.audioContext.createAnalyser();
+                
+                analyserL.fftSize = 1024;
+                analyserR.fftSize = 1024;
+                dataArrayL = new Float32Array(analyserL.frequencyBinCount);
+                dataArrayR = new Float32Array(analyserR.frequencyBinCount);
+                
+                player.scriptNode.connect(splitter);
+                splitter.connect(analyserL, 0);
+                splitter.connect(analyserR, 1);
+            }
+
             player.on('onPlaying', (tick, elapsedMs) => { // Update seeker and current time
                 seekerEl.value = elapsedMs / 1000;
                 currentTimeEl.textContent = player.formatTime(elapsedMs / 1000);
@@ -687,13 +706,36 @@
                 // Update DAW Meters
                 const activeVoices = player.getActiveVoices();
                 document.getElementById('polyphonyCounter').textContent = activeVoices;
+            });
+            
+            let vuRenderId = null;
+            function renderMasterVu() {
+                vuRenderId = requestAnimationFrame(renderMasterVu);
+                
+                setupAnalysers();
 
-                const peakL = player.getMasterPeak(0, true); // Left, reset=true
-                const peakR = player.getMasterPeak(1, true); // Right, reset=true
-                const maxPeak = 127;
+                let targetL = 0;
+                let targetR = 0;
 
-                let targetL = (peakL / maxPeak) * 100;
-                let targetR = (peakR / maxPeak) * 100;
+                if (analyserL && analyserR) {
+                    analyserL.getFloatTimeDomainData(dataArrayL);
+                    analyserR.getFloatTimeDomainData(dataArrayR);
+                    
+                    let peakL = 0;
+                    for (let i = 0; i < dataArrayL.length; i++) {
+                        let absL = Math.abs(dataArrayL[i]);
+                        if (absL > peakL) peakL = absL;
+                    }
+                    
+                    let peakR = 0;
+                    for (let i = 0; i < dataArrayR.length; i++) {
+                        let absR = Math.abs(dataArrayR[i]);
+                        if (absR > peakR) peakR = absR;
+                    }
+                    
+                    targetL = peakL * 100;
+                    targetR = peakR * 100;
+                }
 
                 // Initialize state if not present
                 if (typeof player._vuL === 'undefined') player._vuL = 0;
@@ -712,7 +754,10 @@
                 let widthR = player._vuR;
                 if (widthR > 100) widthR = 100;
                 document.getElementById('masterVuR').style.transform = `scaleX(${1 - (widthR / 100)})`;
-            });
+            }
+            
+            // Start the render loop
+            renderMasterVu();
             
             function resetMasterVu() {
                 player._vuL = 0;
