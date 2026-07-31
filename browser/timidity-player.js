@@ -502,8 +502,10 @@ class TimidityPlayer {
         if (offset > 0) this.seek(offset); // Seek if offset is provided
 
         const updatePlaying = () => {
-            if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) {
-                this.emit('onPlaying', this.c.getCurrentTick(this.songPtr) / 1000);
+            if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) { // isSeeking flag is from the player class, not the UI
+                const currentTick = this.c.getCurrentTick(this.songPtr);
+                const currentTimeSec = this.c.getTime(this.songPtr) / 1000.0;
+                this.emit('onPlaying', currentTick, currentTimeSec);
             }
             if (this.isPlaying) {
                 this.playingInterval = requestAnimationFrame(updatePlaying);

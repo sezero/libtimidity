@@ -215,6 +215,7 @@ typedef struct _MidEvent MidEvent;
 struct _MidEvent
 {
   sint32 time;
+  sint32 tick;
   /* Using uintptr_t for a and b to allow storing pointers for meta events like lyrics. */
   uintptr_t a, b;
   uint16 track;
@@ -272,6 +273,8 @@ struct _MidSong
   uint16 channel_mute;
   uint8 track_mute[256];
   int current_track;
+  sint32 division;
+  sint32 total_ticks;
 };
 
 /* The global callback, shared between modules */

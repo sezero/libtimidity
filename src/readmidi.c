@@ -570,6 +570,7 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
 	{
 	  /* Add the event to the list */
 	  *lp=meep->event;
+	  lp->tick=meep->event.time; /* Save original tick */
 	  lp->time=st;
 	  lp++;
 	  our_event_count++;
@@ -578,6 +579,7 @@ static MidEvent *groom_list(MidSong *song, sint32 divisions,sint32 *eventsp,
       meep=meep->next;
     }
   /* Add an End-of-Track event */
+  lp->tick=at;
   lp->time=st;
   lp->type=ME_EOT;
   our_event_count++;
@@ -641,6 +643,8 @@ MidEvent *read_midi_file(MidIStream *stream, MidSong *song, sint32 *count, sint3
 	(sint32)(-(divisions_tmp/256)) * (sint32)(divisions_tmp & 0xFF);
     }
   else divisions=(sint32)(divisions_tmp);
+
+  song->division = divisions;
 
   if (len > 6)
     {

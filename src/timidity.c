@@ -807,7 +807,7 @@ cleanup:
 uint32 mid_song_get_current_tick(MidSong *song)
 {
     if (!song || !song->current_event) return 0;
-    return song->current_event->time;
+    return song->current_event->tick;
 }
 
 /* Dynamically load a specific program into a song */
@@ -832,7 +832,7 @@ int mid_song_load_program(MidSong *song, int bank, int program, int is_drum)
 
 const char* mid_song_get_info_json(MidSong *song)
 {
-    static char buf[256];
+    static char buf[512]; // buffer lebih besar
     if (!song) return "{}";
     
     int tracks = 0;
@@ -853,20 +853,25 @@ const char* mid_song_get_info_json(MidSong *song)
     
     uint32 max_tick = 0;
     if (song->groomed_event_count > 0) {
-        max_tick = song->events[song->groomed_event_count - 1].time;
+        max_tick = song->events[song->groomed_event_count - 1].tick;
     }
     
-    uint32 duration_sec = 0;
+    // Durasi harus dihitung dari samples, bukan tick
+    double duration_sec = 0.0;
     if (song->rate > 0) {
-        duration_sec = max_tick / song->rate;
+        duration_sec = (double)song->samples / (double)song->rate;
     }
     
     int bit_depth = (song->encoding & PE_16BIT) ? 16 : 8;
-    uint32 pcm_size = max_tick * song->bytes_per_sample;
+    uint32 pcm_size = song->samples * song->bytes_per_sample;
     
-    snprintf(buf, sizeof(buf), 
-        "{\"tracks\":%d,\"channels\":%d,\"max_tick\":%u,\"duration_sec\":%u,\"sample_rate\":%d,\"bit_depth\":%d,\"pcm_size\":%u}",
-        tracks, channels_used, max_tick, duration_sec, song->rate, bit_depth, pcm_size);
+    snprintf(buf, sizeof(buf),
+        "{\"tracks\":%d,\"channels\":%d,\"max_tick\":%u,"
+        "\"duration_sec\":%.3f,\"sample_rate\":%d,"
+        "\"bit_depth\":%d,\"pcm_size\":%u,\"division\":%d}",
+        tracks, channels_used, max_tick,
+        duration_sec, song->rate, bit_depth,
+        pcm_size, song->division);
         
     return buf;
 }

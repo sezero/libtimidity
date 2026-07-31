@@ -453,7 +453,12 @@
                 <input type="range" id="seeker" min="0" value="0" disabled>
                 <span class="time-display" id="totalTime">00:00.000</span>
             </div>
-            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-end;">
+            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-end; gap: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-size: 0.9em; color:#aaa;">Tick:</label>
+                    <span id="tickCounter"
+                        style="font-family: monospace; background: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">0</span>
+                </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <label style="font-size: 0.9em; color:#aaa;">Polyphony:</label>
                     <span id="polyphonyCounter"
@@ -619,6 +624,7 @@
             const seekerEl = document.getElementById("seeker");
             const currentTimeEl = document.getElementById("currentTime");
             const totalTimeEl = document.getElementById("totalTime");
+            const tickCounterEl = document.getElementById("tickCounter");
             const renderProgress = document.getElementById("renderProgress");
             const freeBtn = document.getElementById("free");
             const exitBtn = document.getElementById("exit");
@@ -891,14 +897,15 @@
                 splitter.connect(analyserR, 1);
             }
 
-            let isSeeking = false;
-            seekerEl.oninput = () => { isSeeking = true; };
+            let isSeekingFromUI = false;
+            seekerEl.oninput = () => { isSeekingFromUI = true; };
 
             player.on('onPlaying', (tick, elapsedSecs) => { // Update seeker and current time
-                if (!isSeeking) {
+                if (!isSeekingFromUI) {
                     seekerEl.value = elapsedSecs;
                 }
                 currentTimeEl.textContent = player.formatTime(elapsedSecs);
+                tickCounterEl.textContent = Math.floor(tick);
 
                 // Update DAW Meters
                 const activeVoices = player.getActiveVoices();
@@ -1246,7 +1253,7 @@
             };
             seekerEl.onchange = (event) => {
                 player.seek(event.target.value);
-                isSeeking = false;
+                isSeekingFromUI = false;
             };
 
             player.on('onRenderProgress', (progress) => {
