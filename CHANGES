@@ -1,3 +1,16 @@
+Changes by libtimidity-0.2.8:
+-----------------------------
+
+- Soundfont support, based on a timidity-0.2i patch by Takashi Iwai
+  dating from 1997.
+- Support quoted strings in config file.
+- Added back optional use a lookup table for sine values (configure
+  with --enable-lookup-sine to enable.)
+- Several code clean-ups.
+- Updated MS Visual Studio project files.
+- Autotools / build system updates.
+
+
 Changes by libtimidity-0.2.7:
 -----------------------------
 
