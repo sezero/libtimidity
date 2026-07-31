@@ -501,6 +501,8 @@ class TimidityPlayer {
         this.c.startSong(this.songPtr); // Prepare song for playback
         if (offset > 0) this.seek(offset); // Seek if offset is provided
 
+        const emitPlaying = options.emitPlaying !== false;
+
         const updatePlaying = () => {
             if (this.isPlaying && !this.isPaused && this.audioContext.state === 'running' && !this.isSeeking) { // isSeeking flag is from the player class, not the UI
                 const currentTick = this.c.getCurrentTick(this.songPtr);
@@ -515,8 +517,12 @@ class TimidityPlayer {
         if (this.playingInterval) {
             cancelAnimationFrame(this.playingInterval);
             clearInterval(this.playingInterval); // Fallback in case it was setInterval
+            this.playingInterval = null;
         }
-        this.playingInterval = requestAnimationFrame(updatePlaying);
+        
+        if (emitPlaying) {
+            this.playingInterval = requestAnimationFrame(updatePlaying);
+        }
 
         this.isPlaying = true;
         this.isPaused = false;
@@ -1086,8 +1092,6 @@ class TimidityPlayer {
 
             if (missingProgram > 0) {
                 const reqProgram = (channel === 9) ? pitch : program;
-                console.warn(`Instrument for ${channel === 9 ? 'drum note' : 'program'} ${reqProgram} (bank ${bank}) is missing. Dynamically loading...`);
-
                 // Load the instrument and then retry playing the note.
                 return this.setRealtimeInstrument(channel, reqProgram, bank).then(loaded => {
                     if (loaded) {
