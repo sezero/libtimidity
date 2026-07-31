@@ -143,6 +143,13 @@ extern "C" {
  */
   TIMI_EXPORT extern long mid_get_version (void);
 
+/* Set the full path of a soundfont (sf2) to use.
+ * Must be called before mid_init().
+ * If a soundfont is set, config file will not be parsed
+ * by mid_init().
+ */
+  TIMI_EXPORT extern int mid_set_soundfont (const char *sf2_file);
+
 /* Initialize the library. If config_file is NULL
  * search for configuratin file in default directories
  */
@@ -204,19 +211,6 @@ extern "C" {
   TIMI_EXPORT extern int mid_istream_close (MidIStream *stream);
 
 
-/* DLS Patch Functions
- * ===================
- */
-
-/* Load DLS patches - No longer supported:  Always returns NULL.
- */
-  TIMI_EXPORT extern MidDLSPatches *mid_dlspatches_load (MidIStream *stream);
-
-/* Destroy DLS patches
- */
-  TIMI_EXPORT extern void mid_dlspatches_free (MidDLSPatches *data);
-
-
 /* MIDI Song Functions
  * ===================
  */
@@ -225,13 +219,6 @@ extern "C" {
  */
   TIMI_EXPORT extern MidSong *mid_song_load (MidIStream *stream,
                                              MidSongOptions *options);
-
-/* Load MIDI song with specified DLS patches
- * No longer supported:  Always returns NULL.
- */
-  TIMI_EXPORT extern MidSong *mid_song_load_dls (MidIStream *stream,
-                                                 MidDLSPatches *dlspatches,
-                                                 MidSongOptions *options);
 
 /* Set song amplification value
  */
@@ -264,6 +251,27 @@ extern "C" {
 /* Destroy song
  */
   TIMI_EXPORT extern void mid_song_free (MidSong *song);
+
+
+/* DEPRECATED Functions:
+ * These are stubs that always fail.
+ * =================================
+ */
+
+/* Load DLS patches - No longer supported:  Always returns NULL.
+ */
+  TIMI_EXPORT extern MidDLSPatches *mid_dlspatches_load (MidIStream *stream);
+
+/* Destroy DLS patches
+ */
+  TIMI_EXPORT extern void mid_dlspatches_free (MidDLSPatches *data);
+
+/* Load MIDI song with specified DLS patches
+ * No longer supported:  Always returns NULL.
+ */
+  TIMI_EXPORT extern MidSong *mid_song_load_dls (MidIStream *stream,
+                                                 MidDLSPatches *dlspatches,
+                                                 MidSongOptions *options);
 
 #ifdef __cplusplus
 }

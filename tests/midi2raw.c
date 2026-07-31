@@ -1,5 +1,6 @@
 /* midi2raw.c -- MIDI to RAW WAVE data converter using libtimidity
  * Copyright (C) 2004 Konstantin Korikov <lostclus@gmail.com>
+ *
  * This example is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRENTY; without event the implied warrenty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -14,6 +15,7 @@ void
 print_usage(void)
 {
   printf("Usage: midi2raw [-cfg /path/to/your/timidity.cfg]\n"
+         "                [-sf2 /path/to/your/sndfont.sf2]\n"
          "                [-r rate] [-s sample_width] [-c channels]\n"
          "                [-v volume] [-o output_file] [midifile]\n");
 }
@@ -28,6 +30,7 @@ main (int argc, char *argv[])
   FILE * output = stdout;
   const char *outname = NULL;
   char * cfgfile = NULL;
+  char * sf2file = NULL;
   int arg;
   MidIStream *stream;
   MidSongOptions options;
@@ -93,6 +96,17 @@ main (int argc, char *argv[])
 	    }
 	  strcpy(cfgfile,argv[arg]);
 	}
+      else if (!strcmp(argv[arg], "-sf2"))
+	{
+	  if (++arg >= argc) break;
+	  sf2file = (char *) malloc (strlen(argv[arg]) + 1);
+	  if (sf2file == NULL)
+	    {
+	      fprintf (stderr, "Failed allocating memory.\n");
+	      return 1;
+	    }
+	  strcpy(sf2file,argv[arg]);
+	}
       else if (!strcmp(argv[arg], "-h"))
 	{
 	  print_usage();
@@ -105,6 +119,11 @@ main (int argc, char *argv[])
 	  return 1;
 	}
       else break;
+    }
+
+  if (sf2file)
+    {
+      mid_set_soundfont (sf2file);
     }
 
   if (mid_init (cfgfile) < 0)

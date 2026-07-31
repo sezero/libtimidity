@@ -527,10 +527,28 @@ int mid_init(const char *config_file)
   if (rc != 0) {
       return rc;
   }
+  if (sf_file) {
+      /* a soundfont specified by mid_set_soundfont().
+       * skip config parsing. */
+      return 0;
+  }
   if (config_file == NULL || *config_file == '\0') {
       return init_with_config(TIMIDITY_CFG);
   }
   return init_with_config(config_file);
+}
+
+int mid_set_soundfont(const char *file)
+{
+  if (file) {
+      size_t sz = strlen(file) + 1;
+      char *fname = (char *) timi_malloc(sz);
+      if (!fname) return -1;
+      memcpy(fname, file, sz);
+      timi_free(sf_file);
+      sf_file = fname;
+  }
+  return 0;
 }
 
 static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **out)
