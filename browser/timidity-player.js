@@ -304,7 +304,6 @@ class TimidityPlayer {
                 // Preload the default instrument (Acoustic Grand Piano) for the real-time player
                 // This ensures that the debug buttons and initial MIDI controller input work immediately.
                 return this.setRealtimeInstrument(0, 0, 0).then(() => {
-                    console.log("Default real-time instrument (Piano) preloaded.");
                     const callbackPtr = this.Module.addFunction((...args) => this._handleMidiEvent(...args), 'viiiiippp');
                     this.c.setEventCallback(0, callbackPtr);
                     this.emit('onInit');
@@ -461,7 +460,6 @@ class TimidityPlayer {
 
                     if (this.songPtr !== 0) {
                         this.totalDuration = this.c.getTotalTime(this.songPtr) / 1000; // in seconds
-                        console.log("loadSong success. songPtr:", this.songPtr, "duration:", this.totalDuration);
                         // Process initial events at tick 0 to set up mixer state
                         if (this.isSyncEnabled) {
                             this.seek(0);
@@ -1149,8 +1147,6 @@ class TimidityPlayer {
         const patchListString = this.c.getRequiredPatches(streamPtr);
         this.c.closeStream(streamPtr);
         this.Module._free(dummyMidiPtr);
-
-        console.log(`[setRealtimeInstrument] patchListString for ${isDrum ? 'drum' : 'melodic'} prog=${program} bank=${bank}: "${patchListString}"`);
 
         // 2. Download the patch file(s) if not already downloaded
         if (patchListString) {
