@@ -229,3 +229,18 @@ Exports audio stems by iteratively rendering selected tracks offline. For each t
 ### `formatTime(seconds, withMiliSecond = false)`
 Formats seconds into a human-readable string (e.g., `H:MM:SS` or `M:SS.mmm`).
 - **Returns:** `string`
+
+---
+
+## Internal C API (WebAssembly Exports)
+
+The following functions are compiled from C and exported directly to JavaScript via the WebAssembly module (`this.Module`). They are primarily used internally by `TimidityPlayer`.
+
+### `mid_create_options(rate, format, channels, buffer_size)`
+Creates a `MidSongOptions` struct dynamically via `malloc` and populates it. This is particularly used for setting up offline rendering audio configurations.
+- **Parameters:**
+  - `rate` *(number)*: Sample rate (e.g., 44100).
+  - `format` *(number)*: Audio format flag (e.g., `0x8010` for `MID_AUDIO_S16LSB`).
+  - `channels` *(number)*: Number of channels (`1` for mono, `2` for stereo).
+  - `buffer_size` *(number)*: Buffer size in samples.
+- **Returns:** `number` - A memory pointer to the allocated `MidSongOptions` struct.

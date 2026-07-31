@@ -234,6 +234,13 @@ extern "C" {
                                                  MidDLSPatches *dlspatches,
                                                  MidSongOptions *options);
 
+/* Create MidSongOptions instance
+ */
+  TIMI_EXPORT extern MidSongOptions *mid_create_options (sint32 rate,
+                                                         uint16 format,
+                                                         uint8 channels,
+                                                         uint16 buffer_size);
+
 /* Set song amplification value
  */
   TIMI_EXPORT extern void mid_song_set_volume (MidSong *song, int volume);

@@ -633,6 +633,18 @@ MidSong *mid_song_create(MidSongOptions *options)
   return song;
 }
 
+MidSongOptions *mid_create_options(sint32 rate, uint16 format, uint8 channels, uint16 buffer_size)
+{
+  MidSongOptions *options = (MidSongOptions *)malloc(sizeof(MidSongOptions));
+  if (options) {
+    options->rate = rate;
+    options->format = format;
+    options->channels = channels;
+    options->buffer_size = buffer_size;
+  }
+  return options;
+}
+
 void mid_song_free(MidSong *song)
 {
   int i;

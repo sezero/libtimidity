@@ -9,6 +9,7 @@ The changes in this release were specifically made to meet the requirements for 
 ### Added
 
 **C API / Core Engine**
+- Added `mid_create_options` function to dynamically create `MidSongOptions` struct, required for offline rendering capabilities.
 - Added `mid_song_create` function to initialize an empty `MidSong` structure without requiring a MIDI file. Crucial for creating persistent background synthesizers (real-time synths).
 - Added `mid_note_on`, `mid_note_off`, and `mid_send_event` functions in `playmidi.c/h` to inject notes and MIDI Control Change events in *real-time* into the synthesizer engine.
 - Added new parameters to `mid_note_on`: `bank`, `pan`, `bend`, `modulation`, `chorus`, and `sustain` to give the DAW full control over note properties during real-time playback.

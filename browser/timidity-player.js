@@ -138,6 +138,7 @@ class TimidityPlayer {
             getMasterPeak: cwrap('mid_song_get_master_peak', 'number', ['number', 'number', 'number']),
             forceMonoPan: cwrap('mid_song_force_mono_pan', null, ['number']),
             malloc: cwrap('malloc', 'number', ['number']),
+            createOptions: cwrap('mid_create_options', 'number', ['number', 'number', 'number', 'number']),
         };
 
         this.emit('runtimeInitialized');
@@ -336,11 +337,16 @@ class TimidityPlayer {
         const midiDataPtr = this.Module._malloc(emptyMidi.length);
         this.Module.HEAPU8.set(emptyMidi, midiDataPtr);
 
-        const optionsPtr = this.Module._malloc(12);
-        this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
-        this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
-        this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
-        this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+        let optionsPtr;
+        if (this.c.createOptions) {
+            optionsPtr = this.c.createOptions(this.audioContext.sampleRate, 0x8010, 2, 4096);
+        } else {
+            optionsPtr = this.Module._malloc(12);
+            this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+            this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+            this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
+            this.Module.setValue(optionsPtr + 8, 4096, 'i32');   // buffer size
+        }
 
         const streamPtr = this.c.openMemoryStream(midiDataPtr, emptyMidi.length);
         this.realtimeSongPtr = this.c.loadSong(streamPtr, optionsPtr);
@@ -433,11 +439,16 @@ class TimidityPlayer {
                 const midiDataPtr = this.Module._malloc(midiData.length);
                 this.Module.HEAPU8.set(midiData, midiDataPtr);
 
-                const optionsPtr = this.Module._malloc(12);
-                this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
-                this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
-                this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
-                this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+                let optionsPtr;
+                if (this.c.createOptions) {
+                    optionsPtr = this.c.createOptions(this.audioContext.sampleRate, 0x8010, 2, 4096);
+                } else {
+                    optionsPtr = this.Module._malloc(12);
+                    this.Module.setValue(optionsPtr + 0, this.audioContext.sampleRate, 'i32');
+                    this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+                    this.Module.setValue(optionsPtr + 6, 2, 'i8');       // stereo output
+                    this.Module.setValue(optionsPtr + 8, 4096, 'i32');   // buffer size
+                }
 
                 const streamPtr = this.c.openMemoryStream(midiDataPtr, midiData.length); // Create memory stream for MIDI data
                 const patchListString = this.c.getRequiredPatches(streamPtr); // Analyze MIDI to get required patches
@@ -517,7 +528,7 @@ class TimidityPlayer {
             clearInterval(this.playingInterval); // Fallback in case it was setInterval
             this.playingInterval = null;
         }
-        
+
         if (emitPlaying) {
             this.playingInterval = requestAnimationFrame(updatePlaying);
         }
@@ -673,11 +684,16 @@ class TimidityPlayer {
         const channels = isMono ? 1 : 2;
 
         // Setup options for libTiMidity reload
-        const optionsPtr = this.Module._malloc(12);
-        this.Module.setValue(optionsPtr + 0, sampleRate, 'i32');
-        this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
-        this.Module.setValue(optionsPtr + 6, channels, 'i8');
-        this.Module.setValue(optionsPtr + 8, 4096, 'i16');   // buffer size
+        let optionsPtr;
+        if (this.c.createOptions) {
+            optionsPtr = this.c.createOptions(sampleRate, 0x8010, channels, 4096);
+        } else {
+            optionsPtr = this.Module._malloc(12);
+            this.Module.setValue(optionsPtr + 0, sampleRate, 'i32');
+            this.Module.setValue(optionsPtr + 4, 0x8010, 'i16'); // S16LSB, signed 16-bit
+            this.Module.setValue(optionsPtr + 6, channels, 'i8');
+            this.Module.setValue(optionsPtr + 8, 4096, 'i32');   // buffer size MUST be i32 to avoid garbage upper bits
+        }
 
         // Reload song from raw data for offline rendering
         const midiDataPtr = this.Module._malloc(this.lastMidiData.length);
