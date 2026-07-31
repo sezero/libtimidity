@@ -1085,10 +1085,11 @@ class TimidityPlayer {
             const missingProgram = this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
 
             if (missingProgram > 0) {
-                console.warn(`Instrument for program ${program} (bank ${bank}) is missing. Dynamically loading...`);
+                const reqProgram = (channel === 9) ? pitch : program;
+                console.warn(`Instrument for ${channel === 9 ? 'drum note' : 'program'} ${reqProgram} (bank ${bank}) is missing. Dynamically loading...`);
 
                 // Load the instrument and then retry playing the note.
-                return this.setRealtimeInstrument(channel, program, bank).then(loaded => {
+                return this.setRealtimeInstrument(channel, reqProgram, bank).then(loaded => {
                     if (loaded) {
                         this.c.noteOn(this.realtimeSongPtr, channel, bank, program, pitch, velocity, pan, bend, modulation, chorus, sustain);
                     }
@@ -1144,6 +1145,8 @@ class TimidityPlayer {
         const patchListString = this.c.getRequiredPatches(streamPtr);
         this.c.closeStream(streamPtr);
         this.Module._free(dummyMidiPtr);
+
+        console.log(`[setRealtimeInstrument] patchListString for ${isDrum ? 'drum' : 'melodic'} prog=${program} bank=${bank}: "${patchListString}"`);
 
         // 2. Download the patch file(s) if not already downloaded
         if (patchListString) {
