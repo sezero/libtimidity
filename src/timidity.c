@@ -320,7 +320,10 @@ static int read_config_file(const char *name, int rcf_count)
 	DEBUG_MSG("%s: line %d: No soundfont file given\n", name, line);
 	goto fail;
       }
-      timi_free(sf_file);
+      if (sf_file) {
+	DEBUG_MSG("%s: line %d: Ignoring multiple \"soundfont\" directives.\n", name, line);
+      }
+     else {
       sz=strlen(w[1])+1;
       sf_file=(char *) timi_malloc(sz);
       memcpy(sf_file,w[1],sz);
@@ -339,6 +342,7 @@ static int read_config_file(const char *name, int rcf_count)
 	  sf_order = k;
 	}
       }
+     }
     }
     else if (!strcmp(w[0], "font"))
     {

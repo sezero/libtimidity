@@ -2,7 +2,9 @@ Changes by libtimidity-0.2.8:
 -----------------------------
 
 - Soundfont support, based on a timidity-0.2i patch by Takashi Iwai
-  dating from 1997.
+  dating from 1997. Note that more than one soundfont directives in
+  the config file is not supported: Only the first encountered font
+  in timidity.cfg will be used.
 - Support quoted strings in config file.
 - Added back optional use a lookup table for sine values (configure
   with --enable-lookup-sine to enable.)
