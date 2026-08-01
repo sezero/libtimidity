@@ -44,6 +44,8 @@ extern void timi_free_pathlist(void);
 #define timi_realloc realloc
 #define timi_free    free
 
+char *timi_strdup(const char *str);
+
 /* timi_strtokr() is a strtok_r() replacement */
 char *timi_strtokr(char *s1, const char *s2, char **ptr);
 

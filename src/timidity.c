@@ -315,7 +315,6 @@ static int read_config_file(const char *name, int rcf_count)
     }
     else if (!strcmp(w[0], "soundfont"))
     {
-      size_t sz;
       if (words < 2) {
 	DEBUG_MSG("%s: line %d: No soundfont file given\n", name, line);
 	goto fail;
@@ -324,9 +323,8 @@ static int read_config_file(const char *name, int rcf_count)
 	DEBUG_MSG("%s: line %d: Ignoring multiple \"soundfont\" directives.\n", name, line);
       }
      else {
-      sz=strlen(w[1])+1;
-      sf_file=(char *) timi_malloc(sz);
-      memcpy(sf_file,w[1],sz);
+      sf_file=timi_strdup(w[1]);
+      if (!sf_file) goto fail;
       for (j = 2; j < words; j++) {
 	if (!(cp = strchr(w[j], '='))) {
 	  DEBUG_MSG("%s: line %d: bad patch option %s\n", name, line, w[j]);
@@ -375,7 +373,6 @@ static int read_config_file(const char *name, int rcf_count)
     }
     else
     {
-      size_t sz;
       if ((words < 2) || (*w[0] < '0' || *w[0] > '9')) {
 	DEBUG_MSG("%s: line %d: syntax error\n", name, line);
 	goto fail;
@@ -390,10 +387,8 @@ static int read_config_file(const char *name, int rcf_count)
 	goto fail;
       }
       timi_free(bank->tone[i].name);
-      sz = strlen(w[1])+1;
-      bank->tone[i].name = (char *) timi_malloc(sz);
+      bank->tone[i].name = timi_strdup(w[1]);
       if (!bank->tone[i].name) goto fail;
-      memcpy(bank->tone[i].name,w[1],sz);
       bank->tone[i].note=bank->tone[i].amp=bank->tone[i].pan=
       bank->tone[i].strip_loop=bank->tone[i].strip_envelope=
       bank->tone[i].strip_tail=-1;
@@ -541,10 +536,8 @@ int mid_init(const char *config_file)
 int mid_set_soundfont(const char *file)
 {
   if (file) {
-      size_t sz = strlen(file) + 1;
-      char *fname = (char *) timi_malloc(sz);
+      char *fname = timi_strdup(file);
       if (!fname) return -1;
-      memcpy(fname, file, sz);
       timi_free(sf_file);
       sf_file = fname;
   }
