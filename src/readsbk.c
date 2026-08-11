@@ -51,23 +51,38 @@
 
 static int READCHUNK(tchunk *vp, FILE *fd)
 {
-	if (fread(vp, 8, 1, fd) != 1) return -1;
+	if (fread(vp, 8, 1, fd) != 1) {
+		memset(vp, 0, sizeof(*vp));
+		return -1;
+	}
 	vp->size = SWAPLE32(vp->size);
-	return 1;
+	return 0;
+}
+
+static int READID(char var[4], FILE *fd)
+{
+	if ((fread(var, 4, 1, fd)) != 1) return -1;
+	return 0;
 }
 
 static int READDW(sint32 *vp, FILE *fd)
 {
 	if (fread(vp, 4, 1, fd) != 1) return -1;
 	*vp = SWAPLE32(*vp);
-	return 1;
+	return 0;
 }
 
 static int READW(uint16 *vp, FILE *fd)
 {
 	if (fread(vp, 2, 1, fd) != 1) return -1;
 	*vp = SWAPLE16(*vp);
-	return 1;
+	return 0;
+}
+
+static int READB(uint8 *vp, FILE *fd)
+{
+	if (fread(vp, 1, 1, fd) != 1) return -1;
+	return 0;
 }
 
 static int READSTR(char *str, FILE *fd)
@@ -75,15 +90,13 @@ static int READSTR(char *str, FILE *fd)
 	int n;
 	if (fread(str, 20, 1, fd) != 1) return -1;
 	str[19] = '\0';
-	n = strlen(str);
+	n = (int) strlen(str);
 	while (n > 0 && str[n - 1] == ' ')
 		n--;
 	str[n] = '\0';
-	return n;
+	return 0;
 }
 
-#define READID(var,fd)	fread(var, 1, 4, fd)
-#define READB(var,fd)	fread(var, 1, 1, fd)
 #define SKIPB(fd)	fseek(fd, 1, SEEK_CUR)
 #define SKIPW(fd)	fseek(fd, 2, SEEK_CUR)
 #define SKIPDW(fd)	fseek(fd, 4, SEEK_CUR)
