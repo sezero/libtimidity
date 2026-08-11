@@ -461,6 +461,8 @@ static int read_config_file(const char *name, int rcf_count)
     }
   }
 
+  TIMI_UNUSED(line);
+
   r = 0; /* we're good. */
 fail:
   fclose(fp);
