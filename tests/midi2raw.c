@@ -20,6 +20,16 @@ print_usage(void)
          "                [-v volume] [-o output_file] [midifile]\n");
 }
 
+static char *my_strdup(const char *str)
+{
+  size_t len = strlen(str) + 1;
+  char *newstr = (char *) malloc(len);
+  if (newstr) {
+      memcpy(newstr, str, len);
+  }
+  return newstr;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -88,24 +98,22 @@ main (int argc, char *argv[])
       else if (!strcmp(argv[arg], "-cfg"))
 	{
 	  if (++arg >= argc) break;
-	  cfgfile = (char *) malloc (strlen(argv[arg]) + 1);
+	  cfgfile = my_strdup (argv[arg]);
 	  if (cfgfile == NULL)
 	    {
 	      fprintf (stderr, "Failed allocating memory.\n");
 	      return 1;
 	    }
-	  strcpy(cfgfile,argv[arg]);
 	}
       else if (!strcmp(argv[arg], "-sf2"))
 	{
 	  if (++arg >= argc) break;
-	  sf2file = (char *) malloc (strlen(argv[arg]) + 1);
+	  sf2file = my_strdup (argv[arg]);
 	  if (sf2file == NULL)
 	    {
 	      fprintf (stderr, "Failed allocating memory.\n");
 	      return 1;
 	    }
-	  strcpy(sf2file,argv[arg]);
 	}
       else if (!strcmp(argv[arg], "-h"))
 	{
@@ -121,13 +129,42 @@ main (int argc, char *argv[])
       else break;
     }
 
+  if (!cfgfile)
+    {
+      const char *var = getenv ("TIMIDITY_CFG");
+      if (var)
+        {
+          cfgfile = my_strdup (var);
+          if (!cfgfile)
+            {
+              fprintf (stderr, "Failed allocating memory.\n");
+              return 1;
+            }
+        }
+    }
+  if (!sf2file)
+    {
+      const char *var = getenv ("TIMIDITY_SOUNDFONT");
+      if (var)
+        {
+          sf2file = my_strdup (var);
+          if (!sf2file)
+            {
+              fprintf (stderr, "Failed allocating memory.\n");
+              return 1;
+            }
+        }
+    }
+
   if (sf2file)
     {
-      mid_set_soundfont (sf2file);
+      if (mid_set_soundfont (sf2file) < 0)
+        goto fail;
     }
 
   if (mid_init (cfgfile) < 0)
     {
+      fail:
       fprintf (stderr, "Could not initialise libTiMidity\n");
       free (cfgfile);
       return 1;
@@ -182,7 +219,9 @@ main (int argc, char *argv[])
 
   mid_song_free (song);
   mid_exit ();
+
   free (cfgfile);
+  free (sf2file);
   if (outname) fclose(output);
 
   return 0;

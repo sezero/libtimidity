@@ -54,8 +54,6 @@
  * compile flags
  *----------------------------------------------------------------*/
 
-/*#define SF_CLOSE_EACH_FILE*/
-
 /*#define SF_SUPPRESS_ENVELOPE*/
 /*#define SF_SUPPRESS_TREMOLO*/
 /*#define SF_SUPPRESS_VIBRATO*/
@@ -151,6 +149,7 @@ static void calc_filterQ(Layer *lay, SFInfo *sf, SampleList *sp);
 
 
 static SFInsts sfrec;
+static SFInfo sfinfo;
 static SFExclude *sfexclude;
 static SFOrder *sforder;
 
@@ -159,11 +158,8 @@ static const int cutoff_allowed = 0;
 #endif
 
 
-int init_soundfont(MidSong *song, const char *fname, int order)
+int init_sbk(const char *fname)
 {
-	static SFInfo sfinfo;
-	int i;
-
 	DEBUG_MSG("init soundfonts `%s'\n", fname);
 
 	memset(&sfinfo, 0, sizeof(sfinfo));
@@ -172,12 +168,37 @@ int init_soundfont(MidSong *song, const char *fname, int order)
 		DEBUG_MSG("can't open soundfont file %s\n", fname);
 		return -1;
 	}
+
 	sfrec.fname = timi_strdup(fname);
-	if (!sfrec.fname) goto nomem;
+	if (!sfrec.fname) goto fail;
+
 	if (load_sbk(sfrec.fd, &sfinfo) < 0) {
 		DEBUG_MSG("%s: bad soundfont file\n", fname);
 		goto fail;
 	}
+
+	return 0;
+
+fail:
+	end_sbk();
+	return -1;
+}
+
+void end_sbk(void)
+{
+	if (sfrec.fd) {
+		fclose(sfrec.fd);
+		sfrec.fd = NULL;
+	}
+	timi_free(sfrec.fname);
+	sfrec.fname = NULL;
+	free_sbk(&sfinfo);
+	memset(&sfinfo, 0, sizeof(sfinfo));
+}
+
+int init_soundfont(MidSong *song, int order)
+{
+	int i;
 
 	for (i = 0; i < sfinfo.nrpresets - 1; i++) {
 		int bank = sfinfo.presethdr[i].bank;
@@ -208,20 +229,9 @@ int init_soundfont(MidSong *song, const char *fname, int order)
 	sfrec.samplepos = sfinfo.samplepos;
 	sfrec.samplesize = sfinfo.samplesize;
 
-	free_sbk(&sfinfo);
-
-#ifdef SF_CLOSE_EACH_FILE
-	fclose(sfrec.fd);
-	sfrec.fd = NULL;
-#endif
 	return 0;
 nomem:
 	song->oom = 1;
-fail:	fclose(sfrec.fd);
-	sfrec.fd = NULL;
-	timi_free(sfrec.fname);
-	sfrec.fname = NULL;
-	free_sbk(&sfinfo);
 	return -1;
 }
 
@@ -239,13 +249,6 @@ static void free_sample(InstList *ip)
 void end_soundfont(void)
 {
 	InstList *ip, *next;
-
-	if (sfrec.fd) {
-		fclose(sfrec.fd);
-		sfrec.fd = NULL;
-	}
-	timi_free(sfrec.fname);
-	sfrec.fname = NULL;
 
 	for (ip = sfrec.instlist; ip; ip = next) {
 		next = ip->next;
@@ -268,12 +271,8 @@ MidInstrument *load_soundfont(MidSong *song, int order, int bank, int preset, in
 	MidInstrument *inst = NULL;
 
 	if (sfrec.fd == NULL) {
-		if (sfrec.fname == NULL)
-			return NULL;
-		if ((sfrec.fd = timi_openfile(sfrec.fname)) == NULL) {
-			DEBUG_MSG("can't open soundfont file %s\n", sfrec.fname);
-			return NULL;
-		}
+		DEBUG_MSG("NULL soundfont file pointer\n");
+		return NULL;
 	}
 
 	for (ip = sfrec.instlist; ip; ip = ip->next) {
@@ -284,11 +283,6 @@ MidInstrument *load_soundfont(MidSong *song, int order, int bank, int preset, in
 	}
 	if (ip && ip->samples)
 		inst = load_from_file(song, &sfrec, ip);
-
-#ifdef SF_CLOSE_EACH_FILE
-	fclose(sfrec.fd);
-	sfrec.fd = NULL;
-#endif
 
 	return inst;
 }
