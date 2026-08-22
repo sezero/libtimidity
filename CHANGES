@@ -11,6 +11,7 @@ Changes by libtimidity-0.2.8:
   full path of a soundfont to use. Must be called before mid_init().
   If a soundfont is set, config file will not be parsed by mid_init.
   See source for details.
+- Support for float and signed 32-bit integer audio output formats.
 - Support quoted strings in config file.
 - Added back optional use a lookup table for sine values (configure
   with --enable-lookup-sine to enable.)

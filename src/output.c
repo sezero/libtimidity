@@ -118,3 +118,51 @@ void timi_s32tou16x(void *dp, sint32 *lp, sint32 c)
       *sp++ = XCHG_SHORT(0x8000 ^ (uint16)(l));
     }
 }
+
+static inline float XCHG_FLOAT(float x)
+{
+  union { float f; sint32 i; } u;
+  u.f = x;
+  u.i = XCHG_LONG(u.i);
+  return u.f;
+}
+
+void timi_s32tof32(void *dp, sint32 *lp, sint32 c)
+{
+  float *sp=(float *)(dp);
+  while (c--)
+    {
+      *sp++ = (float)(*lp++) / (float)(1<<(32 - GUARD_BITS - 1));
+    }
+}
+
+void timi_s32tof32x(void* dp, sint32* lp, sint32 c)
+{
+    float *sp = (float *)(dp);
+    float f;
+    while (c--)
+    {
+        f = (float)(*lp++) / (float)(1<<(32 - GUARD_BITS - 1));
+        *sp++ = XCHG_FLOAT(f);
+    }
+}
+
+void timi_s32tos32(void *dp, sint32 *lp, sint32 c)
+{
+  sint32 *sp=(sint32 *)(dp);
+  while (c--)
+    {
+      *sp++ = (*lp++)<<GUARD_BITS;
+    }
+}
+
+void timi_s32tos32x(void *dp, sint32 *lp, sint32 c)
+{
+  sint32 *sp=(sint32 *)(dp);
+  sint32 l;
+  while (c--)
+    {
+      l=(*lp++)<<GUARD_BITS;
+      *sp++ = XCHG_LONG(l);
+    }
+}

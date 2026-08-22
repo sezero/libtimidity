@@ -62,6 +62,12 @@ extern "C" {
 #define MID_AUDIO_S16MSB  0x9010  /* As above, but big-endian byte order */
 #define MID_AUDIO_U16     MID_AUDIO_U16LSB
 #define MID_AUDIO_S16     MID_AUDIO_S16LSB
+#define MID_AUDIO_S32LSB  0x8020  /* Signed 32-bit integer samples */
+#define MID_AUDIO_S32MSB  0x9020  /* As above, but big-endian byte order */
+#define MID_AUDIO_S32     MID_AUDIO_S32LSB
+#define MID_AUDIO_F32LSB  0x8120  /* 32-bit floating point samples */
+#define MID_AUDIO_F32MSB  0x9120  /* As above, but big-endian byte order */
+#define MID_AUDIO_F32     MID_AUDIO_F32LSB
 
 /* Core Library Types
  */
@@ -127,7 +133,7 @@ extern "C" {
 # elif defined(TIMIDITY_BUILD) || defined(TIMIDITY_STATIC) /* building or using static libtimidity for windows */
 #   define TIMI_EXPORT
 # else
-#   define TIMI_EXPORT __declspec(dllimport)                   /* using libtimidity dll for windows */
+#   define TIMI_EXPORT __declspec(dllimport)              /* using libtimidity dll for windows */
 # endif
 #elif defined(__OS2__) && defined(__WATCOMC__)
 # if defined(TIMIDITY_BUILD) && defined(__SW_BD)          /* building libtimidity as a dll for os/2 */
@@ -137,7 +143,7 @@ extern "C" {
 # endif
 /* SYM_VISIBILITY should be defined if both the compiler
  * and the target support the visibility attributes. the
- * configury does that automatically. for any standalone
+ * configury does that automatically. For any standalone
  * makefiles, etc, the developer should add the required
  * flags, i.e.:  -DSYM_VISIBILITY -fvisibility=hidden  */
 #elif defined(TIMIDITY_BUILD) && defined(SYM_VISIBILITY)

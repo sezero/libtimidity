@@ -36,6 +36,7 @@
 #define PE_MONO 	0x01  /* versus stereo */
 #define PE_SIGNED	0x02  /* versus unsigned */
 #define PE_16BIT 	0x04  /* versus 8-bit */
+#define PE_32BIT 	0x08  /* versus 8-bit or 16-bit */
 
 /* Conversion functions -- These overwrite the sint32 data in *lp with
    data in another format */
@@ -52,17 +53,33 @@ extern void timi_s32tou16(void *dp, sint32 *lp, sint32 c);
 extern void timi_s32tos16x(void *dp, sint32 *lp, sint32 c);
 extern void timi_s32tou16x(void *dp, sint32 *lp, sint32 c);
 
+/* 32-bit */
+extern void timi_s32tof32(void *dp, sint32 *lp, sint32 c);
+extern void timi_s32tos32(void *dp, sint32 *lp, sint32 c);
+
+/* byte-exchanged 32-bit */
+extern void timi_s32tof32x(void* dp, sint32* lp, sint32 c);
+extern void timi_s32tos32x(void *dp, sint32 *lp, sint32 c);
+
 /* little-endian and big-endian specific */
-#if !defined(WORDS_BIGENDIAN)
+#ifndef WORDS_BIGENDIAN
 #define timi_s32tou16l timi_s32tou16
 #define timi_s32tou16b timi_s32tou16x
 #define timi_s32tos16l timi_s32tos16
 #define timi_s32tos16b timi_s32tos16x
+#define timi_s32tos32l timi_s32tos32
+#define timi_s32tos32b timi_s32tos32x
+#define timi_s32tof32l timi_s32tof32
+#define timi_s32tof32b timi_s32tof32x
 #else
 #define timi_s32tou16l timi_s32tou16x
 #define timi_s32tou16b timi_s32tou16
 #define timi_s32tos16l timi_s32tos16x
 #define timi_s32tos16b timi_s32tos16
+#define timi_s32tos32l timi_s32tos32x
+#define timi_s32tos32b timi_s32tos32
+#define timi_s32tof32l timi_s32tof32x
+#define timi_s32tof32b timi_s32tof32
 #endif
 
 #endif /* TIMIDITY_OUTPUT_H */

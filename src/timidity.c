@@ -579,7 +579,12 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   case MID_AUDIO_S16LSB:
   case MID_AUDIO_S16MSB:
   case MID_AUDIO_U16LSB:
-  case MID_AUDIO_U16MSB: break; /* supported */
+  case MID_AUDIO_U16MSB:
+  case MID_AUDIO_S32LSB:
+  case MID_AUDIO_S32MSB:
+  case MID_AUDIO_F32LSB:
+  case MID_AUDIO_F32MSB:
+    break;
   default:
     DEBUG_MSG("Bad audio format 0x%x\n", options->format);
     return;
@@ -608,7 +613,9 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
 
   song->rate = options->rate;
   song->encoding = 0;
-  if (options->format & 0x0010)
+  if (options->format & 0x0020)
+      song->encoding |= PE_32BIT;
+  else if (options->format & 0x0010)
       song->encoding |= PE_16BIT;
   if (options->format & 0x8000)
       song->encoding |= PE_SIGNED;
@@ -633,6 +640,18 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   case MID_AUDIO_U16MSB:
     song->write = timi_s32tou16b;
     break;
+  case MID_AUDIO_S32LSB:
+    song->write = timi_s32tos32l;
+    break;
+  case MID_AUDIO_S32MSB:
+    song->write = timi_s32tos32b;
+    break;
+  case MID_AUDIO_F32LSB:
+    song->write = timi_s32tof32l;
+    break;
+  case MID_AUDIO_F32MSB:
+    song->write = timi_s32tof32b;
+    break;
   }
 
   song->buffer_size = options->buffer_size;
@@ -642,7 +661,9 @@ static void do_song_load(MidIStream *stream, MidSongOptions *options, MidSong **
   if (!song->common_buffer) goto fail;
 
   song->bytes_per_sample = 2;
-  if (song->encoding & PE_16BIT)
+  if (song->encoding & PE_32BIT)
+    song->bytes_per_sample *= 4;
+  else if (song->encoding & PE_16BIT)
     song->bytes_per_sample *= 2;
   if (song->encoding & PE_MONO)
     song->bytes_per_sample /= 2;
