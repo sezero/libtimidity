@@ -116,13 +116,25 @@ extern sint32 XCHG_LONG (sint32);
 #else
 #define DEBUG_MSG(fmt, args...)
 #endif
+
+#elif defined(_MSC_VER) && _MSC_VER < 1400
+/* VS prior to VC7.1 does not support variadic macros.
+ * VC8.0 does not optimize unused parameters passing. */
+extern void DEBUG_MSG(const char *text, ...);
+#ifndef TIMIDITY_DEBUG
+#define DEBUG_MSG DEBUG_NOP
+static void __inline DEBUG_NOP(const char *text, ...) {
+  do { } while (0);
+}
+#endif
+
 #else /* use C99 varargs macros */
 #ifdef TIMIDITY_DEBUG
 #define DEBUG_MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define DEBUG_MSG(...)
 #endif
-#endif
+#endif /**/
 
 #ifndef __VBCC__
 #define TIMI_UNUSED(x) (void)(x)

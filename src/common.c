@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #endif
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -212,3 +213,14 @@ char *timi_strtokr(char *s1, const char *s2, char **ptr)
     /* parsed to end of string */
     return s1;
 }
+
+#if defined(_MSC_VER) && _MSC_VER < 1400
+#undef DEBUG_MSG
+void DEBUG_MSG(const char *fmt, ...)
+{
+    va_list argptr;
+    va_start(argptr,fmt);
+    vfprintf(stderr,fmt,argptr);
+    va_end(argptr);
+}
+#endif

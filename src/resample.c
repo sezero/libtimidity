@@ -544,16 +544,15 @@ sample_t *resample_voice(MidSong *song, int v, sint32 *countptr)
 
 void pre_resample(MidSong *song, MidSample *sp)
 {
+  static const char note_name[12][3] = {
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+  };
   double a, xdiff;
   sint32 incr, ofs, newlen, count;
   sint16 *newdata, *dest, *src = (sint16 *) sp->data, *vptr;
   sint32 v, v1, v2, v3, v4, v5, i;
-#ifdef TIMIDITY_DEBUG
-  static const char note_name[12][3] = {
-    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
-  };
-#endif
 
+  TIMI_UNUSED(note_name);
   DEBUG_MSG(" * pre-resampling for note %d (%s%d)\n",
 	  sp->note_to_use,
 	  note_name[sp->note_to_use % 12], (sp->note_to_use & 0x7F) / 12);

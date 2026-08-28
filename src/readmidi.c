@@ -75,14 +75,12 @@ static sint32 getvl(MidIStream *stream)
    or unprintable characters will be converted to periods. */
 static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 type)
 {
-#ifdef TIMIDITY_DEBUG
   static const char *label[] = {
     "Text event: ", "Text: ", "Copyright: ", "Track name: ",
     "Instrument: ", "Lyric: ", "Marker: ", "Cue point: " };
-#endif
 
-  MidSongMetaId id;
   char *s = (char *)timi_malloc(len+1);
+  MidSongMetaId id;
 
   if (!s)
     {
@@ -101,6 +99,7 @@ static int read_meta_data(MidIStream *stream, MidSong *song, sint32 len, uint8 t
       if (((unsigned char)s[len])<32)
 	s[len]='.';
     }
+  TIMI_UNUSED(label);
   DEBUG_MSG("%s%s\n", label[(type > 7) ? 0 : type], s);
 
   switch (type) {
