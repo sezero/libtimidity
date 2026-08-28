@@ -1,0 +1,33 @@
+# Makefile for Win32 using Visual Studio 6:
+#	nmake -f Makefile.vs6
+
+CPPFLAGS= -I. -DTIMIDITY_BUILD -DDLL_EXPORT -DNDEBUG
+CFLAGS  = -nologo /O2 /MD /W3
+LDFLAGS = -nologo /MACHINE:IX86 /SUBSYSTEM:CONSOLE
+# The following are for VS6. Without them, VS/4 and VS/4.2 work, too.
+#CFLAGS = $(CFLAGS) /G6
+#LDFLAGS = $(LDFLAGS) /OPT:WIN98
+
+CC      = cl
+LD      = link
+RC      = rc
+
+LIBNAME = libtimidity
+DLLNAME = $(LIBNAME).dll
+IMPNAME = $(LIBNAME).lib
+LIBS    =
+
+OBJ = common.obj readsbk.obj sndfont.obj instrum.obj mix.obj output.obj playmidi.obj readmidi.obj resample.obj stream.obj tables.obj timidity.obj
+
+all: $(DLLNAME) $(PLAYER)
+
+.c.obj:
+	@$(CC) /c /nologo $(CFLAGS) $(CPPFLAGS) /Fo$*.obj $<
+
+$(DLLNAME): $(OBJ)
+	$(LD) -out:$@ -dll $(LDFLAGS) $(OBJ) $(LIBS)
+
+distclean: clean
+	-del $(DLLNAME) $(IMPNAME)
+clean:
+	-del *.obj *.exp *.manifest
