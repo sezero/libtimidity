@@ -1,5 +1,6 @@
 _mid_init
 _mid_init_no_config
+_mid_set_soundfont
 _mid_exit
 _mid_get_version
 _mid_istream_open_callbacks
@@ -12,7 +13,6 @@ _mid_istream_seek
 _mid_istream_skip
 _mid_istream_tell
 _mid_song_load
-_mid_song_load_dls
 _mid_song_seek
 _mid_song_set_volume
 _mid_song_start
@@ -21,5 +21,6 @@ _mid_song_get_meta
 _mid_song_get_time
 _mid_song_get_total_time
 _mid_song_free
-_mid_dlspatches_free
 _mid_dlspatches_load
+_mid_dlspatches_free
+_mid_song_load_dls
